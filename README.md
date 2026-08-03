@@ -23,9 +23,10 @@ The first milestone is a hardware proof, not a finished cycling application:
    trainer that RealVelo can discover on Windows.
 3. Continue with the complete proxy only if both checks pass.
 
-The repository currently contains the platform-independent command encoding
-and gear-ratio scaling needed by that proof. Creating and running the iPhone
-target requires Xcode on macOS.
+The repository contains the platform-independent command encoding,
+gear-ratio scaling, and a native iPhone diagnostic app for that proof. The app
+must still be run against a physical KICKR V5 before the command is considered
+proven.
 
 ## Important distinction
 
@@ -42,5 +43,11 @@ Run the core tests on a Mac with Swift installed:
 swift test
 ```
 
-The iPhone hardware proof must be built and signed in Xcode.
+The iPhone hardware proof must be built and signed in Xcode. Open
+`VirtualShift.xcodeproj`, choose the `VirtualShift` scheme and a physical
+iPhone, select your development team under Signing & Capabilities, and run the
+app. Follow the hardware procedure in `MAC_SETUP.md`.
 
+Do not treat a successful build or CoreBluetooth write as proof that resistance
+changed. Record the physical result on issue #1. If the V5 rejects or ignores
+the command, stop rather than building the full proxy.
