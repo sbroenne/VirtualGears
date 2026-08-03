@@ -49,6 +49,16 @@ public enum WahooKickrResponse: Equatable, Sendable {
         }
     }
 
+    public func confirmsSuccess(for command: Data) -> Bool {
+        guard verifies(command: command) else { return false }
+        switch self {
+        case let .unlock(result):
+            return result == 2
+        case let .wheelCircumference(result, _):
+            return result == 1
+        }
+    }
+
     public var summary: String {
         switch self {
         case let .unlock(result):

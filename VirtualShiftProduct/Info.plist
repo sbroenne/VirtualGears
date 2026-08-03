@@ -26,11 +26,6 @@
 	<string>VirtualShift uses Bluetooth to connect to your KICKR trainer and shift controller during a ride.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>VirtualShift uses Bluetooth to communicate with nearby cycling equipment.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>bluetooth-central</string>
-		<string>bluetooth-peripheral</string>
-	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -2,11 +2,12 @@ import SwiftUI
 
 struct SetupView: View {
     @Bindable var store: ConfigurationStore
+    @Bindable var kickr: KickrCentralService
+    @Bindable var click: ClickCentralService
+    @Bindable var diagnostics: ProductDiagnosticsStore
     var isEditing = false
     var onFinish: (() -> Void)?
-
-    private let exampleKickrUUID = "D2A00B65-7C4A-4F0A-A661-B3E378CA92B4"
-    private let exampleClickUUID = "7E0C0A35-21E6-4B16-B90A-B509B8AC6DC3"
+    @State private var showsDiagnostics = false
 
     var body: some View {
         Form {
@@ -15,14 +16,23 @@ struct SetupView: View {
             clickSection
             drivetrainSection
             circumferenceSection
-            nextSection
+            supportSection
         }
         .navigationTitle(isEditing ? "Settings" : "Set Up VirtualShift")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             finishButton
         }
-        .interactiveDismissDisabled(isEditing && !store.configuration.canFinishSetup)
+        .interactiveDismissDisabled(isEditing && !store.configuration.setupComplete)
+        .sheet(isPresented: $showsDiagnostics) {
+            NavigationStack {
+                DiagnosticsView(
+                    diagnostics: diagnostics,
+                    kickr: kickr,
+                    click: click
+                )
+            }
+        }
     }
 
     private var introduction: some View {
@@ -35,8 +45,8 @@ struct SetupView: View {
                 Text(isEditing ? "Ride setup" : "Let’s prepare your ride")
                     .font(.title2.bold())
                 Text(
-                    "Choose saved placeholders now. Hardware scanning and real "
-                        + "Bluetooth connection status come next."
+                    "Choose your actual trainer and, optionally, an original Zwift Click. "
+                        + "Selections are saved and can reconnect after interruption."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -48,33 +58,49 @@ struct SetupView: View {
     private var kickrSection: some View {
         Section {
             Button {
-                store.configuration.kickrName = "Wahoo KICKR"
-                store.configuration.kickrUUID = exampleKickrUUID
+                kickr.isScanning ? kickr.stopScanning() : kickr.startScanning()
             } label: {
                 HStack {
-                    Label("Use example KICKR", systemImage: "plus.circle")
+                    Label(
+                        kickr.isScanning ? "Stop scanning" : "Scan for KICKR",
+                        systemImage: "antenna.radiowaves.left.and.right"
+                    )
                     Spacer()
-                    Text("Placeholder")
+                    Text(kickr.state.label)
                         .foregroundStyle(.secondary)
                 }
                 .frame(minHeight: 60)
             }
 
-            TextField("Display name", text: kickrName)
-                .textContentType(.name)
-            TextField("Bluetooth UUID", text: kickrUUID)
-                .textInputAutocapitalization(.characters)
-                .autocorrectionDisabled()
+            ForEach(kickr.candidates) { candidate in
+                candidateButton(candidate, selected: candidate.id.uuidString
+                    == store.configuration.kickrUUID) {
+                    store.configuration.kickrName = candidate.name
+                    store.configuration.kickrUUID = candidate.id.uuidString
+                    store.configuration.setupComplete = false
+                    kickr.selectAndConnect(candidate.id)
+                }
+            }
 
-            if !store.configuration.kickrUUID.isEmpty,
-               UUID(uuidString: store.configuration.kickrUUID) == nil {
-                Label("Enter a valid UUID.", systemImage: "exclamationmark.circle")
-                    .foregroundStyle(.red)
+            if store.configuration.hasValidKickr {
+                savedDevice(
+                    name: store.configuration.kickrName,
+                    uuid: store.configuration.kickrUUID,
+                    state: kickr.state.label
+                )
+                if kickr.selectedID?.uuidString == store.configuration.kickrUUID,
+                   !kickr.isReady,
+                   !kickr.isScanning {
+                    Button("Reconnect saved KICKR") {
+                        kickr.resumeSavedConnection()
+                    }
+                }
+                bluetoothHelp(for: kickr.state)
             }
         } header: {
             Text("KICKR trainer")
         } footer: {
-            Text("Required. This saves an identity only; no trainer is connected.")
+            Text("Required. The selected Core Bluetooth identity is stored on this iPhone.")
         }
     }
 
@@ -85,27 +111,50 @@ struct SetupView: View {
 
             if store.configuration.usesClick {
                 Button {
-                    store.configuration.clickName = "Zwift Click"
-                    store.configuration.clickUUID = exampleClickUUID
+                    click.isScanning ? click.stopScanning() : click.startScanning()
                 } label: {
-                    Label("Use example Click", systemImage: "plus.circle")
-                        .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                    HStack {
+                        Label(
+                            click.isScanning ? "Stop scanning" : "Scan for Click",
+                            systemImage: "antenna.radiowaves.left.and.right"
+                        )
+                        Spacer()
+                        Text(click.state.label)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
                 }
-                TextField("Display name", text: clickName)
-                TextField("Bluetooth UUID", text: clickUUID)
-                    .textInputAutocapitalization(.characters)
-                    .autocorrectionDisabled()
 
-                if !store.configuration.clickUUID.isEmpty,
-                   UUID(uuidString: store.configuration.clickUUID) == nil {
-                    Label("Enter a valid UUID.", systemImage: "exclamationmark.circle")
-                        .foregroundStyle(.red)
+                ForEach(click.candidates) { candidate in
+                    candidateButton(candidate, selected: candidate.id.uuidString
+                        == store.configuration.clickUUID) {
+                        store.configuration.clickName = candidate.name
+                        store.configuration.clickUUID = candidate.id.uuidString
+                        store.configuration.setupComplete = false
+                        click.selectAndConnect(candidate.id)
+                    }
+                }
+
+                if !store.configuration.clickUUID.isEmpty {
+                    savedDevice(
+                        name: store.configuration.clickName,
+                        uuid: store.configuration.clickUUID,
+                        state: click.state.label
+                    )
+                    if click.selectedID?.uuidString == store.configuration.clickUUID,
+                       !click.isReady,
+                       !click.isScanning {
+                        Button("Reconnect saved Click") {
+                            click.resumeSavedConnection()
+                        }
+                    }
+                    bluetoothHelp(for: click.state)
                 }
             }
         } header: {
             Text("Shift controller")
         } footer: {
-            Text("Optional. Placeholder selection does not connect to hardware.")
+            Text("Optional. Only the original Zwift Click protocol is supported.")
         }
     }
 
@@ -174,21 +223,26 @@ struct SetupView: View {
         }
     }
 
-    private var nextSection: some View {
-        Section {
-            Label("Next: Bluetooth scanning", systemImage: "antenna.radiowaves.left.and.right")
-                .font(.headline)
+    private var supportSection: some View {
+        Section("Support") {
+            Button {
+                showsDiagnostics = true
+            } label: {
+                Label("Diagnostics & App Information", systemImage: "stethoscope")
+                    .frame(minHeight: 52)
+            }
             Text(
-                "The next product milestone will discover and connect your saved hardware. "
-                    + "VirtualShift does not claim a connection today."
+                "Setup remains saved if you leave this screen. Finish Setup is enabled "
+                    + "only after the selected devices have completed a real connection."
             )
+            .font(.footnote)
             .foregroundStyle(.secondary)
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var finishButton: some View {
         Button {
+            guard canFinishSetup else { return }
             store.finishSetup()
             onFinish?()
         } label: {
@@ -197,34 +251,27 @@ struct SetupView: View {
                 .frame(maxWidth: .infinity, minHeight: 60)
         }
         .buttonStyle(.borderedProminent)
-        .disabled(!store.configuration.canFinishSetup)
+        .disabled(!canFinishSetup)
         .padding()
         .background(.bar)
         .accessibilityHint(
-            store.configuration.canFinishSetup
+            canFinishSetup
                 ? "Saves setup and shows the ready screen"
                 : "Complete the required fields and confirm circumference first"
         )
     }
 
-    private var kickrName: Binding<String> {
-        persistedBinding(\.kickrName)
-    }
-
-    private var kickrUUID: Binding<String> {
-        persistedBinding(\.kickrUUID)
-    }
-
     private var usesClick: Binding<Bool> {
-        persistedBinding(\.usesClick)
-    }
-
-    private var clickName: Binding<String> {
-        persistedBinding(\.clickName)
-    }
-
-    private var clickUUID: Binding<String> {
-        persistedBinding(\.clickUUID)
+        Binding {
+            store.configuration.usesClick
+        } set: {
+            store.configuration.usesClick = $0
+            if !$0 {
+                click.forgetSelection()
+                store.configuration.clickName = ""
+                store.configuration.clickUUID = ""
+            }
+        }
     }
 
     private var drivetrainPreset: Binding<DrivetrainPreset> {
@@ -239,6 +286,16 @@ struct SetupView: View {
         }
     }
 
+    private var canFinishSetup: Bool {
+        store.configuration.canFinishSetup
+            && kickr.isReady
+            && kickr.selectedID?.uuidString == store.configuration.kickrUUID
+            && (!store.configuration.usesClick
+                || (click.isReady
+                    && click.selectedID?.uuidString
+                        == store.configuration.clickUUID))
+    }
+
     private func persistedBinding<Value>(
         _ keyPath: WritableKeyPath<AppConfiguration, Value>
     ) -> Binding<Value> {
@@ -248,12 +305,78 @@ struct SetupView: View {
             store.configuration[keyPath: keyPath] = $0
         }
     }
+
+    private func candidateButton(
+        _ candidate: BluetoothCandidate,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(candidate.name)
+                    Text("\(candidate.rssi) dBm · \(candidate.id.uuidString)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                }
+            }
+            .frame(minHeight: 52)
+        }
+    }
+
+    private func savedDevice(
+        name: String,
+        uuid: String,
+        state: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label(name, systemImage: "checkmark.circle")
+                .font(.headline)
+            Text(uuid)
+                .font(.caption.monospaced())
+                .foregroundStyle(.secondary)
+            Text(state)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func bluetoothHelp(for state: ProductConnectionState) -> some View {
+        switch state {
+        case let .unavailable(reason), let .failed(reason):
+            Label(reason, systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .accessibilityLabel("Bluetooth issue: \(reason)")
+            if reason.localizedCaseInsensitiveContains("permission")
+                || reason.localizedCaseInsensitiveContains("unauthorized") {
+                Button("Open Bluetooth Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+        default:
+            EmptyView()
+        }
+    }
 }
 
 #Preview("Setup") {
+    let diagnostics = ProductDiagnosticsStore()
     NavigationStack {
         SetupView(
-            store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!)
+            store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!),
+            kickr: KickrCentralService(diagnostics: diagnostics),
+            click: ClickCentralService(diagnostics: diagnostics),
+            diagnostics: diagnostics
         )
     }
 }

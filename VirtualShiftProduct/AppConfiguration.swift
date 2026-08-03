@@ -103,7 +103,14 @@ final class ConfigurationStore {
     private let defaults: UserDefaults
 
     var configuration: AppConfiguration {
-        didSet { save() }
+        didSet {
+            if configuration.setupComplete
+                && !configuration.canFinishSetup {
+                configuration.setupComplete = false
+                return
+            }
+            save()
+        }
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -113,6 +120,10 @@ final class ConfigurationStore {
             configuration = saved
         } else {
             configuration = AppConfiguration()
+        }
+        if configuration.setupComplete && !configuration.canFinishSetup {
+            configuration.setupComplete = false
+            save()
         }
     }
 

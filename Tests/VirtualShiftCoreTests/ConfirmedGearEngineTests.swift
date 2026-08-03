@@ -3,6 +3,25 @@ import XCTest
 @testable import VirtualShiftCore
 
 final class ConfirmedGearEngineTests: XCTestCase {
+    func testRebasePreservesConfirmedGearAndClearsUnconfirmedRequest() throws {
+        var engine = try makeEngine()
+        let first = try XCTUnwrap(engine.requestShift(by: 1))
+        let response = try WahooKickrResponse.decode(Data([
+            0x01, 0x48, 0x01, 0x00, first.command[1], first.command[2],
+        ]))
+        _ = engine.acknowledge(response)
+        _ = engine.requestShift(by: 2)
+
+        let rebased = try engine.rebased(
+            baselineCircumferenceMillimeters: 2_100
+        )
+
+        XCTAssertEqual(rebased.confirmedGear, engine.confirmedGear)
+        XCTAssertEqual(rebased.requestedGear, engine.confirmedGear)
+        XCTAssertNil(rebased.pendingChange)
+        XCTAssertEqual(rebased.baselineCircumferenceMillimeters, 2_100)
+    }
+
     func testStartsAtReferenceWithNoPendingChange() throws {
         let drivetrain = try makeDrivetrain()
         let engine = try ConfirmedGearEngine(

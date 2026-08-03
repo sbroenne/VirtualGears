@@ -40,6 +40,32 @@ final class WahooKickrCommandTests: XCTestCase {
         XCTAssertFalse(response.verifies(command: different))
     }
 
+    func testResponsesRequireSuccessfulResult() throws {
+        XCTAssertTrue(
+            WahooKickrResponse.unlock(result: 2)
+                .confirmsSuccess(for: WahooKickrCommand.unlock)
+        )
+        XCTAssertFalse(
+            WahooKickrResponse.unlock(result: 1)
+                .confirmsSuccess(for: WahooKickrCommand.unlock)
+        )
+        let command = try WahooKickrCommand.setWheelCircumference(
+            millimeters: 2_070
+        )
+        XCTAssertTrue(
+            WahooKickrResponse.wheelCircumference(
+                result: 1,
+                encodedTenthsOfMillimeter: 20_700
+            ).confirmsSuccess(for: command)
+        )
+        XCTAssertFalse(
+            WahooKickrResponse.wheelCircumference(
+                result: 0,
+                encodedTenthsOfMillimeter: 20_700
+            ).confirmsSuccess(for: command)
+        )
+    }
+
     func testResponseRejectsMalformedOrUnknownData() {
         XCTAssertThrowsError(
             try WahooKickrResponse.decode(Data([0x01, 0x48, 0x01]))

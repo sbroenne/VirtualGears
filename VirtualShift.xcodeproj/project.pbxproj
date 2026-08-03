@@ -23,6 +23,11 @@
 		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
 		A00000000000000000000002 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* SetupView.swift */; };
 		A00000000000000000000003 /* VirtualShiftCore in Frameworks */ = {isa = PBXBuildFile; productRef = 900000000000000000000001 /* VirtualShiftCore */; };
+		A00000000000000000000004 /* ProductBluetoothTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* ProductBluetoothTypes.swift */; };
+		A00000000000000000000005 /* KickrCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* KickrCentralService.swift */; };
+		A00000000000000000000006 /* ClickCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* ClickCentralService.swift */; };
+		A00000000000000000000007 /* FTMSPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FTMSPeripheral.swift */; };
+		A00000000000000000000008 /* ProxyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* ProxyCoordinator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +49,11 @@
 		200000000000000000000010 /* KickrFTMSProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* ProductBluetoothTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductBluetoothTypes.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* KickrCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrCentralService.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* ClickCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickCentralService.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* ProxyCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyCoordinator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,6 +110,11 @@
 				20000000000000000000000A /* VirtualShiftHomeView.swift */,
 				A10000000000000000000001 /* AppConfiguration.swift */,
 				A10000000000000000000002 /* SetupView.swift */,
+				A10000000000000000000004 /* ProductBluetoothTypes.swift */,
+				A10000000000000000000005 /* KickrCentralService.swift */,
+				A10000000000000000000006 /* ClickCentralService.swift */,
+				A10000000000000000000007 /* FTMSPeripheral.swift */,
+				A10000000000000000000008 /* ProxyCoordinator.swift */,
 				20000000000000000000000B /* Info.plist */,
 			);
 			path = VirtualShiftProduct;
@@ -240,6 +255,11 @@
 				100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */,
 				A00000000000000000000001 /* AppConfiguration.swift in Sources */,
 				A00000000000000000000002 /* SetupView.swift in Sources */,
+				A00000000000000000000004 /* ProductBluetoothTypes.swift in Sources */,
+				A00000000000000000000005 /* KickrCentralService.swift in Sources */,
+				A00000000000000000000006 /* ClickCentralService.swift in Sources */,
+				A00000000000000000000007 /* FTMSPeripheral.swift in Sources */,
+				A00000000000000000000008 /* ProxyCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

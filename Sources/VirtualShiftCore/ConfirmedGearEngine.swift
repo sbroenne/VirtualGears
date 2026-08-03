@@ -61,6 +61,24 @@ public struct ConfirmedGearEngine: Sendable {
         drivetrain.gears[confirmedIndex]
     }
 
+    public var confirmedSetting: PendingGearChange {
+        changes[confirmedIndex]
+    }
+
+    /// Recalculates effective circumferences while preserving the displayed gear.
+    /// Any unconfirmed requested shifts are intentionally discarded.
+    public func rebased(
+        baselineCircumferenceMillimeters: Double
+    ) throws -> Self {
+        var result = try Self(
+            drivetrain: drivetrain,
+            baselineCircumferenceMillimeters: baselineCircumferenceMillimeters
+        )
+        result.requestedIndex = confirmedIndex
+        result.confirmedIndex = confirmedIndex
+        return result
+    }
+
     @discardableResult
     public mutating func requestShift(
         by stepCount: Int
@@ -90,6 +108,11 @@ public struct ConfirmedGearEngine: Sendable {
         confirmedIndex = pendingChange.index
         self.pendingChange = nil
         return prepareNextChange()
+    }
+
+    public mutating func cancelPendingChanges() {
+        requestedIndex = confirmedIndex
+        pendingChange = nil
     }
 
     private mutating func prepareNextChange() -> PendingGearChange? {
