@@ -6,6 +6,7 @@ struct RealVeloProbeView: View {
     @State private var realVeloVersion = ""
     @State private var windowsVersion = ""
     @State private var copyConfirmation: String?
+    @State private var preparedTrace: String?
 
     var body: some View {
         NavigationStack {
@@ -67,24 +68,43 @@ struct RealVeloProbeView: View {
                 }
 
                 Section("Structured trace") {
-                    if probe.entries.isEmpty {
+                    if probe.recentEntries.isEmpty {
                         Text("No events yet")
                             .foregroundStyle(.secondary)
                     } else {
                         ScrollView(.horizontal) {
-                            Text(probe.entries.map(\.displayText).joined(separator: "\n"))
+                            Text(
+                                probe.recentEntries
+                                    .map(\.displayText)
+                                    .joined(separator: "\n")
+                            )
                                 .font(.system(.caption, design: .monospaced))
                                 .textSelection(.enabled)
                         }
                     }
-                    ShareLink(
-                        item: probe.structuredTrace(
+                    Text(
+                        "\(probe.traceEventCount) events captured; "
+                            + "showing the latest 40."
+                    )
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    Button("Prepare JSON Export") {
+                        preparedTrace = probe.structuredTrace(
                             realVeloVersion: realVeloVersion,
                             windowsVersion: windowsVersion
-                        ),
-                        subject: Text("VirtualShift RealVelo FTMS Trace")
-                    ) {
-                        Label("Export JSON Trace", systemImage: "square.and.arrow.up")
+                        )
+                        copyConfirmation = nil
+                    }
+                    if let preparedTrace {
+                        ShareLink(
+                            item: preparedTrace,
+                            subject: Text("VirtualShift RealVelo FTMS Trace")
+                        ) {
+                            Label(
+                                "Share Prepared Trace",
+                                systemImage: "square.and.arrow.up"
+                            )
+                        }
                     }
                     Button("Copy JSON Trace") {
                         UIPasteboard.general.string = probe.structuredTrace(
@@ -92,7 +112,7 @@ struct RealVeloProbeView: View {
                             windowsVersion: windowsVersion
                         )
                         copyConfirmation =
-                            "Copied \(probe.entries.count) trace events"
+                            "Copied \(probe.traceEventCount) trace events"
                     }
                     if let copyConfirmation {
                         Label(copyConfirmation, systemImage: "checkmark.circle.fill")
@@ -101,6 +121,7 @@ struct RealVeloProbeView: View {
                     Button("Clear Trace", role: .destructive) {
                         probe.clearTrace()
                         copyConfirmation = nil
+                        preparedTrace = nil
                     }
                 }
             }

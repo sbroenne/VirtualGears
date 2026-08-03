@@ -39,7 +39,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
     @Published private(set) var isAdvertising = false
     @Published private(set) var subscriberCount = 0
     @Published private(set) var hasControl = false
-    @Published private(set) var entries: [FTMSProbeEntry] = []
+    @Published private(set) var recentEntries: [FTMSProbeEntry] = []
     @Published var speedKilometersPerHour = 30.0
     @Published var cadenceRPM = 90.0
     @Published var powerWatts = 200
@@ -77,6 +77,11 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
     }
 
     private var pendingUpdates: [PendingUpdate] = []
+    private var traceEntries: [FTMSProbeEntry] = []
+
+    var traceEventCount: Int {
+        traceEntries.count
+    }
 
     private lazy var featureData = FitnessMachineFeature(
         machineFeatures: [.cadence, .resistanceLevel, .elapsedTime, .powerMeasurement],
@@ -141,7 +146,8 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
     }
 
     func clearTrace() {
-        entries.removeAll()
+        traceEntries.removeAll()
+        recentEntries.removeAll()
         log(event: "trace", meaning: "Trace cleared")
     }
 
@@ -160,7 +166,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
             windowsVersion: windowsVersion,
             iosVersion: UIDevice.current.systemVersion,
             exportedAt: Date(),
-            events: entries
+            events: traceEntries
         )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -399,14 +405,16 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         data: Data? = nil,
         meaning: String
     ) {
-        entries.append(.init(
+        let entry = FTMSProbeEntry(
             event: event,
             characteristic: characteristic,
             data: data,
             meaning: meaning
-        ))
-        if entries.count > 2_000 {
-            entries.removeFirst(entries.count - 2_000)
+        )
+        traceEntries.append(entry)
+        recentEntries.append(entry)
+        if recentEntries.count > 40 {
+            recentEntries.removeFirst(recentEntries.count - 40)
         }
     }
 }
