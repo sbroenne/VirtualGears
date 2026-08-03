@@ -7,6 +7,7 @@ public enum FitnessMachineStatus: Equatable, Sendable {
     case targetPowerChanged(watts: Int16)
     case targetResistanceLevelChanged(tenths: Int16)
     case indoorBikeSimulationParametersChanged(IndoorBikeSimulationParameters)
+    case wheelCircumferenceChanged(tenthsOfMillimeter: UInt16)
     case controlPermissionLost
 
     public static func decode(_ data: Data) throws -> Self {
@@ -38,6 +39,10 @@ public enum FitnessMachineStatus: Equatable, Sendable {
                     windResistanceCoefficientHundredthsKilogramsPerMeter:
                         try reader.readUInt8()
                 )
+            )
+        case 0x13:
+            status = .wheelCircumferenceChanged(
+                tenthsOfMillimeter: try reader.readUInt16()
             )
         case 0xFF:
             status = .controlPermissionLost
@@ -72,6 +77,9 @@ public enum FitnessMachineStatus: Equatable, Sendable {
             writer.write(
                 parameters.windResistanceCoefficientHundredthsKilogramsPerMeter
             )
+        case let .wheelCircumferenceChanged(circumference):
+            writer.write(UInt8(0x13))
+            writer.write(circumference)
         case .controlPermissionLost:
             writer.write(UInt8(0xFF))
         }

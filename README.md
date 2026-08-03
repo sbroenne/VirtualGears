@@ -19,17 +19,18 @@ trainer data while applying virtual gears independently.
 The first milestone is a hardware proof, not a finished cycling application:
 
 1. Verify that the KICKR V5 accepts Wahoo's wheel-circumference command.
-2. Verify that an iPhone can connect to the KICKR while advertising an FTMS
-   trainer that RealVelo can discover on Windows.
-3. Continue with the complete proxy only if both checks pass.
+2. Measure how RealVelo uses a deterministic FTMS trainer advertised by the
+   iPhone, without involving the KICKR.
+3. Measure the KICKR's native FTMS behavior independently.
+4. Continue with the complete proxy only after the isolated checks pass.
 
 The repository contains the platform-independent command encoding,
 gear-ratio scaling, and two native iPhone targets:
 
 - `VirtualShift` is the product app. It intentionally contains only a minimal
   shell until the FTMS proxy work begins.
-- `VirtualShift Hardware Lab` contains the KICKR and original Zwift Click
-  investigation tools. It is not the product interface.
+- `VirtualShift Hardware Lab` contains the KICKR, original Zwift Click, and
+  RealVelo FTMS investigation tools. It is not the product interface.
 
 ## Important distinction
 

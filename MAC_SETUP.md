@@ -65,4 +65,29 @@ This proof is independent of the KICKR and does not send trainer commands.
 7. Copy the Click diagnostic log and record the controller firmware and iOS
    version with the result.
 
-Do not build the full proxy before the two proof gates in the README pass.
+## Independent RealVelo FTMS probe
+
+This probe makes the iPhone pretend to be a simple indoor bike. Do not connect
+the Hardware Lab to the KICKR during this test.
+
+1. Open the **RealVelo** tab and enter the RealVelo and Windows versions.
+2. Tap **Start Probe** and keep the Hardware Lab open in the foreground.
+3. In RealVelo, search for a Bluetooth FTMS trainer named **VirtualShift Lab**
+   and connect to it.
+4. Confirm that RealVelo shows the fixed speed, cadence, and power values. Move
+   each slider in the Hardware Lab and confirm that RealVelo follows it.
+5. Exercise RealVelo's normal start, pause, stop, ERG, resistance, simulation,
+   and wheel-circumference controls.
+6. In the trace, confirm that RealVelo subscribed to the Control Point before
+   requesting control. Record the exact order and raw bytes for every write.
+7. Disconnect and reconnect RealVelo once. Confirm that it can find the probe
+   again and repeats the required subscriptions and control request.
+8. Tap **Export JSON Trace** and save the complete trace with the test result.
+9. Tap **Stop Probe** when finished.
+
+If RealVelo cannot discover the foreground iPhone, do not guess at a proxy
+workaround. Save the trace and record the failure before changing the FTMS
+service shape.
+
+Do not build the full proxy before the isolated RealVelo and KICKR FTMS probes
+pass.

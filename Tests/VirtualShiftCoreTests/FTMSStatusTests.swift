@@ -24,6 +24,10 @@ final class FTMSStatusTests: XCTestCase {
                 .indoorBikeSimulationParametersChanged(simulation),
                 [0x12, 0xFF, 0xFF, 0xF4, 0x01, 0x1E, 0x28]
             ),
+            (
+                .wheelCircumferenceChanged(tenthsOfMillimeter: 20_700),
+                [0x13, 0xDC, 0x50]
+            ),
             (.controlPermissionLost, [0xFF]),
         ]
 

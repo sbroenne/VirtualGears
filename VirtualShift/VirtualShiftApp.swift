@@ -5,6 +5,7 @@ struct VirtualShiftHardwareLabApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var bluetooth = KickrBluetoothManager()
     @StateObject private var click = ClickBluetoothManager()
+    @StateObject private var realVeloProbe = RealVeloProbeManager()
 
     var body: some Scene {
         WindowGroup {
@@ -17,14 +18,20 @@ struct VirtualShiftHardwareLabApp: App {
                     .tabItem {
                         Label("Click", systemImage: "button.programmable")
                     }
+                RealVeloProbeView()
+                    .tabItem {
+                        Label("RealVelo", systemImage: "antenna.radiowaves.left.and.right")
+                    }
             }
                 .environmentObject(bluetooth)
                 .environmentObject(click)
+                .environmentObject(realVeloProbe)
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .background {
                 bluetooth.stop(reason: "App moved to the background")
                 click.disconnect()
+                realVeloProbe.stop()
             }
         }
     }
