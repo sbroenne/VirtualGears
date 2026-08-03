@@ -106,11 +106,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         super.init()
         peripheral = CBPeripheralManager(
             delegate: self,
-            queue: .main,
-            options: [
-                CBPeripheralManagerOptionRestoreIdentifierKey:
-                    "com.sbroenne.VirtualShift.HardwareLab.RealVeloProbe"
-            ]
+            queue: .main
         )
         log(event: "probe", meaning: "Independent RealVelo FTMS probe opened")
     }
