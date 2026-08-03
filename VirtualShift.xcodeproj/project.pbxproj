@@ -14,6 +14,8 @@
 		100000000000000000000005 /* ClickBluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* ClickBluetoothManager.swift */; };
 		100000000000000000000006 /* ClickProofView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* ClickProofView.swift */; };
 		100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* ShiftSoundPlayer.swift */; };
+		100000000000000000000008 /* VirtualShiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VirtualShiftApp.swift */; };
+		100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* VirtualShiftHomeView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +27,10 @@
 		200000000000000000000006 /* ClickBluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickBluetoothManager.swift; sourceTree = "<group>"; };
 		200000000000000000000007 /* ClickProofView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickProofView.swift; sourceTree = "<group>"; };
 		200000000000000000000008 /* ShiftSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftSoundPlayer.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* VirtualShiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftApp.swift; sourceTree = "<group>"; };
+		20000000000000000000000A /* VirtualShiftHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftHomeView.swift; sourceTree = "<group>"; };
+		20000000000000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000C /* VirtualShift Hardware Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "VirtualShift Hardware Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -36,18 +42,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		300000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		400000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				400000000000000000000002 /* VirtualShift */,
+				400000000000000000000004 /* VirtualShift */,
+				400000000000000000000002 /* VirtualShift Hardware Lab */,
 				400000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		400000000000000000000002 /* VirtualShift */ = {
+		400000000000000000000002 /* VirtualShift Hardware Lab */ = {
 			isa = PBXGroup;
 			children = (
 				200000000000000000000001 /* VirtualShiftApp.swift */,
@@ -61,10 +75,21 @@
 			path = VirtualShift;
 			sourceTree = "<group>";
 		};
+		400000000000000000000004 /* VirtualShift */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000009 /* VirtualShiftApp.swift */,
+				20000000000000000000000A /* VirtualShiftHomeView.swift */,
+				20000000000000000000000B /* Info.plist */,
+			);
+			path = VirtualShiftProduct;
+			sourceTree = "<group>";
+		};
 		400000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				200000000000000000000005 /* VirtualShift.app */,
+				20000000000000000000000C /* VirtualShift Hardware Lab.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,6 +101,25 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 800000000000000000000002 /* Build configuration list for PBXNativeTarget "VirtualShift" */;
 			buildPhases = (
+				300000000000000000000005 /* Sources */,
+				300000000000000000000004 /* Frameworks */,
+				300000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = VirtualShift;
+			packageProductDependencies = (
+			);
+			productName = VirtualShift;
+			productReference = 200000000000000000000005 /* VirtualShift.app */;
+			productType = "com.apple.product-type.application";
+		};
+		500000000000000000000002 /* VirtualShift Hardware Lab */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000003 /* Build configuration list for PBXNativeTarget "VirtualShift Hardware Lab" */;
+			buildPhases = (
 				300000000000000000000002 /* Sources */,
 				300000000000000000000001 /* Frameworks */,
 				300000000000000000000003 /* Resources */,
@@ -84,12 +128,12 @@
 			);
 			dependencies = (
 			);
-			name = VirtualShift;
+			name = "VirtualShift Hardware Lab";
 			packageProductDependencies = (
 				900000000000000000000001 /* VirtualShiftCore */,
 			);
-			productName = VirtualShift;
-			productReference = 200000000000000000000005 /* VirtualShift.app */;
+			productName = "VirtualShift Hardware Lab";
+			productReference = 20000000000000000000000C /* VirtualShift Hardware Lab.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -103,6 +147,9 @@
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					500000000000000000000001 = {
+						CreatedOnToolsVersion = 26.4;
+					};
+					500000000000000000000002 = {
 						CreatedOnToolsVersion = 26.4;
 					};
 				};
@@ -124,12 +171,20 @@
 			projectRoot = "";
 			targets = (
 				500000000000000000000001 /* VirtualShift */,
+				500000000000000000000002 /* VirtualShift Hardware Lab */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		300000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		300000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -149,6 +204,15 @@
 				100000000000000000000005 /* ClickBluetoothManager.swift in Sources */,
 				100000000000000000000006 /* ClickProofView.swift in Sources */,
 				100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		300000000000000000000005 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				100000000000000000000008 /* VirtualShiftApp.swift in Sources */,
+				100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,7 +260,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = VirtualShift/Info.plist;
+				INFOPLIST_FILE = VirtualShiftProduct/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -220,7 +284,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = VirtualShift/Info.plist;
+				INFOPLIST_FILE = VirtualShiftProduct/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -228,6 +292,54 @@
 				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualShift;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		700000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MNW6SJT4V7;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VirtualShift/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualShift.HardwareLab;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		700000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MNW6SJT4V7;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = VirtualShift/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualShift.HardwareLab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
@@ -254,6 +366,15 @@
 			buildConfigurations = (
 				700000000000000000000003 /* Debug */,
 				700000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		800000000000000000000003 /* Build configuration list for PBXNativeTarget "VirtualShift Hardware Lab" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				700000000000000000000005 /* Debug */,
+				700000000000000000000006 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

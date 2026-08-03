@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct VirtualShiftApp: App {
+struct VirtualShiftHardwareLabApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var bluetooth = KickrBluetoothManager()
     @StateObject private var click = ClickBluetoothManager()

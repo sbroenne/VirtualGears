@@ -24,9 +24,12 @@ The first milestone is a hardware proof, not a finished cycling application:
 3. Continue with the complete proxy only if both checks pass.
 
 The repository contains the platform-independent command encoding,
-gear-ratio scaling, and a native iPhone diagnostic app for that proof. The app
-must still be run against a physical KICKR V5 before the command is considered
-proven.
+gear-ratio scaling, and two native iPhone targets:
+
+- `VirtualShift` is the product app. It intentionally contains only a minimal
+  shell until the FTMS proxy work begins.
+- `VirtualShift Hardware Lab` contains the KICKR and original Zwift Click
+  investigation tools. It is not the product interface.
 
 ## Important distinction
 
@@ -44,9 +47,9 @@ swift test
 ```
 
 The iPhone hardware proof must be built and signed in Xcode. Open
-`VirtualShift.xcodeproj`, choose the `VirtualShift` scheme and a physical
-iPhone, select your development team under Signing & Capabilities, and run the
-app. Follow the hardware procedure in `MAC_SETUP.md`.
+`VirtualShift.xcodeproj`, choose the `VirtualShift Hardware Lab` scheme and a
+physical iPhone, select your development team under Signing & Capabilities, and
+run the app. Follow the hardware procedure in `MAC_SETUP.md`.
 
 Do not treat a successful build or CoreBluetooth write as proof that resistance
 changed. Record the physical result on issue #1. If the V5 rejects or ignores
