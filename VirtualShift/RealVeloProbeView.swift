@@ -5,6 +5,7 @@ struct RealVeloProbeView: View {
     @EnvironmentObject private var probe: RealVeloProbeManager
     @State private var realVeloVersion = ""
     @State private var windowsVersion = ""
+    @State private var copyConfirmation: String?
 
     var body: some View {
         NavigationStack {
@@ -90,9 +91,16 @@ struct RealVeloProbeView: View {
                             realVeloVersion: realVeloVersion,
                             windowsVersion: windowsVersion
                         )
+                        copyConfirmation =
+                            "Copied \(probe.entries.count) trace events"
+                    }
+                    if let copyConfirmation {
+                        Label(copyConfirmation, systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
                     }
                     Button("Clear Trace", role: .destructive) {
                         probe.clearTrace()
+                        copyConfirmation = nil
                     }
                 }
             }
