@@ -34,4 +34,22 @@ final class VirtualGearTests: XCTestCase {
     func testInvalidGearIsRejected() {
         XCTAssertThrowsError(try VirtualGear(chainring: 0, cog: 17))
     }
+
+    func testScalerRejectsCircumferenceOutsideWahooBounds() {
+        XCTAssertThrowsError(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference:
+                    WahooKickrCommand.maximumCircumferenceMillimeters,
+                referenceRatio: 1,
+                selectedRatio: 2
+            )
+        )
+        XCTAssertThrowsError(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference: .leastNonzeroMagnitude,
+                referenceRatio: .greatestFiniteMagnitude,
+                selectedRatio: .leastNonzeroMagnitude
+            )
+        )
+    }
 }

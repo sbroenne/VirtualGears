@@ -20,6 +20,9 @@
 		10000000000000000000000B /* RealVeloProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* RealVeloProbeView.swift */; };
 		10000000000000000000000C /* KickrFTMSProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* KickrFTMSProbeManager.swift */; };
 		10000000000000000000000D /* KickrFTMSProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* KickrFTMSProbeView.swift */; };
+		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
+		A00000000000000000000002 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* SetupView.swift */; };
+		A00000000000000000000003 /* VirtualShiftCore in Frameworks */ = {isa = PBXBuildFile; productRef = 900000000000000000000001 /* VirtualShiftCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +42,8 @@
 		20000000000000000000000E /* RealVeloProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealVeloProbeView.swift; sourceTree = "<group>"; };
 		20000000000000000000000F /* KickrFTMSProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeManager.swift; sourceTree = "<group>"; };
 		200000000000000000000010 /* KickrFTMSProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeView.swift; sourceTree = "<group>"; };
+		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000000000003 /* VirtualShiftCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,6 +98,8 @@
 			children = (
 				200000000000000000000009 /* VirtualShiftApp.swift */,
 				20000000000000000000000A /* VirtualShiftHomeView.swift */,
+				A10000000000000000000001 /* AppConfiguration.swift */,
+				A10000000000000000000002 /* SetupView.swift */,
 				20000000000000000000000B /* Info.plist */,
 			);
 			path = VirtualShiftProduct;
@@ -123,6 +131,7 @@
 			);
 			name = VirtualShift;
 			packageProductDependencies = (
+				900000000000000000000001 /* VirtualShiftCore */,
 			);
 			productName = VirtualShift;
 			productReference = 200000000000000000000005 /* VirtualShift.app */;
@@ -229,6 +238,8 @@
 			files = (
 				100000000000000000000008 /* VirtualShiftApp.swift in Sources */,
 				100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */,
+				A00000000000000000000001 /* AppConfiguration.swift in Sources */,
+				A00000000000000000000002 /* SetupView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -277,7 +288,7 @@
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VirtualShiftProduct/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -301,7 +312,7 @@
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = VirtualShiftProduct/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

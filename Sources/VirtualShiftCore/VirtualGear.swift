@@ -3,7 +3,7 @@ public enum VirtualGearError: Error, Equatable {
     case invalidCircumferenceInputs
 }
 
-public struct VirtualGear: Equatable, Sendable {
+public struct VirtualGear: Equatable, Hashable, Sendable {
     public let chainring: Int
     public let cog: Int
 
@@ -37,7 +37,16 @@ public enum WheelCircumferenceScaler {
             throw VirtualGearError.invalidCircumferenceInputs
         }
 
-        return neutralCircumference / referenceRatio * selectedRatio
+        let circumference =
+            neutralCircumference / referenceRatio * selectedRatio
+        guard circumference.isFinite,
+              circumference > 0,
+              circumference
+                <= WahooKickrCommand.maximumCircumferenceMillimeters
+        else {
+            throw VirtualGearError.invalidCircumferenceInputs
+        }
+
+        return circumference
     }
 }
-
