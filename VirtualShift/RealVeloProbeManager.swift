@@ -118,6 +118,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         }
         guard !isAdvertising, !startRequested else { return }
         startRequested = true
+        UIApplication.shared.isIdleTimerDisabled = true
         configureService()
         log(event: "service", meaning: "Publishing deterministic FTMS service")
     }
@@ -135,6 +136,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         ownershipByCentral.removeAll()
         hasControl = false
         pendingUpdates.removeAll()
+        UIApplication.shared.isIdleTimerDisabled = false
         log(event: "advertise", meaning: "Stopped FTMS advertising")
     }
 

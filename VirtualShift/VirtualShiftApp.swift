@@ -31,7 +31,6 @@ struct VirtualShiftHardwareLabApp: App {
             if newPhase == .background {
                 bluetooth.stop(reason: "App moved to the background")
                 click.disconnect()
-                realVeloProbe.stop()
             }
         }
     }
