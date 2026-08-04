@@ -122,7 +122,10 @@ private struct ReadyView: View {
                 title: "KICKR",
                 name: store.configuration.kickrName,
                 state: kickr.state,
-                required: true
+                required: true,
+                isStalled: kickr.connectionIsStalled,
+                wakeInstruction: WakeInstruction.trainer,
+                retry: { kickr.autoConnectSavedDevice() }
             )
             Divider()
             if store.configuration.usesClick {
@@ -130,7 +133,10 @@ private struct ReadyView: View {
                     title: "Click",
                     name: store.configuration.clickName,
                     state: click.state,
-                    required: false
+                    required: false,
+                    isStalled: click.connectionIsStalled,
+                    wakeInstruction: WakeInstruction.click,
+                    retry: { click.autoConnectSavedDevice() }
                 )
             } else {
                 Label("On-screen shifting", systemImage: "hand.tap.fill")
@@ -210,29 +216,56 @@ private struct EquipmentStatusRow: View {
     let name: String
     let state: ProductConnectionState
     let required: Bool
+    let isStalled: Bool
+    let wakeInstruction: String
+    let retry: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: state == .ready
-                ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
-                .font(.title2)
-                .foregroundStyle(state == .ready ? Color.green : Color.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.headline)
-                Text(name)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Image(systemName: state == .ready
+                    ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
+                    .font(.title2)
+                    .foregroundStyle(state == .ready ? Color.green : Color.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.headline)
+                    Text(name)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Text(state.shortLabel)
+                    .lineLimit(2)
+                    .font(.subheadline.weight(.semibold))
+                    .multilineTextAlignment(.trailing)
             }
-            Spacer()
-            Text(state.label)
-                .font(.subheadline.weight(.semibold))
-                .multilineTextAlignment(.trailing)
+            .frame(minHeight: 52)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "\(required ? "Required " : "")\(title), \(name), \(state.label)"
+            )
+
+            if needsWakeHint {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(wakeInstruction)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button("Try again now", action: retry)
+                        .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+            }
         }
-        .frame(minHeight: 52)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(required ? "Required " : "")\(title), \(name), \(state.label)"
-        )
+    }
+
+    /// Waiting is normal for a few seconds. Waiting with no explanation is what
+    /// makes it feel broken, so the advice appears as soon as it stalls, or
+    /// straight away if nothing is being attempted at all.
+    private var needsWakeHint: Bool {
+        guard state != .ready else { return false }
+        if isStalled { return true }
+        return !state.isConnectionInProgress && state != .scanning
     }
 }
 

@@ -228,7 +228,7 @@ private struct TrainerSetupView: View {
                         isConnecting: kickr.state.isConnectionInProgress,
                         isStalled: kickr.connectionIsStalled,
                         hasSavedDevice: kickr.hasSavedDevice,
-                        wakeInstruction: Self.wakeInstruction,
+                        wakeInstruction: WakeInstruction.trainer,
                         retry: { kickr.autoConnectSavedDevice() }
                     )
                 }
@@ -323,7 +323,7 @@ private struct ShiftingSetupView: View {
                             isConnecting: click.state.isConnectionInProgress,
                             isStalled: click.connectionIsStalled,
                             hasSavedDevice: click.hasSavedDevice,
-                            wakeInstruction: Self.wakeInstruction,
+                            wakeInstruction: WakeInstruction.click,
                             retry: { click.autoConnectSavedDevice() }
                         )
                     }
@@ -361,7 +361,7 @@ private struct ShiftingSetupView: View {
 
                     BluetoothHelp(state: click.state)
                 } footer: {
-                    Text(Self.wakeInstruction)
+                    Text(WakeInstruction.click)
                 }
             }
         }
@@ -371,10 +371,6 @@ private struct ShiftingSetupView: View {
             if store.configuration.usesClick { click.autoConnectSavedDevice() }
         }
     }
-
-    private static let wakeInstruction =
-        "The Click sleeps to save its battery. Press either of its buttons once "
-            + "to wake it up."
 
     private var usesClick: Binding<Bool> {
         Binding {

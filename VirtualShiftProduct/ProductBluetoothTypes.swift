@@ -42,10 +42,30 @@ enum ProductConnectionState: Equatable {
         }
 
     }
+
+    /// A short form for rows that already show the device name beside it.
+    var shortLabel: String {
+        switch self {
+        case .connecting: "Connecting…"
+        case .reconnecting: "Reconnecting…"
+        case let .failed(message): message
+        default: label
+        }
+    }
 }
 
-enum ProductBluetoothError: Error, LocalizedError {
-    case unavailable(String)
+/// Both devices go to sleep on their own, and CoreBluetooth waits for them
+/// forever without complaining. Every screen that can be left waiting shows the
+/// same words, so the rider only has to learn them once.
+enum WakeInstruction {
+    static let trainer =
+        "Turn the trainer on and give the pedals half a turn to wake it up."
+    static let click =
+        "The Click sleeps to save its battery. Press either of its buttons "
+            + "once to wake it up."
+}
+
+enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)
     case commandFailed(String)
 
     var errorDescription: String? {
