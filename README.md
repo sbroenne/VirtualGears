@@ -50,18 +50,26 @@ command that changes the trainer's idea of your wheel size: a smaller wheel
 covers less ground per pedal stroke, which feels like an easier gear. The riding
 app's own terrain command is left untouched, so the two never fight.
 
-Every gear is scaled away from a fixed 2070 mm reference. The trainer accepts
+Every gear is scaled away from a 2070 mm reference. The trainer accepts
 that scaling over a lopsided range — about 2.3 times harder but 3.2 times easier
 — so the starting gear is placed where the tighter end has the most room, rather
 than in the middle. A drivetrain too wide to fit is refused at setup rather than
 mid-ride.
+
+Some riding apps, FulGaz among them, set a wheel size of their own. VirtualShift
+honours it: that size becomes the new reference and every gear is rebuilt around
+it, so the gear you are in keeps feeling the way it did and the app's number is
+what the trainer is left sitting at. If the gears would no longer fit inside the
+proven range around that size, the request is declined and the ride carries on
+at the size it already had.
 
 ## Safety
 
 The 646.9-4800 mm range was confirmed on a physical KICKR V5, every value
 acknowledged by the trainer, with the reference restored between each probe.
 VirtualShift never asks for anything outside it, and every ride ends by putting
-the trainer back to 2070 mm.
+the trainer back to where it started: 2070 mm, or the wheel size the riding app
+set if it set one.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 what the safety check judges.

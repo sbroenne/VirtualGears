@@ -344,6 +344,56 @@ final class ConfirmedGearEngineTests: XCTestCase {
         }
     }
 
+    /// A riding app such as FulGaz may set its own wheel size, and VirtualShift
+    /// rebuilds the gears around it. It must still refuse a size that would put
+    /// any gear outside what the trainer was proven to accept.
+    func testRebaseRefusesAWheelSizeTheGearsCannotFitAround() throws {
+        let engine = try makeEngine()
+
+        XCTAssertNoThrow(
+            try engine.rebased(baselineCircumferenceMillimeters: 2_096)
+        )
+        XCTAssertThrowsError(
+            try engine.rebased(baselineCircumferenceMillimeters: 4_600)
+        ) { error in
+            XCTAssertEqual(
+                error as? VirtualGearError,
+                .outsideProvenRange
+            )
+        }
+        XCTAssertThrowsError(
+            try engine.rebased(baselineCircumferenceMillimeters: 500)
+        ) { error in
+            XCTAssertEqual(
+                error as? VirtualGearError,
+                .outsideProvenRange
+            )
+        }
+    }
+
+    /// The rebuilt gears are the app's wheel size scaled by each ratio, so the
+    /// gear the rider is in feels the same relative to whatever the app chose.
+    func testRebaseScalesEveryGearFromTheAppsWheelSize() throws {
+        let engine = try makeEngine()
+        let rebased = try engine.rebased(
+            baselineCircumferenceMillimeters: 2_096
+        )
+        let reference = rebased.drivetrain.referenceGear.ratio
+
+        for gear in rebased.drivetrain.gears {
+            let expected = 2_096 / reference * gear.ratio
+            XCTAssertEqual(
+                try WheelCircumferenceScaler.effectiveCircumference(
+                    neutralCircumference: 2_096,
+                    referenceRatio: reference,
+                    selectedRatio: gear.ratio
+                ),
+                expected,
+                accuracy: 0.0001
+            )
+        }
+    }
+
     private func makeEngine() throws -> ConfirmedGearEngine {
         try ConfirmedGearEngine(
             drivetrain: makeDrivetrain(),

@@ -530,6 +530,13 @@ private struct ActiveRideView: View {
                 HStack(spacing: 26) {
                     equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
                     equipmentGroup(items: [ridingAppEquipment])
+                    if coordinator.ridingAppSetWheelSize {
+                        Text("Wheel size from your app")
+                            .accessibilityLabel(
+                                "Your riding app set the wheel size. "
+                                    + "Your gears are built around it."
+                            )
+                    }
                 }
                 .foregroundStyle(.secondary)
             }

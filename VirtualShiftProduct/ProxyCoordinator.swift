@@ -43,6 +43,9 @@ final class ProxyCoordinator {
     private(set) var shiftInteraction = 0
     private(set) var lastShiftFeedback: ShiftFeedbackKind = .single
     private(set) var sessionBaselineMillimeters: Double?
+    /// True once a riding app has set its own wheel size, so the ride screen can
+    /// say whose number the gears are built around.
+    private(set) var ridingAppSetWheelSize = false
 
     let peripheral: FTMSPeripheral
     private let kickr: KickrCentralService
@@ -250,6 +253,7 @@ final class ProxyCoordinator {
         gearSequence = []
         pendingFeedback = []
         sessionBaselineMillimeters = nil
+        ridingAppSetWheelSize = false
         if failures.isEmpty {
             state = .idle
             log("Ride session stopped")
@@ -348,6 +352,7 @@ final class ProxyCoordinator {
                     millimeters: Double(tenths) / 10
                 )
             }
+
             let response = try await kickr.execute(request)
             guard response.requestOpcode == request.opcode,
                   response.result == .success else {
@@ -364,6 +369,14 @@ final class ProxyCoordinator {
         }
     }
 
+    /// Some riding apps, FulGaz among them, set their own wheel size. That is
+    /// the size the rider's app believes the trainer is running, so VirtualShift
+    /// takes it as the new starting point and rebuilds every gear around it
+    /// rather than quietly overruling it.
+    ///
+    /// It is honoured only as far as it is safe: if the gears would no longer
+    /// fit inside what the trainer was proven to accept, the request is refused
+    /// and the ride carries on at the wheel size it already had.
     private func setBaseline(
         millimeters: Double
     ) async throws -> FTMSPeripheralCommandResult {
@@ -378,9 +391,21 @@ final class ProxyCoordinator {
                 "Gear engine is unavailable"
             )
         }
-        let rebased = try engine.rebased(
-            baselineCircumferenceMillimeters: millimeters
-        )
+        let rebased: ConfirmedGearEngine
+        do {
+            rebased = try engine.rebased(
+                baselineCircumferenceMillimeters: millimeters
+            )
+        } catch let error as VirtualGearError {
+            log(
+                "Riding app asked for a \(Int(millimeters.rounded())) mm wheel, "
+                    + "which your gears cannot be built around safely "
+                    + "(\(error)). Keeping "
+                    + "\(Int((sessionBaselineMillimeters ?? 0).rounded())) mm.",
+                .warning
+            )
+            return .init(result: .invalidParameter, status: nil)
+        }
         let effectiveCommand = rebased.confirmedSetting.command
         let effectiveResponse = try await kickr.executeWahoo(effectiveCommand)
         guard effectiveResponse.confirmsSuccess(for: effectiveCommand) else {
@@ -389,6 +414,7 @@ final class ProxyCoordinator {
             )
         }
         sessionBaselineMillimeters = millimeters
+        ridingAppSetWheelSize = true
         gearEngine = rebased
         updateDisplayedGear()
         return .success(status: .wheelCircumferenceChanged(
@@ -580,6 +606,7 @@ final class ProxyCoordinator {
         gearSequence = []
         pendingFeedback = []
         sessionBaselineMillimeters = nil
+        ridingAppSetWheelSize = false
         state = .failed(error.localizedDescription)
         log("Ride start failed: \(error.localizedDescription)", .error)
     }
