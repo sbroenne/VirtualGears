@@ -9,6 +9,9 @@ struct VirtualShiftHomeView: View {
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
     @Bindable var diagnostics: ProductDiagnosticsStore
+    /// Set once the rider stops a ride, so the app does not immediately start a
+    /// new one. Reopening the app is the only way to ask for another ride.
+    @State private var riderStopped = false
 
     var body: some View {
         if coordinator.isRidePresented {
@@ -18,13 +21,15 @@ struct VirtualShiftHomeView: View {
                 click: click,
                 coordinator: coordinator
             )
+            .onDisappear { riderStopped = true }
         } else if store.configuration.setupComplete {
             ReadyView(
                 store: store,
                 kickr: kickr,
                 click: click,
                 coordinator: coordinator,
-                diagnostics: diagnostics
+                diagnostics: diagnostics,
+                autoStarts: !riderStopped
             )
         } else {
             NavigationStack {
@@ -48,6 +53,8 @@ private struct ReadyView: View {
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
     @Bindable var diagnostics: ProductDiagnosticsStore
+    /// False after the rider stops a ride, so this screen waits for a tap.
+    var autoStarts: Bool = true
     @State private var showsSettings = false
 
     var body: some View {
@@ -93,7 +100,9 @@ private struct ReadyView: View {
                 if store.configuration.usesClick {
                     click.autoConnectSavedDevice()
                 }
+                startIfReady()
             }
+            .onChange(of: canStart) { _, _ in startIfReady() }
         }
     }
 
@@ -164,6 +173,37 @@ private struct ReadyView: View {
     /// second time in prose would only be something else to read.
     private var startRideBar: some View {
         VStack(spacing: 8) {
+            if isWaitingToStart {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Connecting to your trainer…")
+                        .font(.headline)
+                }
+                .frame(maxWidth: .infinity, minHeight: 64)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    "Connecting to your trainer. The ride starts by itself."
+                )
+                Text("Your ride starts by itself. Make sure the trainer is awake.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            } else {
+                startRideButton
+            }
+        }
+        .padding()
+        .background(.bar)
+    }
+
+    /// True while the app is connecting on the rider's behalf, so it shows
+    /// progress instead of a dimmed button the rider is not meant to press.
+    private var isWaitingToStart: Bool {
+        autoStarts && !canStart && failureMessage == nil
+    }
+
+    private var startRideButton: some View {
+        VStack(spacing: 8) {
             if let blockingReason {
                 Text(blockingReason)
                     .font(.footnote)
@@ -189,8 +229,6 @@ private struct ReadyView: View {
                     : (blockingReason ?? "Not ready to ride yet")
             )
         }
-        .padding()
-        .background(.bar)
     }
 
     /// Names the one thing still missing, so a dimmed button is never a dead end.
@@ -202,9 +240,6 @@ private struct ReadyView: View {
         if !kickr.isReady {
             return "Your KICKR is not connected yet."
         }
-        if store.configuration.usesClick, !click.isReady {
-            return "Your Click is not connected yet."
-        }
         return nil
     }
 
@@ -215,15 +250,19 @@ private struct ReadyView: View {
         store.configuration.canFinishSetup
             && kickr.isReady
             && kickr.selectedID?.uuidString == store.configuration.kickrUUID
-            && (!store.configuration.usesClick
-                || (click.isReady
-                    && click.selectedID?.uuidString
-                        == store.configuration.clickUUID))
     }
 
     private var failureMessage: String? {
         if case let .failed(message) = coordinator.state { return message }
         return nil
+    }
+
+    /// The app does only one thing, so opening it is the instruction. As soon as
+    /// the trainer is connected the ride begins on its own; the button below is
+    /// only for retrying after a stop or a failure.
+    private func startIfReady() {
+        guard autoStarts, canStart, coordinator.state == .idle else { return }
+        coordinator.startRide(configuration: store.configuration)
     }
 }
 

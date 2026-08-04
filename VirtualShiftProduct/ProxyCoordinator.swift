@@ -104,11 +104,11 @@ final class ProxyCoordinator {
     /// rejected by the same guard that protected the previous async entry point.
     func startRide(configuration: AppConfiguration) {
         guard state == .idle || isFailed else { return }
+        // A Click is deliberately absent from this check. It is an optional
+        // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
               configuration.canFinishSetup,
-              kickr.selectedID?.uuidString == configuration.kickrUUID,
-              !configuration.usesClick
-                || click.selectedID?.uuidString == configuration.clickUUID else {
+              kickr.selectedID?.uuidString == configuration.kickrUUID else {
             state = .failed("Setup is incomplete")
             return
         }
