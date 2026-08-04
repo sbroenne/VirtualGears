@@ -21,20 +21,43 @@ Your riding app connects to the iPhone instead of to the trainer. VirtualShift
 passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
+<p align="center">
+  <img src="docs/screenshots/starting.png" width="24%" alt="Looking for the trainer on launch">
+  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 9 of 16">
+  <img src="docs/screenshots/gears.png" width="24%" alt="The gear spread drawn as bars">
+  <img src="docs/screenshots/settings.png" width="24%" alt="Settings">
+</p>
+
 ## What you get
 
-**Gears.** Either the 24 virtual gears Zwift and Wahoo use, which suit any bike
+**Gears you can see.** Either the 24 virtual gears Zwift and Wahoo use, which suit any bike
 and are the starting choice, or a copy of a real bike described by its
 chainrings and cassette. A real 50/34 with an 11-34 cassette gives sixteen
 gears, running 34x34 up to 50x11 — the gears you would really ride, not every
 possible pairing of a ring with a cog.
 
+Whichever you choose is drawn rather than listed: one bar per gear, easiest to
+hardest, on a scale where a tall step is a jump the legs will notice. How far
+the gears reach and how evenly they are spread are visible at a glance, which no
+list of tooth counts can tell you.
+
 **Shifting.** Two large buttons on the phone, placed for sweaty hands and a
 locked-out gaze. An original Zwift Click can be added and shifts the same
 gears, but it is never required and nothing ever waits for it.
 
-**Nothing to start.** Open the app and it connects to your trainer, starts the
-session, and appears to your riding app on its own.
+**Nothing to set up.** Open the app. It looks for your trainer, connects to it,
+starts the session and appears to your riding app, all on its own. There is no
+setup to complete and no button to press.
+
+The only question it ever asks is which trainer, and only when it genuinely
+cannot tell: one trainer nearby is simply used, several are only chosen
+automatically when one is clearly closest. Bluetooth reaches through walls, and
+connecting to a neighbour's trainer would change their wheel size, so anything
+ambiguous is asked rather than guessed.
+
+**Everything changeable mid-ride.** Trainer, gears and Click can all be changed
+from the ride screen. Changing gears quietly restarts the session, so the
+trainer is always put back before the new gears are applied.
 
 ## What it does not do
 
@@ -90,6 +113,7 @@ what the safety check judges.
 - `VirtualShiftProduct` — the app you ride with.
 - `VirtualShift` — a hardware lab used to prove trainer behaviour. It is not
   the product and is not needed to ride.
+- `docs/screenshots` — the screens above, captured from the simulator.
 
 ## Development
 

@@ -6,6 +6,10 @@ Riding needs only the `VirtualShift` scheme. The `VirtualShift Hardware Lab`
 scheme is a separate app used to prove trainer and controller behaviour, and is
 not needed to ride.
 
+The proofs below were run before the proxy existed and are kept as the way to
+isolate a fault. Riding itself needs none of them: install the app on the phone
+and open it.
+
 1. Install the current stable Xcode release.
 2. Sign in to Xcode with the Apple ID used for device development.
 3. Clone or copy this repository to the Mac.
