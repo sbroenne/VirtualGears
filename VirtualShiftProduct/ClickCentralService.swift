@@ -16,7 +16,9 @@ enum ShiftRequest: Equatable, Sendable {
 @MainActor
 @Observable
 final class ClickCentralService: NSObject {
-    private(set) var state: ProductConnectionState = .unavailable("Starting Bluetooth…")
+    private(set) var state: ProductConnectionState = .unavailable("Starting Bluetooth…") {
+        didSet { updateStallWatch() }
+    }
     private(set) var candidates: [BluetoothCandidate] = []
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
@@ -28,6 +30,29 @@ final class ClickCentralService: NSObject {
 
     var isScanning: Bool { state == .scanning }
     var isReady: Bool { state == .ready }
+
+    // CoreBluetooth never times out a connect(), so a device that is asleep
+    // leaves the screen spinning forever with no advice. After a few seconds of
+    // no progress we say plainly how to wake it up.
+    private(set) var connectionIsStalled = false
+    private var stallTask: Task<Void, Never>?
+
+    private func updateStallWatch() {
+        guard state.isConnectionInProgress else {
+            stallTask?.cancel()
+            stallTask = nil
+            connectionIsStalled = false
+            return
+        }
+        // Keep one timer running across connecting, discovering and preparing so
+        // ordinary progress does not reset the clock.
+        guard stallTask == nil else { return }
+        stallTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard !Task.isCancelled else { return }
+            self?.connectionIsStalled = true
+        }
+    }
 
     private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults

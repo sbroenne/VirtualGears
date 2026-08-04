@@ -77,61 +77,88 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    /// Plain names a rider recognises. Chain-notation such as "2x12" belongs in
+    /// `specification`, not here, because it means nothing to a first-time user.
     var name: String {
         switch self {
         case .zwiftVirtual24:
-            "Zwift Virtual 24"
+            "Virtual gears"
         case .shimano105Di2:
-            "Shimano Road 2×12"
+            "Shimano road bike"
         case .shimanoRoad2x11:
-            "Shimano Road 2×11"
+            "Shimano road bike, classic"
         case .sramRoadAxs:
-            "SRAM Road AXS 2×12"
+            "SRAM road bike"
         case .shimanoGrx12:
-            "Shimano GRX 2×12"
+            "Shimano gravel bike"
         case .sramXplr12:
-            "SRAM XPLR 1×12"
+            "SRAM gravel bike"
         case .sramXplr13:
-            "SRAM Red XPLR 1×13"
+            "SRAM gravel bike, wide"
         case .campagnoloEkar13:
-            "Campagnolo Ekar 1×13"
+            "Campagnolo gravel bike"
         case .campagnoloRoad12:
-            "Campagnolo Super Record 2×12"
+            "Campagnolo road bike"
         case .mountain1x12:
-            "MTB 1×12"
+            "Mountain bike"
         case .mountain1x11:
-            "MTB 1×11"
+            "Mountain bike, classic"
         case .simple1x:
-            "Classic 1×10"
+            "Simple 10-speed"
         }
     }
 
-    var detail: String {
+    /// The one line a rider needs to choose: how many gears, and what they suit.
+    var summary: String {
+        "\(gearCount) gears · \(suitedFor)"
+    }
+
+    var gearCount: Int { drivetrain.gears.count }
+
+    private var suitedFor: String {
         switch self {
         case .zwiftVirtual24:
-            "24 numbered gears · 0.75–5.49"
-        case .shimano105Di2:
-            "2×12 · 50/34 · 11–34"
-        case .shimanoRoad2x11:
-            "2×11 · 50/34 · 11–32"
-        case .sramRoadAxs:
-            "2×12 · 46/33 · 10–33"
-        case .shimanoGrx12:
-            "2×12 · 48/31 · 11–36"
-        case .sramXplr12:
-            "1×12 · 40 · 10–44"
+            "the widest range"
+        case .shimano105Di2, .shimanoRoad2x11, .sramRoadAxs, .campagnoloRoad12:
+            "flat and rolling roads"
+        case .shimanoGrx12, .sramXplr12, .campagnoloEkar13:
+            "mixed roads and hills"
         case .sramXplr13:
-            "1×13 · 44 · 10–46"
-        case .campagnoloEkar13:
-            "1×13 · 40 · 9–42"
-        case .campagnoloRoad12:
-            "2×12 · 45/29 · 10–27"
-        case .mountain1x12:
-            "1×12 · 32 · 10–51"
-        case .mountain1x11:
-            "1×11 · 32 · 11–46"
+            "hills and gravel, easy climbing"
+        case .mountain1x12, .mountain1x11:
+            "steep climbs, very easy gears"
         case .simple1x:
-            "1×10 · 42 · 11–42"
+            "bigger jumps between gears"
+        }
+    }
+
+    /// Tooth counts for riders who want them. Kept out of the way of everyone else.
+    var specification: String {
+        switch self {
+        case .zwiftVirtual24:
+            "Evenly spaced virtual ratios, not copied from a real bike"
+        case .shimano105Di2:
+            "2×12 · 50/34 chainrings · 11–34 cassette"
+        case .shimanoRoad2x11:
+            "2×11 · 50/34 chainrings · 11–32 cassette"
+        case .sramRoadAxs:
+            "2×12 · 46/33 chainrings · 10–33 cassette"
+        case .shimanoGrx12:
+            "2×12 · 48/31 chainrings · 11–36 cassette"
+        case .sramXplr12:
+            "1×12 · 40 chainring · 10–44 cassette"
+        case .sramXplr13:
+            "1×13 · 44 chainring · 10–46 cassette"
+        case .campagnoloEkar13:
+            "1×13 · 40 chainring · 9–42 cassette"
+        case .campagnoloRoad12:
+            "2×12 · 45/29 chainrings · 10–27 cassette"
+        case .mountain1x12:
+            "1×12 · 32 chainring · 10–51 cassette"
+        case .mountain1x11:
+            "1×11 · 32 chainring · 11–46 cassette"
+        case .simple1x:
+            "1×10 · 42 chainring · 11–42 cassette"
         }
     }
 
@@ -165,35 +192,10 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    /// Explains what the numbers on the ride screen will mean.
     var setupDescription: String {
-        switch self {
-        case .zwiftVirtual24:
-            "The default Zwift-style sequence uses 24 numbered gears. Gear 12 "
-                + "is the neutral starting point."
-        case .shimano105Di2:
-            "17 sequential combinations; duplicate ratios and extreme "
-                + "cross-chaining are excluded."
-        case .shimanoRoad2x11:
-            "15 sequential combinations model a classic 11-speed road bike."
-        case .sramRoadAxs:
-            "16 sequential combinations model a wide-range wireless road setup."
-        case .shimanoGrx12:
-            "17 sequential combinations balance gravel climbing and road speed."
-        case .sramXplr12:
-            "12 simple sequential gears model a wide-range gravel drivetrain."
-        case .sramXplr13:
-            "13 sequential gears model the wide 10–46 tooth 13-speed gravel range."
-        case .campagnoloEkar13:
-            "13 sequential gears model the tightly spaced 9–42 tooth Ekar range."
-        case .campagnoloRoad12:
-            "16 sequential gears from the 45/29 tooth 12-speed Campagnolo road range."
-        case .mountain1x12:
-            "12 sequential gears cover a broad 10–51 tooth mountain range."
-        case .mountain1x11:
-            "11 sequential gears model an 11-speed mountain drivetrain."
-        case .simple1x:
-            "10 sequential combinations from the defined 42-tooth drivetrain."
-        }
+        "Gear 1 is the easiest for climbing and gear \(gearCount) is the hardest "
+            + "for speed. Every ride starts in gear \(drivetrain.referenceIndex + 1)."
     }
 
     var drivetrain: Drivetrain {

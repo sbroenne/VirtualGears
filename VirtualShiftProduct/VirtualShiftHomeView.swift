@@ -139,13 +139,14 @@ private struct ReadyView: View {
             Divider()
             HStack {
                 Label(
-                    store.configuration.drivetrainPreset.detail,
+                    store.configuration.drivetrainPreset.summary,
                     systemImage: "gearshape.2.fill"
                 )
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "\(store.configuration.drivetrainPreset.detail) virtual drivetrain"
+                "Gears: \(store.configuration.drivetrainPreset.name), "
+                    + store.configuration.drivetrainPreset.summary
             )
             Divider()
             Label(

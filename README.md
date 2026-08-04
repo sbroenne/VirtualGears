@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/logo.png" alt="VirtualShift" width="160">
+  <img src="docs/banner.png" alt="VirtualShift — virtual gears for your smart trainer">
 </p>
 
 # VirtualShift
