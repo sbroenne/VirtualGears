@@ -311,8 +311,12 @@ private struct EquipmentStatusRow: View {
     /// Waiting is normal for a few seconds. Waiting with no explanation is what
     /// makes it feel broken, so the advice appears as soon as it stalls, or
     /// straight away if nothing is being attempted at all.
+    ///
+    /// Only equipment a ride actually needs says this. Telling a rider to wake
+    /// a Zwift Click would be asking them to fix something that is not holding
+    /// anything up, since the on-screen buttons always shift.
     private var needsWakeHint: Bool {
-        guard state != .ready else { return false }
+        guard required, state != .ready else { return false }
         if isStalled { return true }
         return !state.isConnectionInProgress && state != .scanning
     }
@@ -458,7 +462,9 @@ private struct ActiveRideView: View {
     /// ever reads one thing down here.
     private var equipmentFooter: some View {
         Group {
-            if let problem = equipmentItems.first(where: { $0.state != .ok }) {
+            if let problem = equipmentItems.first(where: {
+                !$0.isOptional && $0.state != .ok
+            }) {
                 Label(
                     "\(problem.title) · \(problem.detail)",
                     systemImage: problem.state.symbol
@@ -469,7 +475,7 @@ private struct ActiveRideView: View {
                 // the one connecting to them. The riding app is set apart
                 // because it connects to VirtualShift instead.
                 HStack(spacing: 26) {
-                    equipmentGroup(items: ownedEquipment)
+                    equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
                     equipmentGroup(items: [ridingAppEquipment])
                 }
                 .foregroundStyle(.secondary)
@@ -516,10 +522,10 @@ private struct ActiveRideView: View {
         if configuration.usesClick {
             items.append(
                 EquipmentItem(
+                    isOptional: true,
                     id: "click",
                     title: "Click",
-                    state: click.isReady
-                        ? .ok : (click.state.isConnectionInProgress ? .pending : .warn),
+                    state: click.isReady ? .ok : .pending,
                     detail: click.state.label
                 )
             )
@@ -694,6 +700,11 @@ private struct ActiveRideView: View {
 }
 
 private struct EquipmentItem: Identifiable {
+    /// Optional equipment never raises a problem and is never waited for. A
+    /// Zwift Click is an extra: the on-screen buttons always shift, so a Click
+    /// that is missing or asleep is not something the rider has to fix.
+    var isOptional = false
+
     enum LinkState: Equatable {
         case ok
         case pending
