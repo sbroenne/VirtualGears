@@ -47,6 +47,24 @@ If a write fails, the expected control characteristic is missing, physical
 resistance does not change, or the restore warning appears, stop the proof and
 record that result. Do not proceed with the full proxy.
 
+## KICKR full-range command proof
+
+Run this after the basic KICKR proof and do not pedal during it.
+
+1. Confirm the trainer's starting circumference and connect as described above.
+2. In **Full-range command test**, tap the single enabled test button.
+3. Wait for the app to confirm both the test value and the automatic restoration
+   of the starting circumference. The next value remains disabled until both
+   replies succeed.
+4. Repeat until all ten values are confirmed. The sequence covers the previously
+   tested range, the exact 646.9–4735.1 mm range required by the proposed
+   24-speed profile at a 2070 mm baseline, and a 4800 mm upper safety margin.
+5. Tap **Copy result summary** and save the complete list and diagnostic log.
+
+Stop immediately if the red neutral-restore warning appears. The app disconnects
+instead of issuing another command when the Bluetooth write state is uncertain.
+Reconnect before riding so the starting circumference is restored first.
+
 ## Original Zwift Click proof
 
 This proof is independent of the KICKR and does not send trainer commands.

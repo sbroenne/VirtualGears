@@ -37,6 +37,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     @Published private(set) var baselineError: String?
     @Published private(set) var powerWatts: Int?
     @Published private(set) var cadenceRPM: Double?
+    @Published private(set) var confirmedRangeProbeValues: [Double] = []
 
     private struct PendingCommand {
         let id = UUID()
@@ -46,7 +47,33 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         let marksUnlocked: Bool
         let makesReady: Bool
         let disconnectAfterWrite: Bool
+        let rangeProbeValue: Double?
+        let restoreOnFailure: Bool
+
+        init(
+            name: String,
+            data: Data,
+            circumference: Double?,
+            marksUnlocked: Bool,
+            makesReady: Bool,
+            disconnectAfterWrite: Bool,
+            rangeProbeValue: Double? = nil,
+            restoreOnFailure: Bool = false
+        ) {
+            self.name = name
+            self.data = data
+            self.circumference = circumference
+            self.marksUnlocked = marksUnlocked
+            self.makesReady = makesReady
+            self.disconnectAfterWrite = disconnectAfterWrite
+            self.rangeProbeValue = rangeProbeValue
+            self.restoreOnFailure = restoreOnFailure
+        }
     }
+
+    static let rangeProbeValues: [Double] = [
+        1_570, 2_570, 1_200, 3_200, 900, 3_800, 646.9, 4_200, 4_735.1, 4_800,
+    ]
 
     private let serviceUUID = CBUUID(
         string: WahooKickrProtocol.cyclingPowerServiceUUID
@@ -71,6 +98,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     private var activeCommand: PendingCommand?
     private var activeWriteConfirmed = false
     private var activeResponse: WahooKickrResponse?
+    private var activeResponseFailure: String?
     private var stopping = false
     private var unlockConfirmed = false
     private var safeDisconnectConfirmed = false
@@ -90,6 +118,12 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         entries.map(\.text).joined(separator: "\n")
     }
 
+    var nextRangeProbeValue: Double? {
+        Self.rangeProbeValues.first {
+            !confirmedRangeProbeValues.contains($0)
+        }
+    }
+
     func confirmBaseline(_ millimeters: Double) {
         guard !isConnected && !isConnecting else {
             baselineError = "Stop the current session before changing the starting value."
@@ -99,6 +133,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         do {
             let values = try WahooKickrProofValues(baseline: millimeters)
             proofValues = values
+            confirmedRangeProbeValues = []
             baselineError = nil
             log(
                 "Starting value confirmed: \(values.baseline.formatted()) mm; "
@@ -107,6 +142,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
             )
         } catch {
             proofValues = nil
+            confirmedRangeProbeValues = []
             baselineError =
                 "Enter a starting value above 500 mm and no more than "
                 + "\(Int(WahooKickrCommand.maximumCircumferenceMillimeters - 500)) mm."
@@ -178,6 +214,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
             reportError("Wait for unlock and neutral setup to finish")
             return
         }
+
         guard let values = proofValues else {
             reportError("The starting value is not confirmed")
             return
@@ -202,6 +239,49 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
             reportError(
                 "Could not create \(selection.label.lowercased()) command: \(error)"
             )
+        }
+    }
+
+    func sendNextRangeProbe() {
+        guard isReady, !isBusy else {
+            reportError("Wait until the trainer is ready before testing the next value")
+            return
+        }
+        guard let baseline = proofValues?.baseline,
+              let probe = nextRangeProbeValue else { return }
+
+        do {
+            let probeData = try WahooKickrCommand.setWheelCircumference(
+                millimeters: probe
+            )
+            let baselineData = try WahooKickrCommand.setWheelCircumference(
+                millimeters: baseline
+            )
+            enqueue(
+                PendingCommand(
+                    name: "Range probe \(probe.formatted()) mm",
+                    data: probeData,
+                    circumference: probe,
+                    marksUnlocked: false,
+                    makesReady: false,
+                    disconnectAfterWrite: false,
+                    restoreOnFailure: true
+                )
+            )
+            enqueue(
+                PendingCommand(
+                    name: "Range probe neutral restore \(baseline.formatted()) mm",
+                    data: baselineData,
+                    circumference: baseline,
+                    marksUnlocked: false,
+                    makesReady: true,
+                    disconnectAfterWrite: false,
+                    rangeProbeValue: probe,
+                    restoreOnFailure: true
+                )
+            )
+        } catch {
+            reportError("Could not create range probe commands: \(error)")
         }
     }
 
@@ -297,6 +377,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         activeCommand = nil
         activeWriteConfirmed = false
         activeResponse = nil
+        activeResponseFailure = nil
         stopping = false
         unlockConfirmed = false
         safeDisconnectConfirmed = false
@@ -353,9 +434,11 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         activeCommand = command
         activeWriteConfirmed = false
         activeResponse = nil
+        activeResponseFailure = nil
         isBusy = true
         log("Writing \(command.name): \(command.data.hexString)")
         peripheral.writeValue(command.data, for: characteristic, type: .withResponse)
+        scheduleCommandTimeout(for: command)
     }
 
     private func handleWriteResult(error: Error?) {
@@ -373,10 +456,10 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
 
         activeWriteConfirmed = true
         log("Bluetooth write confirmed: \(command.name); waiting for KICKR reply")
-        if activeResponse != nil {
+        if let activeResponseFailure {
+            failActiveCommand(activeResponseFailure)
+        } else if activeResponse != nil {
             completeVerifiedCommand()
-        } else {
-            scheduleResponseTimeout(for: command)
         }
     }
 
@@ -390,23 +473,33 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
 
         do {
             let response = try WahooKickrResponse.decode(data)
-            guard response.verifies(command: command.data) else {
-                failActiveCommand(
-                    "\(command.name) received a reply for a different value: "
+            guard response.confirmsSuccess(for: command.data) else {
+                holdOrReportResponseFailure(
+                    "\(command.name) did not receive a matching successful reply: "
                         + response.summary
                 )
                 return
             }
 
             activeResponse = response
+            activeResponseFailure = nil
             log("Matching KICKR reply: \(response.summary)")
             if activeWriteConfirmed {
                 completeVerifiedCommand()
             }
         } catch {
-            failActiveCommand(
+            holdOrReportResponseFailure(
                 "\(command.name) received an unreadable KICKR reply: \(error)"
             )
+        }
+    }
+
+    private func holdOrReportResponseFailure(_ message: String) {
+        if activeWriteConfirmed {
+            failActiveCommand(message)
+        } else {
+            activeResponseFailure = message
+            log("KICKR reply failed validation; waiting for Bluetooth write completion")
         }
     }
 
@@ -415,6 +508,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         activeCommand = nil
         activeWriteConfirmed = false
         activeResponse = nil
+        activeResponseFailure = nil
         log("KICKR verified: \(command.name)")
 
         if command.marksUnlocked {
@@ -422,6 +516,11 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         }
         if let circumference = command.circumference {
             lastConfirmedCircumference = circumference
+        }
+        if let rangeProbeValue = command.rangeProbeValue,
+           !confirmedRangeProbeValues.contains(rangeProbeValue) {
+            confirmedRangeProbeValues.append(rangeProbeValue)
+            log("RANGE PROBE PASSED: \(rangeProbeValue.formatted()) mm")
         }
         if command.makesReady {
             isReady = true
@@ -436,26 +535,45 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         processNextCommand()
     }
 
-    private func scheduleResponseTimeout(for command: PendingCommand) {
+    private func scheduleCommandTimeout(for command: PendingCommand) {
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             guard let self, self.activeCommand?.id == command.id else { return }
             self.failActiveCommand(
-                "\(command.name) was written, but the KICKR did not reply within 5 seconds"
+                "\(command.name) did not complete its write and matching reply "
+                    + "within 5 seconds",
+                canAttemptRestore: self.activeWriteConfirmed
             )
         }
     }
 
-    private func failActiveCommand(_ message: String) {
+    private func failActiveCommand(
+        _ message: String,
+        canAttemptRestore: Bool = true
+    ) {
         let command = activeCommand
         activeCommand = nil
         activeWriteConfirmed = false
         activeResponse = nil
+        activeResponseFailure = nil
         commandQueue.removeAll()
         isBusy = false
 
         if stopping || command?.disconnectAfterWrite == true {
             failSafetyRestore(message)
+        } else if command?.rangeProbeValue != nil {
+            failSafetyRestore(message)
+        } else if command?.restoreOnFailure == true {
+            isReady = false
+            if canAttemptRestore {
+                log("Range probe failed; starting safety restore")
+                stop(reason: message)
+            } else {
+                failSafetyRestore(
+                    "\(message). The Bluetooth write state is unknown; "
+                        + "reconnect to restore the starting value."
+                )
+            }
         } else {
             isReady = false
             reportError(message)
@@ -472,11 +590,14 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     }
 
     private func failSafetyRestore(_ message: String) {
-        stopping = false
+        stopping = true
         isBusy = false
         safetyWarning = "NEUTRAL RESTORE FAILED: \(message)"
-        connectionStatus = "Still connected - restore failed"
-        log("SAFETY ERROR: \(message)")
+        connectionStatus = "Disconnecting after restore failure"
+        log("SAFETY ERROR: \(message); disconnecting")
+        if let peripheral = connectedPeripheral {
+            central.cancelPeripheralConnection(peripheral)
+        }
     }
 
     private func reportError(_ message: String) {
@@ -592,6 +713,7 @@ extension KickrBluetoothManager: CBCentralManagerDelegate {
             activeCommand = nil
             activeWriteConfirmed = false
             activeResponse = nil
+            activeResponseFailure = nil
             isReady = false
             isBusy = false
             stopping = false
@@ -621,9 +743,11 @@ extension KickrBluetoothManager: CBCentralManagerDelegate {
                 connectionStatus = "Stopped safely"
                 log("Disconnected after confirmed starting-value restore")
             } else {
-                safetyWarning =
-                    "Disconnected without a confirmed neutral restore. "
-                    + "Reconnect before riding."
+                if safetyWarning == nil {
+                    safetyWarning =
+                        "Disconnected without a confirmed neutral restore. "
+                        + "Reconnect before riding."
+                }
                 connectionStatus = "Disconnected without confirmed restore"
                 log("WARNING: disconnect occurred without confirmed neutral restore")
             }
@@ -733,7 +857,7 @@ extension KickrBluetoothManager: CBPeripheralDelegate {
         MainActor.assumeIsolated {
             if let error {
                 if characteristic.uuid == controlUUID, activeCommand != nil {
-                    failActiveCommand(
+                    holdOrReportResponseFailure(
                         "KICKR reply failed: \(error.localizedDescription)"
                     )
                 } else {

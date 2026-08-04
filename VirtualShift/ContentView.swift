@@ -17,6 +17,7 @@ struct ContentView: View {
                 baselineSection
                 trainerSection
                 commandSection
+                rangeTestSection
                 safetySection
                 hardwareSection
                 logSection
@@ -185,6 +186,53 @@ struct ContentView: View {
         }
     }
 
+    private var rangeTestSection: some View {
+        Section("Full-range command test") {
+            Text(
+                "Do not pedal during this acceptance test. Each tap sends one test "
+                    + "value, requires a matching successful KICKR reply, then restores "
+                    + "the confirmed starting circumference before enabling the next tap."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+
+            ProgressView(
+                value: Double(bluetooth.confirmedRangeProbeValues.count),
+                total: Double(KickrBluetoothManager.rangeProbeValues.count)
+            )
+            Text(
+                "\(bluetooth.confirmedRangeProbeValues.count) of "
+                    + "\(KickrBluetoothManager.rangeProbeValues.count) values confirmed"
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if let next = bluetooth.nextRangeProbeValue {
+                Button("Test \(next.formatted()) mm, then restore neutral") {
+                    bluetooth.sendNextRangeProbe()
+                }
+                .disabled(!bluetooth.isReady || bluetooth.isBusy)
+            } else {
+                Label(
+                    "All staged values received matching successful replies",
+                    systemImage: "checkmark.seal.fill"
+                )
+                .foregroundStyle(.green)
+            }
+
+            if !bluetooth.confirmedRangeProbeValues.isEmpty {
+                Text(
+                    "Passed: "
+                        + bluetooth.confirmedRangeProbeValues
+                            .map { $0.formatted() }
+                            .joined(separator: ", ")
+                        + " mm"
+                )
+                .font(.caption.monospacedDigit())
+            }
+        }
+    }
+
     @ViewBuilder
     private var safetySection: some View {
         if let warning = bluetooth.safetyWarning {
@@ -246,6 +294,7 @@ struct ContentView: View {
         Control characteristic: \(WahooKickrProtocol.controlCharacteristicUUID)
         Properties: \(bluetooth.characteristicProperties)
         Resistance direction: \(resistanceResult)
+        Range probes passed: \(bluetooth.confirmedRangeProbeValues.map { $0.formatted() }.joined(separator: ", ")) mm
 
         Diagnostic log:
         \(bluetooth.diagnosticText)
