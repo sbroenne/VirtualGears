@@ -377,24 +377,28 @@ private struct ActiveRideView: View {
             .navigationTitle(configuration.drivetrainName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Ending a ride cannot be undone, so it sits alone on the right
+                // and everything harmless is put at the other end of the bar,
+                // as far from a sweaty thumb aiming for Stop as the bar allows.
                 ToolbarItem(placement: .topBarLeading) {
-                    if coordinator.state != .active {
-                        Label(statusText, systemImage: statusSymbol)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(statusColor)
-                            .lineLimit(1)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
                     Button("Settings", systemImage: "gearshape") {
                         showsSettings = true
                     }
                     .accessibilityHint("Change your gears, trainer, or Zwift Click")
                 }
-                // Ending a ride and opening settings are unrelated, and one of
-                // them cannot be undone. The spacer puts them in separate
-                // groups so a sweaty hand aiming for one cannot catch the other.
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                // The middle of the bar says what the ride is doing whenever it
+                // is doing anything other than simply running.
+                ToolbarItem(placement: .principal) {
+                    if coordinator.state != .active {
+                        Label(statusText, systemImage: statusSymbol)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(statusColor)
+                            .lineLimit(1)
+                    } else {
+                        Text(configuration.drivetrainName)
+                            .font(.headline)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         confirmsStop = true

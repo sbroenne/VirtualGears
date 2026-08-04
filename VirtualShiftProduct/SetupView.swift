@@ -91,10 +91,12 @@ struct SetupView: View {
             NavigationLink {
                 GearChoiceView(store: store)
             } label: {
-                LabeledContent(
-                    "Gears",
-                    value: store.configuration.drivetrainName
-                )
+                LabeledContent {
+                    Text(store.configuration.drivetrainName)
+                } label: {
+                    Text("Gears")
+                    Text(store.configuration.gearSummary)
+                }
             }
 
             if !store.configuration.hasSafeCircumference {
@@ -387,6 +389,72 @@ private struct GearChoiceView: View {
     }
 }
 
+/// Gears described in numbers tell a rider almost nothing: 50/34 with 11-34 is
+/// a fact about parts, not about what riding it feels like. Drawn instead, one
+/// bar per gear from easiest to hardest, the two things that actually matter are
+/// visible at a glance: how far the gears reach, and how evenly they are spread.
+/// A tall step means a jump the legs will notice.
+private struct GearSpread: View {
+    let drivetrain: Drivetrain
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .bottom, spacing: 3) {
+                ForEach(Array(drivetrain.gears.enumerated()), id: \.offset) {
+                    index, gear in
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(
+                            index == drivetrain.referenceIndex
+                                ? Color.accentColor
+                                : Color.secondary.opacity(0.35)
+                        )
+                        .frame(height: 12 + 48 * height(of: gear))
+                }
+            }
+            .frame(height: 60, alignment: .bottom)
+
+            // The marker is laid out exactly like the bars above it, so it
+            // always sits under the right one. A centred label would only be
+            // correct when the starting gear happens to be the middle one.
+            HStack(spacing: 3) {
+                ForEach(Array(drivetrain.gears.indices), id: \.self) { index in
+                    Capsule()
+                        .fill(
+                            index == drivetrain.referenceIndex
+                                ? Color.accentColor : Color.clear
+                        )
+                        .frame(height: 3)
+                }
+            }
+
+            HStack {
+                Text("Easier")
+                Spacer()
+                Text("Harder")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(drivetrain.gears.count) gears from easiest to hardest. "
+                + "You start in gear \(drivetrain.referenceIndex + 1)."
+        )
+    }
+
+    /// Spacing is judged by ratio between gears rather than difference, because
+    /// that is how a step feels on the legs, so the scale is a logarithmic one.
+    private func height(of gear: VirtualGear) -> Double {
+        let ratios = drivetrain.gears.map(\.ratio)
+        guard let easiest = ratios.min(), let hardest = ratios.max(),
+              hardest > easiest
+        else {
+            return 0.5
+        }
+        return (log(gear.ratio) - log(easiest)) / (log(hardest) - log(easiest))
+    }
+}
+
 /// The result of the two choices above, kept on the same screen so a change is
 /// seen immediately rather than discovered mid-ride.
 private struct GearPreview: View {
@@ -397,6 +465,8 @@ private struct GearPreview: View {
             if let drivetrain = configuration.drivetrain {
                 Text("\(drivetrain.gears.count) gears")
                     .font(.title2.weight(.semibold))
+                GearSpread(drivetrain: drivetrain)
+                    .padding(.vertical, 4)
                 Text(configuration.setupDescription)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
