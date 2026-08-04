@@ -528,15 +528,24 @@ private struct ActiveRideView: View {
 
     /// The riding app connects in to VirtualShift, so it is reported apart.
     private var ridingAppEquipment: EquipmentItem {
-        let isSubscribed = coordinator.peripheral.activeCentralID != nil
+        let isConnected = coordinator.peripheral.subscribedAppCount > 0
+        let isSteering = coordinator.peripheral.controllingAppID != nil
         let isAdvertising = coordinator.peripheral.isAdvertising
+        let detail: String
+        if isSteering {
+            detail = "Connected and steering"
+        } else if isConnected {
+            detail = "Connected"
+        } else if isAdvertising {
+            detail = "Waiting to be found"
+        } else {
+            detail = "Not advertising"
+        }
         return EquipmentItem(
             id: "ridingapp",
             title: "Riding app",
-            state: isSubscribed ? .ok : (isAdvertising ? .pending : .warn),
-            detail: isSubscribed
-                ? "Connected"
-                : (isAdvertising ? "Waiting to be found" : "Not advertising")
+            state: isConnected ? .ok : (isAdvertising ? .pending : .warn),
+            detail: detail
         )
     }
 

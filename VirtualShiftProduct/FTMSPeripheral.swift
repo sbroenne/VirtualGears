@@ -28,7 +28,11 @@ struct FTMSPeripheralCommandResult: Sendable {
 @Observable
 final class FTMSPeripheral: NSObject {
     private(set) var isAdvertising = false
-    private(set) var activeCentralID: UUID?
+    /// Every app that has asked for ride data. A riding app is counted here as
+    /// soon as it subscribes, whether or not it also asks to steer the trainer.
+    private(set) var subscribedAppCount = 0
+    /// The app that currently steers the trainer, if any.
+    private(set) var controllingAppID: UUID?
     private(set) var latestEvent: FTMSPeripheralEvent?
     var commandHandler: ((
         FitnessMachineControlPointRequest,
@@ -141,26 +145,37 @@ final class FTMSPeripheral: NSObject {
         isAdvertising = false
         subscriptions.removeAll()
         centrals.removeAll()
-        activeCentralID = nil
+        subscribedAppCount = 0
         controlOwnerID = nil
+        controllingAppID = nil
         emit(.advertisingStopped)
     }
 
+    /// Sent to every subscribed app. A riding app that only reads ride data,
+    /// without ever asking to steer, still gets the full stream.
     func relayIndoorBikeData(_ data: Data) {
-        guard let activeCentralID,
-              subscriptions[activeCentralID]?.contains(bikeDataUUID) == true
-        else { return }
-        send(data, on: bikeDataCharacteristic, to: activeCentralID)
+        for id in subscribers(of: bikeDataUUID) {
+            send(data, on: bikeDataCharacteristic, to: id)
+        }
     }
 
     func notifyControlLost() {
-        guard controlOwnerID != nil else { return }
+        guard let owner = controlOwnerID else { return }
         controlOwnerID = nil
+        controllingAppID = nil
         send(
             FitnessMachineStatus.controlPermissionLost.encode(),
             on: statusCharacteristic,
-            to: activeCentralID
+            to: owner
         )
+    }
+
+    private func subscribers(of characteristic: CBUUID) -> [UUID] {
+        subscriptions.filter { $0.value.contains(characteristic) }.map(\.key)
+    }
+
+    private func refreshSubscribedAppCount() {
+        subscribedAppCount = subscriptions.count { !$0.value.isEmpty }
     }
 
     private func publishService() {
@@ -244,11 +259,17 @@ final class FTMSPeripheral: NSObject {
         guard acceptingCommands else {
             return .init(result: .operationFailed, status: nil)
         }
-        guard activeCentralID == centralID,
-              subscriptions[centralID]?.contains(controlUUID) == true else {
+        guard subscriptions[centralID]?.contains(controlUUID) == true else {
             return .init(result: .controlNotPermitted, status: nil)
         }
-        if request != .requestControl, controlOwnerID != centralID {
+        // Only one app may steer the trainer at a time, but that claim is held
+        // by whoever actually asked for control. Tying it to the first app that
+        // merely subscribed used to lock out every later riding app.
+        if request == .requestControl {
+            if let owner = controlOwnerID, owner != centralID {
+                return .init(result: .controlNotPermitted, status: nil)
+            }
+        } else if controlOwnerID != centralID {
             return .init(result: .controlNotPermitted, status: nil)
         }
         guard let commandHandler else {
@@ -267,6 +288,7 @@ final class FTMSPeripheral: NSObject {
             } else if command.request == .reset {
                 controlOwnerID = nil
             }
+            controllingAppID = controlOwnerID
         }
         let response = FitnessMachineControlPointResponse(
             requestOpcode: command.request.opcode,
@@ -459,9 +481,7 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
     ) {
         centrals[central.identifier] = central
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
-        if characteristic.uuid == controlUUID, activeCentralID == nil {
-            activeCentralID = central.identifier
-        }
+        refreshSubscribedAppCount()
         emit(.centralSubscribed(
             central.identifier,
             characteristic: characteristic.uuid.uuidString
@@ -474,20 +494,18 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         didUnsubscribeFrom characteristic: CBCharacteristic
     ) {
         subscriptions[central.identifier]?.remove(characteristic.uuid)
+        // An app that drops the control channel gives up control with it, so a
+        // later riding app is never locked out by a stale claim.
         if characteristic.uuid == controlUUID,
-           activeCentralID == central.identifier {
-            activeCentralID = nil
+           controlOwnerID == central.identifier {
             controlOwnerID = nil
-            activeCentralID = subscriptions
-                .filter { $0.value.contains(controlUUID) }
-                .map(\.key)
-                .sorted { $0.uuidString < $1.uuidString }
-                .first
+            controllingAppID = nil
         }
         if subscriptions[central.identifier]?.isEmpty == true {
             subscriptions.removeValue(forKey: central.identifier)
             centrals.removeValue(forKey: central.identifier)
         }
+        refreshSubscribedAppCount()
         emit(.centralUnsubscribed(
             central.identifier,
             characteristic: characteristic.uuid.uuidString
