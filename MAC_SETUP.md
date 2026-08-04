@@ -1,6 +1,10 @@
 # Mac setup
 
-The iPhone application and KICKR V5 proof must be created and run on macOS.
+The iPhone app and the hardware proofs must be built and run on macOS.
+
+Riding needs only the `VirtualShift` scheme. The `VirtualShift Hardware Lab`
+scheme is a separate app used to prove trainer and controller behaviour, and is
+not needed to ride.
 
 1. Install the current stable Xcode release.
 2. Sign in to Xcode with the Apple ID used for device development.
@@ -12,8 +16,9 @@ The iPhone application and KICKR V5 proof must be created and run on macOS.
    ```
 
 5. Open `VirtualShift.xcodeproj`.
-6. Select the `VirtualShift Hardware Lab` target, open Signing & Capabilities,
-   and choose the development team for the connected iPhone.
+6. Select the target you want, `VirtualShift` to ride or
+   `VirtualShift Hardware Lab` to run the proofs below, open Signing &
+   Capabilities, and choose the development team for the connected iPhone.
 7. Select the physical iPhone as the run destination and run the app. The
    simulator cannot perform the required hardware proof.
 
@@ -28,8 +33,8 @@ The iPhone application and KICKR V5 proof must be created and run on macOS.
 4. Do not pedal. Tap **Run next check** and wait for the automatic 2070 mm
    restore before continuing.
 5. Repeat until all ten values are confirmed. The sequence covers the previously
-   tested range, the exact 646.9–4735.1 mm range required by the default
-   24-speed profile at a 2070 mm baseline, and a 4800 mm upper safety margin.
+   tested range, the 646.9–4735.1 mm range the 24 virtual gears need at a
+   2070 mm baseline, and a 4800 mm upper safety margin.
 6. Tap **Copy test report** and save the complete list and diagnostic log.
 
 Stop immediately if the red neutral-restore warning appears. The app disconnects
@@ -80,5 +85,7 @@ If the riding app cannot discover the foreground iPhone, do not guess at a proxy
 workaround. Save the trace and record the failure before changing the FTMS
 service shape.
 
-Do not build the full proxy before the isolated riding app and KICKR FTMS probes
-pass.
+Both probes passed before the proxy was built, and the proxy is now the product.
+Keep them as the way to isolate a fault: if a riding app stops seeing
+VirtualShift, prove the FTMS shape here first rather than changing the proxy on
+a hunch.
