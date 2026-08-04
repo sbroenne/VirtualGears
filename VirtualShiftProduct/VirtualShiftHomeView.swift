@@ -54,18 +54,19 @@ private struct ReadyView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    readinessHeader
                     equipmentCard
                     if let failureMessage {
                         failureCard(failureMessage)
                     }
-                    startRideButton
                 }
                 .frame(maxWidth: 720, alignment: .leading)
                 .padding()
                 .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
+            .safeAreaInset(edge: .bottom) {
+                startRideBar
+            }
             .navigationTitle("VirtualShift")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -96,36 +97,15 @@ private struct ReadyView: View {
         }
     }
 
-    private var readinessHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Ready when you are")
-                .font(.largeTitle.bold())
-            Text("Your equipment and virtual drivetrain are ready.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-            Label(
-                coordinator.state.label,
-                systemImage: failureMessage == nil
-                    ? "checkmark.shield.fill" : "exclamationmark.triangle.fill"
-            )
-            .font(.headline)
-            .foregroundStyle(failureMessage == nil ? Color.green : Color.orange)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
     private var equipmentCard: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Saved equipment")
-                .font(.title2.bold())
             EquipmentStatusRow(
                 title: "KICKR",
                 name: store.configuration.kickrName,
                 state: kickr.state,
                 required: true,
                 isStalled: kickr.connectionIsStalled,
-                wakeInstruction: WakeInstruction.trainer,
-                retry: { kickr.autoConnectSavedDevice() }
+                wakeInstruction: WakeInstruction.trainer
             )
             Divider()
             if store.configuration.usesClick {
@@ -135,8 +115,7 @@ private struct ReadyView: View {
                     state: click.state,
                     required: false,
                     isStalled: click.connectionIsStalled,
-                    wakeInstruction: WakeInstruction.click,
-                    retry: { click.autoConnectSavedDevice() }
+                    wakeInstruction: WakeInstruction.click
                 )
             } else {
                 Label("On-screen shifting", systemImage: "hand.tap.fill")
@@ -156,7 +135,7 @@ private struct ReadyView: View {
             )
             Divider()
             Label(
-                "Before Start: choose a quiet, straight chain line and leave it there.",
+                "Put your chain in one quiet, straight position and leave it there.",
                 systemImage: "link.circle.fill"
             )
             .font(.headline)
@@ -171,7 +150,7 @@ private struct ReadyView: View {
             Label("Ride could not start", systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
             Text(message)
-            Text("Check Bluetooth and that your saved equipment is awake, then retry.")
+            Text("Check that Bluetooth is on and your equipment is awake, then retry.")
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -180,29 +159,66 @@ private struct ReadyView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var startRideButton: some View {
-        Button {
-            coordinator.startRide(configuration: store.configuration)
-        } label: {
-            Label(failureMessage == nil ? "Start Ride" : "Retry Ride", systemImage: "bicycle")
-                .font(.title.bold())
-                .frame(maxWidth: .infinity, minHeight: 82)
+    /// The button is the only thing that reports readiness. A filled, tappable
+    /// button means go; the system's disabled styling means not yet. Saying it a
+    /// second time in prose would only be something else to read.
+    private var startRideBar: some View {
+        VStack(spacing: 8) {
+            if let blockingReason {
+                Text(blockingReason)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            Button {
+                coordinator.startRide(configuration: store.configuration)
+            } label: {
+                Label(
+                    failureMessage == nil ? "Start Ride" : "Retry Ride",
+                    systemImage: "bicycle"
+                )
+                .font(.title2.bold())
+                .frame(maxWidth: .infinity, minHeight: 64)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!canStart)
+            .accessibilityHint(
+                canStart
+                    ? "Opens the ride controls"
+                    : (blockingReason ?? "Not ready to ride yet")
+            )
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(!canStart)
-        .accessibilityHint(
-            canStart
-                ? "Connects your saved equipment and opens the ride controls"
-                : "Open Settings and validate the saved equipment before riding"
-        )
+        .padding()
+        .background(.bar)
     }
 
+    /// Names the one thing still missing, so a dimmed button is never a dead end.
+    private var blockingReason: String? {
+        guard !canStart else { return nil }
+        if !store.configuration.canFinishSetup {
+            return "Check your setup before riding."
+        }
+        if !kickr.isReady {
+            return "Your KICKR is not connected yet."
+        }
+        if store.configuration.usesClick, !click.isReady {
+            return "Your Click is not connected yet."
+        }
+        return nil
+    }
+
+    /// Readiness means actually connected, not merely remembered. The ride would
+    /// fail otherwise, and the button would have promised something it could not
+    /// deliver.
     private var canStart: Bool {
         store.configuration.canFinishSetup
+            && kickr.isReady
             && kickr.selectedID?.uuidString == store.configuration.kickrUUID
             && (!store.configuration.usesClick
-                || click.selectedID?.uuidString == store.configuration.clickUUID)
+                || (click.isReady
+                    && click.selectedID?.uuidString
+                        == store.configuration.clickUUID))
     }
 
     private var failureMessage: String? {
@@ -218,7 +234,6 @@ private struct EquipmentStatusRow: View {
     let required: Bool
     let isStalled: Bool
     let wakeInstruction: String
-    let retry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -246,15 +261,10 @@ private struct EquipmentStatusRow: View {
             )
 
             if needsWakeHint {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(wakeInstruction)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Button("Try again now", action: retry)
-                        .buttonStyle(.bordered)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityElement(children: .contain)
+                Text(wakeInstruction)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

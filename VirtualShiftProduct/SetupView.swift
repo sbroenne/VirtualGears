@@ -139,8 +139,8 @@ struct SetupView: View {
             }
         } footer: {
             Text(
-                "Your setup stays saved if you leave this screen. Start Ride "
-                    + "turns on once your equipment is really connected."
+                "Your setup is kept if you leave this screen. Start Ride turns on "
+                    + "once your equipment is really connected."
             )
         }
     }
@@ -228,8 +228,7 @@ private struct TrainerSetupView: View {
                         isConnecting: kickr.state.isConnectionInProgress,
                         isStalled: kickr.connectionIsStalled,
                         hasSavedDevice: kickr.hasSavedDevice,
-                        wakeInstruction: WakeInstruction.trainer,
-                        retry: { kickr.autoConnectSavedDevice() }
+                        wakeInstruction: WakeInstruction.trainer
                     )
                 }
             }
@@ -323,8 +322,7 @@ private struct ShiftingSetupView: View {
                             isConnecting: click.state.isConnectionInProgress,
                             isStalled: click.connectionIsStalled,
                             hasSavedDevice: click.hasSavedDevice,
-                            wakeInstruction: WakeInstruction.click,
-                            retry: { click.autoConnectSavedDevice() }
+                            wakeInstruction: WakeInstruction.click
                         )
                     }
                 }
@@ -524,7 +522,6 @@ private struct ConnectionAdvice: View {
     let isStalled: Bool
     let hasSavedDevice: Bool
     let wakeInstruction: String
-    let retry: () -> Void
 
     var body: some View {
         if isReady || isScanning || !hasSavedDevice {
@@ -542,8 +539,6 @@ private struct ConnectionAdvice: View {
                 }
                 Text(wakeInstruction)
                     .foregroundStyle(.secondary)
-                Button("Try again now", action: retry)
-                    .buttonStyle(.bordered)
             }
             .padding(.vertical, 4)
         }

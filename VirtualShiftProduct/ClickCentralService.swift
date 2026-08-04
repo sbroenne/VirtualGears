@@ -209,7 +209,7 @@ final class ClickCentralService: NSObject {
         guard let restored = central.retrievePeripherals(
             withIdentifiers: [id]
         ).first else {
-            state = .failed("Saved Click is not currently available")
+            state = .failed("Your Click is not answering")
             scheduleReconnect()
             return
         }

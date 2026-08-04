@@ -57,12 +57,18 @@ enum ProductConnectionState: Equatable {
 /// Both devices go to sleep on their own, and CoreBluetooth waits for them
 /// forever without complaining. Every screen that can be left waiting shows the
 /// same words, so the rider only has to learn them once.
+///
+/// There is deliberately no retry button anywhere: the pending connection
+/// completes the moment the device wakes, and a failed attempt is retried on its
+/// own every fifteen seconds. Waking the device really is the only thing left to
+/// do, so that is the only thing we ask for.
 enum WakeInstruction {
     static let trainer =
-        "Turn the trainer on and give the pedals half a turn to wake it up."
+        "Turn the trainer on and give the pedals half a turn. VirtualShift "
+            + "connects on its own as soon as it wakes up."
     static let click =
         "The Click sleeps to save its battery. Press either of its buttons "
-            + "once to wake it up."
+            + "once. VirtualShift connects on its own as soon as it wakes up."
 }
 
 enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)

@@ -345,7 +345,7 @@ final class KickrCentralService: NSObject {
         guard let restored = central.retrievePeripherals(
             withIdentifiers: [id]
         ).first else {
-            state = .failed("Saved KICKR is not currently available")
+            state = .failed("Your KICKR is not answering")
             scheduleReconnect()
             return
         }
