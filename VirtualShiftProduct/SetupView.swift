@@ -9,21 +9,16 @@ struct SetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
-    var isEditing = false
     var onFinish: (() -> Void)?
-    var onStartRide: (() -> Void)?
 
     var body: some View {
         Form {
-            if !isEditing {
-                welcomeSection
-            }
             equipmentSection
             gearsSection
             chainLineSection
             supportSection
         }
-        .navigationTitle(isEditing ? "Settings" : "Set Up VirtualShift")
+        .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             autoConnectSavedEquipment()
@@ -33,23 +28,6 @@ struct SetupView: View {
         }
         .safeAreaInset(edge: .bottom) {
             finishButton
-        }
-        .interactiveDismissDisabled(isEditing && !store.configuration.setupComplete)
-    }
-
-    private var welcomeSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Three things to set up")
-                    .font(.headline)
-                Text(
-                    "Connect your trainer, choose how you want to shift, and pick "
-                        + "your gears. VirtualShift remembers all of it for next time."
-                )
-                .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, 4)
-            .accessibilityElement(children: .combine)
         }
     }
 
@@ -141,34 +119,27 @@ struct SetupView: View {
 
     private var finishButton: some View {
         VStack(spacing: 8) {
-            if !canFinishSetup, let blocker = remainingStep {
+            if let blocker = remainingStep {
                 Text(blocker)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             Button {
-                guard canFinishSetup else { return }
-                store.finishSetup()
-                if isEditing {
-                    onFinish?()
-                } else {
-                    onStartRide?()
-                }
+                onFinish?()
             } label: {
-                Text(isEditing ? "Save Setup" : "Start Ride")
+                Text("Done")
                     .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 60)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(!canFinishSetup)
         }
         .padding()
         .background(.bar)
     }
 
-    /// Says which single thing is still missing, so a disabled button is never
-    /// a dead end.
+    /// Names anything that would stop a ride, so leaving this screen never
+    /// hides a problem.
     private var remainingStep: String? {
         if !store.configuration.hasValidKickr || !kickr.isReady {
             return "Connect your trainer to continue."
@@ -186,13 +157,6 @@ struct SetupView: View {
         }
     }
 
-    /// A Click is never part of this: the on-screen buttons always shift, so
-    /// waiting on an optional accessory would block a ride for no reason.
-    private var canFinishSetup: Bool {
-        store.configuration.canFinishSetup
-            && kickr.isReady
-            && kickr.selectedID?.uuidString == store.configuration.kickrUUID
-    }
 }
 
 // MARK: - Trainer
@@ -250,7 +214,6 @@ private struct TrainerSetupView: View {
                     ) {
                         store.configuration.kickrName = candidate.name
                         store.configuration.kickrUUID = candidate.id.uuidString
-                        store.configuration.setupComplete = false
                         kickr.selectAndConnect(candidate.id)
                     }
                 }

@@ -12,7 +12,11 @@ struct AppConfiguration: Codable, Equatable {
     /// The gears Zwift and Wahoo hand out when the bike has none of its own.
     /// It is the starting point because it needs no knowledge of the bike.
     var usesVirtualGears = true
-    var setupComplete = false
+
+    /// There is nothing to complete. A trainer worth remembering and gears the
+    /// trainer can copy are all a ride needs, so being set up is simply being
+    /// in that state rather than a flag a rider has to go and set.
+    var setupComplete: Bool { canFinishSetup }
 
     var neutralCircumferenceMillimeters: Int {
         Int(TrainerSafety.referenceCircumferenceMillimeters)
@@ -152,14 +156,7 @@ final class ConfigurationStore {
     private let defaults: UserDefaults
 
     var configuration: AppConfiguration {
-        didSet {
-            if configuration.setupComplete
-                && !configuration.canFinishSetup {
-                configuration.setupComplete = false
-                return
-            }
-            save()
-        }
+        didSet { save() }
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -172,10 +169,6 @@ final class ConfigurationStore {
             loaded = AppConfiguration()
         }
         configuration = loaded
-        if configuration.setupComplete && !configuration.canFinishSetup {
-            configuration.setupComplete = false
-            save()
-        }
     }
 
     func setChainring(_ option: ChainringOption) {
@@ -184,11 +177,6 @@ final class ConfigurationStore {
 
     func setCassette(_ option: CassetteOption) {
         configuration.cassetteID = option.id
-    }
-
-    func finishSetup() {
-        guard configuration.canFinishSetup else { return }
-        configuration.setupComplete = true
     }
 
     private func save() {

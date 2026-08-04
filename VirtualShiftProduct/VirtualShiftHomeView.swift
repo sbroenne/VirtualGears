@@ -15,36 +15,30 @@ struct VirtualShiftHomeView: View {
     var body: some View {
         if coordinator.isRidePresented {
             ActiveRideView(
-                configuration: store.configuration,
+                store: store,
                 kickr: kickr,
                 click: click,
                 coordinator: coordinator,
                 onRiderStop: { riderStopped = true }
             )
-        } else if store.configuration.setupComplete {
-            ReadyView(
+        } else {
+            StartupView(
                 store: store,
                 kickr: kickr,
                 click: click,
                 coordinator: coordinator,
                 autoStarts: !riderStopped
             )
-        } else {
-            NavigationStack {
-                SetupView(
-                    store: store,
-                    kickr: kickr,
-                    click: click,
-                    onStartRide: {
-                        coordinator.startRide(configuration: store.configuration)
-                    }
-                )
-            }
         }
     }
 }
 
-private struct ReadyView: View {
+/// What a rider sees before the ride screen: the app looking for their trainer
+/// and getting on with it. There is no setup to complete. A trainer worth
+/// remembering and gears the trainer can copy are all a ride needs, and the
+/// only question ever asked is which trainer, only when that is genuinely
+/// unclear.
+private struct StartupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
@@ -52,24 +46,31 @@ private struct ReadyView: View {
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
     @State private var showsSettings = false
+    /// Set when the trainers in range are too alike to choose between, which is
+    /// the one situation where the rider has to say which is theirs.
+    @State private var mustChoose = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    equipmentCard
+                VStack(spacing: 24) {
                     if let failureMessage {
                         failureCard(failureMessage)
+                        retryButton
+                    } else if mustChoose {
+                        chooser
+                    } else if autoStarts {
+                        searching
+                    } else {
+                        stoppedCard
+                        retryButton
                     }
                 }
-                .frame(maxWidth: 720, alignment: .leading)
-                .padding()
+                .frame(maxWidth: 560)
+                .padding(24)
                 .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
-            .safeAreaInset(edge: .bottom) {
-                startRideBar
-            }
             .navigationTitle("VirtualShift")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -85,68 +86,136 @@ private struct ReadyView: View {
                         store: store,
                         kickr: kickr,
                         click: click,
-                        isEditing: true,
                         onFinish: { showsSettings = false }
                     )
                 }
             }
-            .task {
-                kickr.autoConnectSavedDevice()
-                if store.configuration.usesClick {
-                    click.autoConnectSavedDevice()
-                }
-                startIfReady()
-            }
+            .task { await begin() }
             .onChange(of: canStart) { _, _ in startIfReady() }
+            .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
+            .onDisappear { kickr.stopScanning() }
         }
     }
 
-    private var equipmentCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            EquipmentStatusRow(
-                title: "KICKR",
-                name: store.configuration.kickrName,
-                state: kickr.state,
-                required: true,
-                isStalled: kickr.connectionIsStalled,
-                wakeInstruction: WakeInstruction.trainer
-            )
-            Divider()
-            if store.configuration.usesClick {
-                EquipmentStatusRow(
-                    title: "Click",
-                    name: store.configuration.clickName,
-                    state: click.state,
-                    required: false,
-                    isStalled: click.connectionIsStalled,
-                    wakeInstruction: WakeInstruction.click
-                )
-            } else {
-                Label("On-screen shifting", systemImage: "hand.tap.fill")
-                    .accessibilityLabel("Click not configured. On-screen shifting available.")
-            }
-            Divider()
-            HStack {
-                Label(
-                    store.configuration.gearSummary,
-                    systemImage: "gearshape.2.fill"
-                )
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                "Gears: \(store.configuration.drivetrainName), "
-                    + store.configuration.gearSummary
-            )
-            Divider()
-            Label(
-                "Put your chain in one quiet, straight position and leave it there.",
-                systemImage: "link.circle.fill"
-            )
-            .font(.headline)
-            .foregroundStyle(.primary)
+    // MARK: - Finding a trainer
+
+    private func begin() async {
+        if store.configuration.usesClick { click.autoConnectSavedDevice() }
+        guard !store.configuration.hasValidKickr else {
+            kickr.autoConnectSavedDevice()
+            startIfReady()
+            return
         }
-        .padding(20)
-        .background(.regularMaterial, in: .rect(cornerRadius: 24))
+        kickr.startScanning()
+        // A moment for a second trainer to announce itself, so a room with two
+        // in it is recognised as a choice rather than raced into.
+        try? await Task.sleep(for: .seconds(2.5))
+        considerCandidates()
+    }
+
+    /// Never interrupts a connection already under way, so a slow first reply
+    /// from the right trainer cannot be overtaken by a louder neighbour.
+    private func considerCandidates() {
+        guard autoStarts, !store.configuration.hasValidKickr,
+              kickr.selectedID == nil, !mustChoose else { return }
+        let seen = kickr.candidates.map {
+            DiscoveredTrainer(id: $0.id, signalStrength: $0.rssi)
+        }
+        guard !seen.isEmpty else { return }
+        switch TrainerPicker.choice(from: seen) {
+        case let .connect(id): kickr.selectAndConnect(id)
+        case .ask: mustChoose = true
+        }
+    }
+
+    private var searching: some View {
+        VStack(spacing: 16) {
+            ProgressView().controlSize(.large)
+            Text(searchingTitle)
+                .font(.title3.weight(.semibold))
+                .multilineTextAlignment(.center)
+            Text(
+                "Turn the pedals if your trainer is asleep. Your ride starts by "
+                    + "itself, and your riding app will find VirtualShift."
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            chainReminder
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var searchingTitle: String {
+        store.configuration.hasValidKickr
+            ? "Connecting to \(store.configuration.kickrName)"
+            : "Looking for your trainer"
+    }
+
+    private var chooser: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Which one is yours?")
+                .font(.title3.weight(.semibold))
+            Text(
+                "More than one trainer is switched on nearby. Pick yours and "
+                    + "VirtualShift will remember it."
+            )
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            ForEach(kickr.candidates) { candidate in
+                Button {
+                    mustChoose = false
+                    kickr.selectAndConnect(candidate.id)
+                } label: {
+                    HStack {
+                        Text(candidate.name)
+                        Spacer()
+                        Image(systemName: signalSymbol(candidate.rssi))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("\(candidate.name), \(signalWords(candidate.rssi))")
+            }
+            chainReminder
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func signalSymbol(_ rssi: Int) -> String {
+        rssi >= TrainerPicker.closeBy
+            ? "wifi" : (rssi >= TrainerPicker.inTheRoom ? "wifi.medium" : "wifi.low")
+    }
+
+    private func signalWords(_ rssi: Int) -> String {
+        rssi >= TrainerPicker.closeBy
+            ? "close by"
+            : (rssi >= TrainerPicker.inTheRoom ? "further away" : "a long way off")
+    }
+
+    /// The one thing the app cannot do for the rider.
+    private var chainReminder: some View {
+        Label(
+            "Put your chain in one quiet, straight gear and leave it there.",
+            systemImage: "link"
+        )
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .padding(.top, 4)
+    }
+
+    // MARK: - Stopping and failing
+
+    private var stoppedCard: some View {
+        VStack(spacing: 8) {
+            Text("Ride stopped")
+                .font(.title3.weight(.semibold))
+            Text("Your trainer is back the way it was.")
+                .foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func failureCard(_ message: String) -> some View {
@@ -154,7 +223,7 @@ private struct ReadyView: View {
             Label("Ride could not start", systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
             Text(message)
-            Text("Check that Bluetooth is on and your equipment is awake, then retry.")
+            Text("Check that Bluetooth is on and your trainer is awake.")
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -163,84 +232,25 @@ private struct ReadyView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// The button is the only thing that reports readiness. A filled, tappable
-    /// button means go; the system's disabled styling means not yet. Saying it a
-    /// second time in prose would only be something else to read.
-    private var startRideBar: some View {
-        VStack(spacing: 8) {
-            if isWaitingToStart {
-                HStack(spacing: 12) {
-                    ProgressView()
-                    Text("Connecting to your trainer…")
-                        .font(.headline)
-                }
-                .frame(maxWidth: .infinity, minHeight: 64)
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(
-                    "Connecting to your trainer. The ride starts by itself."
-                )
-                Text("Your ride starts by itself. Make sure the trainer is awake.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                startRideButton
-            }
-        }
-        .padding()
-        .background(.bar)
-    }
-
-    /// True while the app is connecting on the rider's behalf, so it shows
-    /// progress instead of a dimmed button the rider is not meant to press.
-    private var isWaitingToStart: Bool {
-        autoStarts && !canStart && failureMessage == nil
-    }
-
-    private var startRideButton: some View {
-        VStack(spacing: 8) {
-            if let blockingReason {
-                Text(blockingReason)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            Button {
-                coordinator.startRide(configuration: store.configuration)
-            } label: {
-                Label(
-                    failureMessage == nil ? "Start Ride" : "Retry Ride",
-                    systemImage: "bicycle"
-                )
+    private var retryButton: some View {
+        Button {
+            coordinator.startRide(configuration: store.configuration)
+        } label: {
+            Label("Start Ride", systemImage: "bicycle")
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, minHeight: 64)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!canStart)
-            .accessibilityHint(
-                canStart
-                    ? "Opens the ride controls"
-                    : (blockingReason ?? "Not ready to ride yet")
-            )
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
+        .disabled(!canStart)
+        .accessibilityHint(
+            canStart ? "Starts riding again" : "Your trainer is not connected yet"
+        )
     }
 
-    /// Names the one thing still missing, so a dimmed button is never a dead end.
-    private var blockingReason: String? {
-        guard !canStart else { return nil }
-        if !store.configuration.canFinishSetup {
-            return "Check your setup before riding."
-        }
-        if !kickr.isReady {
-            return "Your KICKR is not connected yet."
-        }
-        return nil
-    }
+    // MARK: - Starting
 
-    /// Readiness means actually connected, not merely remembered. The ride would
-    /// fail otherwise, and the button would have promised something it could not
-    /// deliver.
+    /// Readiness means actually connected, not merely remembered.
     private var canStart: Bool {
         store.configuration.canFinishSetup
             && kickr.isReady
@@ -252,14 +262,15 @@ private struct ReadyView: View {
         return nil
     }
 
-    /// The app does only one thing, so opening it is the instruction. As soon as
-    /// the trainer is connected the ride begins on its own; the button below is
-    /// only for retrying after a stop or a failure.
+    /// The app does only one thing, so opening it is the instruction.
     private func startIfReady() {
         guard autoStarts, canStart, coordinator.state == .idle else { return }
+        kickr.stopScanning()
+        mustChoose = false
         coordinator.startRide(configuration: store.configuration)
     }
 }
+
 
 private struct EquipmentStatusRow: View {
     let title: String
@@ -318,7 +329,7 @@ private struct EquipmentStatusRow: View {
 }
 
 private struct ActiveRideView: View {
-    let configuration: AppConfiguration
+    @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
@@ -329,6 +340,26 @@ private struct ActiveRideView: View {
     @State private var confirmsStop = false
     @State private var lastInteraction = Date()
     @State private var isDimmed = false
+    @State private var showsSettings = false
+    /// Remembers the gears the ride started with, so the session is only rebuilt
+    /// when the rider actually changed them.
+    @State private var gearsWhenOpened: Drivetrain?
+
+    private var configuration: AppConfiguration { store.configuration }
+
+    /// Changing gears mid-ride rebuilds the session rather than swapping the
+    /// ladder underneath the trainer, so the wheel size the trainer is holding
+    /// is always put back before the new gears are applied.
+    private func applyChangedGears() {
+        defer { gearsWhenOpened = nil }
+        guard let previous = gearsWhenOpened,
+              previous.gears != configuration.drivetrain?.gears else { return }
+        let updated = store.configuration
+        Task {
+            await coordinator.stopRide()
+            coordinator.startRide(configuration: updated)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -355,6 +386,12 @@ private struct ActiveRideView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
+                    Button("Settings", systemImage: "gearshape") {
+                        showsSettings = true
+                    }
+                    .accessibilityHint("Change your gears, trainer, or Zwift Click")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         confirmsStop = true
                     } label: {
@@ -365,6 +402,23 @@ private struct ActiveRideView: View {
                     .disabled(coordinator.state == .stopping)
                     .accessibilityLabel("Stop ride")
                 }
+            }
+        }
+        .sheet(isPresented: $showsSettings) {
+            NavigationStack {
+                SetupView(
+                    store: store,
+                    kickr: kickr,
+                    click: click,
+                    onFinish: { showsSettings = false }
+                )
+            }
+        }
+        .onChange(of: showsSettings) { _, isOpen in
+            if isOpen {
+                gearsWhenOpened = configuration.drivetrain
+            } else {
+                applyChangedGears()
             }
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
