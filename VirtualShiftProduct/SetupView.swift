@@ -7,7 +7,9 @@ struct SetupView: View {
     @Bindable var diagnostics: ProductDiagnosticsStore
     var isEditing = false
     var onFinish: (() -> Void)?
+    var onStartRide: (() -> Void)?
     @State private var showsDiagnostics = false
+    @State private var scrolledPreset: DrivetrainPreset?
 
     var body: some View {
         Form {
@@ -208,6 +210,11 @@ struct SetupView: View {
             }
             .scrollIndicators(.hidden)
             .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $scrolledPreset, anchor: .center)
+            .onAppear {
+                // Open on the rider's existing choice instead of the first card.
+                scrolledPreset = store.configuration.drivetrainPreset
+            }
 
             Label(
                 "On the bike, choose one quiet, straight chain position and "
@@ -235,6 +242,7 @@ struct SetupView: View {
         let selected = store.configuration.drivetrainPreset == preset
         return Button {
             store.setDrivetrainPreset(preset)
+            withAnimation { scrolledPreset = preset }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -291,7 +299,7 @@ struct SetupView: View {
                     .frame(minHeight: 52)
             }
             Text(
-                "Setup remains saved if you leave this screen. Finish Setup is enabled "
+                "Setup remains saved if you leave this screen. Start Ride is enabled "
                     + "only after the selected devices have completed a real connection."
             )
             .font(.footnote)
@@ -303,9 +311,13 @@ struct SetupView: View {
         Button {
             guard canFinishSetup else { return }
             store.finishSetup()
-            onFinish?()
+            if isEditing {
+                onFinish?()
+            } else {
+                onStartRide?()
+            }
         } label: {
-            Text(isEditing ? "Save Setup" : "Finish Setup")
+            Text(isEditing ? "Save Setup" : "Start Ride")
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: 60)
         }
@@ -315,7 +327,9 @@ struct SetupView: View {
         .background(.bar)
         .accessibilityHint(
             canFinishSetup
-                ? "Saves setup and shows the ready screen"
+                ? (isEditing
+                    ? "Saves your setup"
+                    : "Saves your setup and starts riding")
                 : "Connect the selected equipment and choose a drivetrain first"
         )
     }

@@ -32,7 +32,10 @@ struct VirtualShiftHomeView: View {
                     store: store,
                     kickr: kickr,
                     click: click,
-                    diagnostics: diagnostics
+                    diagnostics: diagnostics,
+                    onStartRide: {
+                        coordinator.startRide(configuration: store.configuration)
+                    }
                 )
             }
         }
@@ -79,10 +82,9 @@ private struct ReadyView: View {
                         kickr: kickr,
                         click: click,
                         diagnostics: diagnostics,
-                        isEditing: true
-                    ) {
-                        showsSettings = false
-                    }
+                        isEditing: true,
+                        onFinish: { showsSettings = false }
+                    )
                 }
             }
             .task {
@@ -173,9 +175,7 @@ private struct ReadyView: View {
 
     private var startRideButton: some View {
         Button {
-            Task {
-                await coordinator.startRide(configuration: store.configuration)
-            }
+            coordinator.startRide(configuration: store.configuration)
         } label: {
             Label(failureMessage == nil ? "Start Ride" : "Retry Ride", systemImage: "bicycle")
                 .font(.title.bold())

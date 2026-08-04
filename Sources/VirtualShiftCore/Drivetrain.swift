@@ -65,7 +65,39 @@ public struct Drivetrain: Equatable, Sendable {
     public static var sramXplr1x12: Drivetrain {
         makeOneBy(
             chainring: 40,
-            cassette: [10, 11, 12, 15, 17, 19, 21, 24, 28, 32, 38, 44]
+            cassette: [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 35, 44]
+        )
+    }
+
+    public static var sramXplr1x13: Drivetrain {
+        makeOneBy(
+            chainring: 44,
+            cassette: [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 32, 38, 46]
+        )
+    }
+
+    public static var campagnoloEkar1x13: Drivetrain {
+        makeOneBy(
+            chainring: 40,
+            cassette: [9, 10, 11, 12, 13, 14, 16, 18, 20, 23, 27, 34, 42]
+        )
+    }
+
+    public static var shimanoRoad2x11: Drivetrain {
+        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32]
+        return try! Drivetrain(
+            chainrings: [34, 50],
+            cassetteCogs: cassette,
+            allowedCombinations:
+                makeGears(chainring: 34, cogs: [15, 17, 19, 21, 24, 28, 32])
+                + makeGears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21])
+        )
+    }
+
+    public static var mountain1x11: Drivetrain {
+        makeOneBy(
+            chainring: 32,
+            cassette: [11, 13, 15, 17, 19, 21, 24, 28, 32, 37, 46]
         )
     }
 

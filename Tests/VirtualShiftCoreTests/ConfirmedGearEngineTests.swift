@@ -252,10 +252,14 @@ final class ConfirmedGearEngineTests: XCTestCase {
         let drivetrains: [Drivetrain] = [
             .zwiftVirtual24,
             .shimanoRoad2x12,
+            .shimanoRoad2x11,
             .sramRoadAxs2x12,
             .shimanoGrx2x12,
             .sramXplr1x12,
+            .sramXplr1x13,
+            .campagnoloEkar1x13,
             .mountain1x12,
+            .mountain1x11,
             .classic1x10,
         ]
 

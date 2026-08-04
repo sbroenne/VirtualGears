@@ -95,7 +95,10 @@ final class ProxyCoordinator {
         }
     }
 
-    func startRide(configuration: AppConfiguration) async {
+    /// Starts a ride immediately so the UI can switch to the ride screen in the
+    /// same update. The state transition is synchronous, so a second tap is
+    /// rejected by the same guard that protected the previous async entry point.
+    func startRide(configuration: AppConfiguration) {
         guard state == .idle || isFailed else { return }
         guard configuration.setupComplete,
               configuration.canFinishSetup,
@@ -109,6 +112,13 @@ final class ProxyCoordinator {
         sessionID = id
         usesClick = configuration.usesClick
         state = .connecting
+        Task { await runRide(configuration: configuration, sessionID: id) }
+    }
+
+    private func runRide(
+        configuration: AppConfiguration,
+        sessionID id: UUID
+    ) async {
         do {
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: configuration.drivetrainPreset.drivetrain,
