@@ -5,7 +5,7 @@ struct VirtualShiftHardwareLabApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var bluetooth = KickrBluetoothManager()
     @StateObject private var click = ClickBluetoothManager()
-    @StateObject private var realVeloProbe = RealVeloProbeManager()
+    @StateObject private var rideAppProbe = RideAppProbeManager()
     @StateObject private var kickrFTMSProbe = KickrFTMSProbeManager()
 
     var body: some Scene {
@@ -19,9 +19,9 @@ struct VirtualShiftHardwareLabApp: App {
                     .tabItem {
                         Label("Click", systemImage: "button.programmable")
                     }
-                RealVeloProbeView()
+                RideAppProbeView()
                     .tabItem {
-                        Label("RealVelo", systemImage: "antenna.radiowaves.left.and.right")
+                        Label("Riding App", systemImage: "antenna.radiowaves.left.and.right")
                     }
                 KickrFTMSProbeView()
                     .tabItem {
@@ -30,7 +30,7 @@ struct VirtualShiftHardwareLabApp: App {
             }
                 .environmentObject(bluetooth)
                 .environmentObject(click)
-                .environmentObject(realVeloProbe)
+                .environmentObject(rideAppProbe)
                 .environmentObject(kickrFTMSProbe)
         }
         .onChange(of: scenePhase) { _, newPhase in

@@ -12,7 +12,7 @@ struct KickrFTMSProbeView: View {
                 Section("Native FTMS connection") {
                     Text(
                         "Directly inspects the KICKR's FTMS service. "
-                            + "This probe does not advertise a RealVelo device."
+                            + "This probe does not advertise anything to a riding app."
                     )
                     .foregroundStyle(.secondary)
                     LabeledContent("Bluetooth", value: probe.bluetoothState)

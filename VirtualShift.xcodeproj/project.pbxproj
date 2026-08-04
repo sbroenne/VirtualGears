@@ -16,8 +16,8 @@
 		100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* ShiftSoundPlayer.swift */; };
 		100000000000000000000008 /* VirtualShiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VirtualShiftApp.swift */; };
 		100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* VirtualShiftHomeView.swift */; };
-		10000000000000000000000A /* RealVeloProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* RealVeloProbeManager.swift */; };
-		10000000000000000000000B /* RealVeloProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* RealVeloProbeView.swift */; };
+		10000000000000000000000A /* RideAppProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* RideAppProbeManager.swift */; };
+		10000000000000000000000B /* RideAppProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* RideAppProbeView.swift */; };
 		10000000000000000000000C /* KickrFTMSProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* KickrFTMSProbeManager.swift */; };
 		10000000000000000000000D /* KickrFTMSProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* KickrFTMSProbeView.swift */; };
 		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
@@ -43,8 +43,8 @@
 		20000000000000000000000A /* VirtualShiftHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftHomeView.swift; sourceTree = "<group>"; };
 		20000000000000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		20000000000000000000000C /* VirtualShift Hardware Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "VirtualShift Hardware Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		20000000000000000000000D /* RealVeloProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealVeloProbeManager.swift; sourceTree = "<group>"; };
-		20000000000000000000000E /* RealVeloProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealVeloProbeView.swift; sourceTree = "<group>"; };
+		20000000000000000000000D /* RideAppProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideAppProbeManager.swift; sourceTree = "<group>"; };
+		20000000000000000000000E /* RideAppProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideAppProbeView.swift; sourceTree = "<group>"; };
 		20000000000000000000000F /* KickrFTMSProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeManager.swift; sourceTree = "<group>"; };
 		200000000000000000000010 /* KickrFTMSProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
@@ -94,8 +94,8 @@
 				200000000000000000000006 /* ClickBluetoothManager.swift */,
 				200000000000000000000007 /* ClickProofView.swift */,
 				200000000000000000000008 /* ShiftSoundPlayer.swift */,
-				20000000000000000000000D /* RealVeloProbeManager.swift */,
-				20000000000000000000000E /* RealVeloProbeView.swift */,
+				20000000000000000000000D /* RideAppProbeManager.swift */,
+				20000000000000000000000E /* RideAppProbeView.swift */,
 				20000000000000000000000F /* KickrFTMSProbeManager.swift */,
 				200000000000000000000010 /* KickrFTMSProbeView.swift */,
 				200000000000000000000004 /* Info.plist */,
@@ -240,8 +240,8 @@
 				100000000000000000000005 /* ClickBluetoothManager.swift in Sources */,
 				100000000000000000000006 /* ClickProofView.swift in Sources */,
 				100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */,
-				10000000000000000000000A /* RealVeloProbeManager.swift in Sources */,
-				10000000000000000000000B /* RealVeloProbeView.swift in Sources */,
+				10000000000000000000000A /* RideAppProbeManager.swift in Sources */,
+				10000000000000000000000B /* RideAppProbeView.swift in Sources */,
 				10000000000000000000000C /* KickrFTMSProbeManager.swift in Sources */,
 				10000000000000000000000D /* KickrFTMSProbeView.swift in Sources */,
 			);

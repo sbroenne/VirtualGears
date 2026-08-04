@@ -442,7 +442,7 @@ private struct ActiveRideView: View {
         items.append(
             EquipmentItem(
                 id: "realvelo",
-                title: "RealVelo",
+                title: "Riding App",
                 state: isSubscribed ? .ok : (isAdvertising ? .pending : .warn),
                 detail: isSubscribed
                     ? "Connected"

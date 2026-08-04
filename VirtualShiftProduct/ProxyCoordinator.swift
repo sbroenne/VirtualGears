@@ -278,12 +278,12 @@ final class ProxyCoordinator {
             guard self.sessionID == sessionID else { throw CancellationError() }
             if peripheral.isAdvertising { return }
             if case let .failed(message) = peripheral.latestEvent {
-                throw ProductBluetoothError.unavailable("RealVelo: \(message)")
+                throw ProductBluetoothError.unavailable("Riding app link: \(message)")
             }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
         throw ProductBluetoothError.unavailable(
-            "RealVelo advertising did not become ready"
+            "The riding app link did not start advertising"
         )
     }
 
@@ -339,7 +339,7 @@ final class ProxyCoordinator {
             return .success(status: status(for: request))
         } catch {
             log(
-                "RealVelo command 0x\(String(format: "%02X", request.opcode)) "
+                "Riding app command 0x\(String(format: "%02X", request.opcode)) "
                     + "failed: \(error.localizedDescription)",
                 .error
             )

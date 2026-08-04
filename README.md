@@ -27,7 +27,11 @@ gear-ratio scaling, and two native iPhone targets:
 
 - `VirtualShift` is the production ride app.
 - `VirtualShift Hardware Lab` contains the KICKR, original Zwift Click, and
-  RealVelo FTMS validation tools. It is not the product interface.
+  riding app FTMS validation tools. It is not the product interface.
+
+VirtualShift appears to the riding app as a standard FTMS indoor bike, so any
+app that supports FTMS trainers can use it. Development is validated against
+RealVelo, and the same interface serves Zwift, FulGaz, and other FTMS apps.
 
 ## Important distinction
 

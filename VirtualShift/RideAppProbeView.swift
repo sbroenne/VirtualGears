@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-struct RealVeloProbeView: View {
-    @EnvironmentObject private var probe: RealVeloProbeManager
-    @State private var realVeloVersion = ""
+struct RideAppProbeView: View {
+    @EnvironmentObject private var probe: RideAppProbeManager
+    @State private var rideAppVersion = ""
     @State private var windowsVersion = ""
     @State private var copyConfirmation: String?
     @State private var preparedTrace: String?
@@ -27,7 +27,7 @@ struct RealVeloProbeView: View {
                         value: String(probe.subscriberCount)
                     )
                     LabeledContent(
-                        "RealVelo control",
+                        "App control",
                         value: probe.hasControl ? "Granted" : "Not granted"
                     )
                     Button(probe.isAdvertising ? "Stop Probe" : "Start Probe") {
@@ -59,7 +59,7 @@ struct RealVeloProbeView: View {
                 }
 
                 Section("Trace metadata") {
-                    TextField("RealVelo version", text: $realVeloVersion)
+                    TextField("Riding app and version", text: $rideAppVersion)
                     TextField("Windows version", text: $windowsVersion)
                     LabeledContent(
                         "iOS version",
@@ -90,7 +90,7 @@ struct RealVeloProbeView: View {
                     .foregroundStyle(.secondary)
                     Button("Prepare JSON Export") {
                         preparedTrace = probe.structuredTrace(
-                            realVeloVersion: realVeloVersion,
+                            rideAppVersion: rideAppVersion,
                             windowsVersion: windowsVersion
                         )
                         copyConfirmation = nil
@@ -98,7 +98,7 @@ struct RealVeloProbeView: View {
                     if let preparedTrace {
                         ShareLink(
                             item: preparedTrace,
-                            subject: Text("VirtualShift RealVelo FTMS Trace")
+                            subject: Text("VirtualShift Ride App FTMS Trace")
                         ) {
                             Label(
                                 "Share Prepared Trace",
@@ -108,7 +108,7 @@ struct RealVeloProbeView: View {
                     }
                     Button("Copy JSON Trace") {
                         UIPasteboard.general.string = probe.structuredTrace(
-                            realVeloVersion: realVeloVersion,
+                            rideAppVersion: rideAppVersion,
                             windowsVersion: windowsVersion
                         )
                         copyConfirmation =
@@ -125,7 +125,7 @@ struct RealVeloProbeView: View {
                     }
                 }
             }
-            .navigationTitle("RealVelo FTMS Probe")
+            .navigationTitle("Riding App FTMS Probe")
         }
     }
 

@@ -34,7 +34,7 @@ struct FTMSProbeEntry: Identifiable, Codable {
 }
 
 @MainActor
-final class RealVeloProbeManager: NSObject, ObservableObject {
+final class RideAppProbeManager: NSObject, ObservableObject {
     @Published private(set) var bluetoothState = "Starting Bluetooth..."
     @Published private(set) var isAdvertising = false
     @Published private(set) var subscriberCount = 0
@@ -113,7 +113,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
             delegate: self,
             queue: .main
         )
-        log(event: "probe", meaning: "Independent RealVelo FTMS probe opened")
+        log(event: "probe", meaning: "Independent ride app FTMS probe opened")
     }
 
     func start() {
@@ -151,10 +151,10 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         log(event: "trace", meaning: "Trace cleared")
     }
 
-    func structuredTrace(realVeloVersion: String, windowsVersion: String) -> String {
+    func structuredTrace(rideAppVersion: String, windowsVersion: String) -> String {
         struct Export: Encodable {
             let formatVersion: Int
-            let realVeloVersion: String
+            let rideAppVersion: String
             let windowsVersion: String
             let iosVersion: String
             let exportedAt: Date
@@ -162,7 +162,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
         }
         let export = Export(
             formatVersion: 1,
-            realVeloVersion: realVeloVersion,
+            rideAppVersion: rideAppVersion,
             windowsVersion: windowsVersion,
             iosVersion: UIDevice.current.systemVersion,
             exportedAt: Date(),
@@ -419,7 +419,7 @@ final class RealVeloProbeManager: NSObject, ObservableObject {
     }
 }
 
-extension RealVeloProbeManager: @preconcurrency CBPeripheralManagerDelegate {
+extension RideAppProbeManager: @preconcurrency CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         switch peripheral.state {
         case .poweredOn:
