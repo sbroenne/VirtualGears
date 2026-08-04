@@ -71,10 +71,10 @@ struct SetupView: View {
                 ShiftingSetupView(store: store, click: click)
             } label: {
                 SetupRow(
-                    title: "Shifting",
+                    title: "Zwift Click",
                     value: shiftingValue,
                     status: store.configuration.usesClick
-                        ? .init(state: click.state, isRequired: true)
+                        ? .init(state: click.state, isRequired: false)
                         : .satisfied
                 )
             }
@@ -89,10 +89,9 @@ struct SetupView: View {
     }
 
     private var shiftingValue: String {
-        guard store.configuration.usesClick else { return "On-screen buttons" }
         let name = store.configuration.clickName
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Not set up" : name
+        return name.isEmpty ? "Not added" : name
     }
 
     private var gearsSection: some View {
@@ -180,9 +179,6 @@ struct SetupView: View {
         if !store.configuration.hasValidKickr || !kickr.isReady {
             return "Connect your trainer to continue."
         }
-        if store.configuration.usesClick, !click.isReady {
-            return "Connect your Click to continue."
-        }
         if !store.configuration.hasSafeCircumference {
             return "Choose a different set of gears to continue."
         }
@@ -196,14 +192,12 @@ struct SetupView: View {
         }
     }
 
+    /// A Click is never part of this: the on-screen buttons always shift, so
+    /// waiting on an optional accessory would block a ride for no reason.
     private var canFinishSetup: Bool {
         store.configuration.canFinishSetup
             && kickr.isReady
             && kickr.selectedID?.uuidString == store.configuration.kickrUUID
-            && (!store.configuration.usesClick
-                || (click.isReady
-                    && click.selectedID?.uuidString
-                        == store.configuration.clickUUID))
     }
 }
 
@@ -286,6 +280,9 @@ private struct TrainerSetupView: View {
 
 // MARK: - Shifting
 
+/// Shifting always works from the two on-screen buttons, so this screen is not
+/// a choice between two ways of shifting. It exists only to add a Zwift Click
+/// for anyone who owns one.
 private struct ShiftingSetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var click: ClickCentralService
@@ -293,97 +290,107 @@ private struct ShiftingSetupView: View {
     var body: some View {
         Form {
             Section {
-                Picker("How you shift", selection: usesClick) {
-                    Text("Zwift Click").tag(true)
-                    Text("On-screen buttons").tag(false)
-                }
-                .pickerStyle(.inline)
-                .labelsHidden()
-            } footer: {
-                Text(
-                    store.configuration.usesClick
-                        ? "Shift with the physical buttons on your handlebar. The "
-                            + "on-screen buttons keep working too."
-                        : "Shift with the two large buttons on the ride screen."
+                Label(
+                    "The two large buttons on the ride screen always shift, "
+                        + "whatever else is connected.",
+                    systemImage: "hand.tap.fill"
                 )
+                .font(.callout)
+            } header: {
+                Text("On-screen buttons")
             }
 
             if store.configuration.usesClick {
-                if !store.configuration.clickUUID.isEmpty {
-                    Section {
-                        EquipmentSummary(
-                            name: store.configuration.clickName,
-                            state: click.state.label,
-                            symbol: "button.programmable",
-                            connected: click.isReady
-                        )
-                        ConnectionAdvice(
-                            isReady: click.isReady,
-                            isScanning: click.isScanning,
-                            isConnecting: click.state.isConnectionInProgress,
-                            isStalled: click.connectionIsStalled,
-                            hasSavedDevice: click.hasSavedDevice,
-                            wakeInstruction: WakeInstruction.click
-                        )
-                    }
-                }
-
                 Section {
-                    Button {
-                        click.isScanning ? click.stopScanning() : click.startScanning()
+                    EquipmentSummary(
+                        name: store.configuration.clickName,
+                        state: click.state.label,
+                        symbol: "button.programmable",
+                        connected: click.isReady
+                    )
+                    ConnectionAdvice(
+                        isReady: click.isReady,
+                        isScanning: click.isScanning,
+                        isConnecting: click.state.isConnectionInProgress,
+                        isStalled: click.connectionIsStalled,
+                        hasSavedDevice: click.hasSavedDevice,
+                        wakeInstruction: WakeInstruction.click
+                    )
+                    Button(role: .destructive) {
+                        click.forgetSelection()
+                        store.configuration.clickName = ""
+                        store.configuration.clickUUID = ""
                     } label: {
-                        Label(
-                            click.isScanning ? "Stop looking" : "Find my Click",
-                            systemImage: click.isScanning
-                                ? "stop.circle" : "antenna.radiowaves.left.and.right"
-                        )
-                        .frame(maxWidth: .infinity, minHeight: 50)
+                        Text("Stop using this Click")
                     }
-                    .buttonStyle(.borderedProminent)
-
-                    if click.isScanning, click.candidates.isEmpty {
-                        SearchingRow(message: "Looking for a nearby Click…")
-                    }
-
-                    ForEach(click.candidates) { candidate in
-                        CandidateRow(
-                            candidate: candidate,
-                            selected: candidate.id.uuidString
-                                == store.configuration.clickUUID
-                        ) {
-                            store.configuration.clickName = candidate.name
-                            store.configuration.clickUUID = candidate.id.uuidString
-                            store.configuration.setupComplete = false
-                            click.selectAndConnect(candidate.id)
-                        }
-                    }
-
-                    BluetoothHelp(state: click.state)
+                } header: {
+                    Text("Your Click")
                 } footer: {
-                    Text(WakeInstruction.click)
+                    Text(
+                        "You can still shift on screen if the Click is asleep "
+                            + "or out of battery."
+                    )
                 }
             }
+
+            Section {
+                Button {
+                    click.isScanning ? click.stopScanning() : click.startScanning()
+                } label: {
+                    Label(
+                        click.isScanning
+                            ? "Stop looking"
+                            : (store.configuration.usesClick
+                                ? "Choose a different Click" : "Find my Click"),
+                        systemImage: click.isScanning
+                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.borderedProminent)
+
+                if click.isScanning, click.candidates.isEmpty {
+                    SearchingRow(message: "Looking for a nearby Click…")
+                }
+
+                ForEach(click.candidates) { candidate in
+                    CandidateRow(
+                        candidate: candidate,
+                        selected: candidate.id.uuidString
+                            == store.configuration.clickUUID
+                    ) {
+                        store.configuration.clickName = candidate.name
+                        store.configuration.clickUUID = candidate.id.uuidString
+                        click.selectAndConnect(candidate.id)
+                    }
+                }
+
+                BluetoothHelp(state: click.state)
+            } header: {
+                Text(
+                    store.configuration.usesClick
+                        ? "Change your Click" : "Add a Zwift Click"
+                )
+            } footer: {
+                Text(
+                    store.configuration.usesClick
+                        ? WakeInstruction.click
+                        : "Optional. If you have an original Zwift Click on your "
+                            + "handlebar, add it here to shift without reaching "
+                            + "for the screen."
+                )
+            }
         }
-        .navigationTitle("Shifting")
+        .navigationTitle("Zwift Click")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            if store.configuration.usesClick { click.autoConnectSavedDevice() }
-        }
-    }
-
-    private var usesClick: Binding<Bool> {
-        Binding {
-            store.configuration.usesClick
-        } set: {
-            store.configuration.usesClick = $0
-            if $0 {
+            if store.configuration.usesClick {
                 click.autoConnectSavedDevice()
             } else {
-                click.forgetSelection()
-                store.configuration.clickName = ""
-                store.configuration.clickUUID = ""
+                click.startScanning()
             }
         }
+        .onDisappear { click.stopScanning() }
     }
 }
 

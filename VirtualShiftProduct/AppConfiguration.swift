@@ -5,7 +5,6 @@ import VirtualShiftCore
 struct AppConfiguration: Codable, Equatable {
     var kickrName = ""
     var kickrUUID = ""
-    var usesClick = true
     var clickName = ""
     var clickUUID = ""
     var chainringID = DrivetrainCatalog.defaultChainringID
@@ -39,11 +38,12 @@ struct AppConfiguration: Codable, Equatable {
             && UUID(uuidString: kickrUUID) != nil
     }
 
-    var hasValidClick: Bool {
-        !usesClick || (
-            !clickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && UUID(uuidString: clickUUID) != nil
-        )
+    /// A Zwift Click is an extra, never a requirement. The two on-screen shift
+    /// buttons are always live, so a missing or sleeping Click must never stop
+    /// a ride from starting.
+    var usesClick: Bool {
+        !clickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && UUID(uuidString: clickUUID) != nil
     }
 
     var hasSafeCircumference: Bool {
@@ -84,9 +84,7 @@ struct AppConfiguration: Codable, Equatable {
     }
 
     var canFinishSetup: Bool {
-        hasValidKickr
-            && hasValidClick
-            && hasSafeCircumference
+        hasValidKickr && hasSafeCircumference
     }
 }
 
