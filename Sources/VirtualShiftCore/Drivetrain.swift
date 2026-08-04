@@ -10,20 +10,17 @@ public enum DrivetrainError: Error, Equatable {
     case duplicateRatio(VirtualGear, VirtualGear)
     case unknownChainring(VirtualGear)
     case unknownCassetteCog(VirtualGear)
-    case unknownReferenceGear(VirtualGear)
 }
 
 public struct Drivetrain: Equatable, Sendable {
     public let chainrings: [Int]
     public let cassetteCogs: [Int]
     public let gears: [VirtualGear]
-    public let referenceIndex: Int
 
     public init(
         chainrings: [Int],
         cassetteCogs: [Int],
-        allowedCombinations: [VirtualGear],
-        referenceGear: VirtualGear
+        allowedCombinations: [VirtualGear]
     ) throws {
         guard !chainrings.isEmpty else {
             throw DrivetrainError.emptyChainrings
@@ -65,14 +62,13 @@ public struct Drivetrain: Equatable, Sendable {
                 throw DrivetrainError.duplicateRatio(duplicate, gear)
             }
         }
-        guard combinationSet.contains(referenceGear) else {
-            throw DrivetrainError.unknownReferenceGear(referenceGear)
-        }
-
         self.chainrings = chainrings
         self.cassetteCogs = cassetteCogs
         gears = allowedCombinations.sorted(by: Self.gearOrder)
-        referenceIndex = gears.firstIndex(of: referenceGear)!
+    }
+
+    public var referenceIndex: Int {
+        (gears.count - 1) / 2
     }
 
     public var referenceGear: VirtualGear {

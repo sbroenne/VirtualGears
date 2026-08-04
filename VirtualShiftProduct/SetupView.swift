@@ -15,6 +15,7 @@ struct SetupView: View {
             kickrSection
             clickSection
             drivetrainSection
+            physicalSetupSection
             circumferenceSection
             supportSection
         }
@@ -179,19 +180,51 @@ struct SetupView: View {
             .font(.footnote)
             .foregroundStyle(.secondary)
 
-            let reference =
-                store.configuration.drivetrainPreset.drivetrain.referenceGear
-            Label(
-                "Leave the physical chain in \(reference.chainring) × "
-                    + "\(reference.cog) for the whole ride.",
-                systemImage: "link"
-            )
-            .font(.callout.weight(.semibold))
-            .accessibilityLabel(
-                "Before riding, physically shift to the "
-                    + "\(reference.chainring) tooth chainring and "
-                    + "\(reference.cog) tooth cog. Do not physically shift during "
-                    + "the ride."
+        }
+    }
+
+    private var physicalSetupSection: some View {
+        Section {
+            Picker("Trainer sprocket", selection: physicalRearSetup) {
+                Text("Choose…").tag(PhysicalRearSetup?.none)
+                ForEach(PhysicalRearSetup.allCases) { setup in
+                    Text(setup.name).tag(Optional(setup))
+                }
+            }
+
+            if store.configuration.physicalRearSetup != nil {
+                Picker("Front chainring", selection: physicalChainring) {
+                    Text("Choose…").tag(Int?.none)
+                    ForEach(Array(20...60), id: \.self) { chainring in
+                        Text("\(chainring) teeth").tag(Optional(chainring))
+                    }
+                }
+            }
+
+            if store.configuration.physicalRearSetup == .cassette {
+                Picker("Rear cog", selection: physicalCassetteCog) {
+                    Text("Choose…").tag(Int?.none)
+                    ForEach(Array(9...52), id: \.self) { cog in
+                        Text("\(cog) teeth").tag(Optional(cog))
+                    }
+                }
+            }
+
+            if let description = store.configuration.physicalGearDescription {
+                Label(
+                    "Leave the physical chain at \(description) for the whole ride.",
+                    systemImage: "link"
+                )
+                .font(.callout.weight(.semibold))
+            }
+        } header: {
+            Text("Physical bike setup")
+        } footer: {
+            Text(
+                "A Zwift Cog is a fixed 14-tooth sprocket. Choose the front "
+                    + "chainring that gives the straightest chain line; Wahoo recommends "
+                    + "a ratio near 3:1 when practical. This physical selection stays "
+                    + "fixed and does not change the virtual gear list."
             )
         }
     }
@@ -273,7 +306,7 @@ struct SetupView: View {
         .accessibilityHint(
             canFinishSetup
                 ? "Saves setup and shows the ready screen"
-                : "Complete the required fields and confirm circumference first"
+                : "Complete equipment, physical gearing, and circumference first"
         )
     }
 
@@ -291,7 +324,27 @@ struct SetupView: View {
     }
 
     private var drivetrainPreset: Binding<DrivetrainPreset> {
-        persistedBinding(\.drivetrainPreset)
+        Binding {
+            store.configuration.drivetrainPreset
+        } set: {
+            store.setDrivetrainPreset($0)
+        }
+    }
+
+    private var physicalRearSetup: Binding<PhysicalRearSetup?> {
+        Binding {
+            store.configuration.physicalRearSetup
+        } set: {
+            store.setPhysicalRearSetup($0)
+        }
+    }
+
+    private var physicalChainring: Binding<Int?> {
+        persistedBinding(\.physicalChainring)
+    }
+
+    private var physicalCassetteCog: Binding<Int?> {
+        persistedBinding(\.physicalCassetteCog)
     }
 
     private var circumference: Binding<Int> {

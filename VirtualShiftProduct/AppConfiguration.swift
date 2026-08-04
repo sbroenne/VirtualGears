@@ -11,6 +11,9 @@ struct AppConfiguration: Codable, Equatable {
     var neutralCircumferenceMillimeters = 2070
     var confirmedCircumferenceMillimeters: Int?
     var drivetrainPreset = DrivetrainPreset.shimano105Di2
+    var physicalRearSetup: PhysicalRearSetup?
+    var physicalChainring: Int?
+    var physicalCassetteCog: Int?
     var setupComplete = false
 
     var isCircumferenceConfirmed: Bool {
@@ -37,11 +40,52 @@ struct AppConfiguration: Codable, Equatable {
         )) != nil
     }
 
+    var hasValidPhysicalSetup: Bool {
+        guard physicalRearSetup != nil,
+              let physicalChainring,
+              (20...60).contains(physicalChainring) else {
+            return false
+        }
+        if physicalRearSetup == .cassette {
+            guard let physicalCassetteCog else { return false }
+            return (9...52).contains(physicalCassetteCog)
+        }
+        return true
+    }
+
+    var physicalGearDescription: String? {
+        guard hasValidPhysicalSetup, let physicalChainring else { return nil }
+        switch physicalRearSetup {
+        case .zwiftCog:
+            return "\(physicalChainring) × 14 on Zwift Cog"
+        case .cassette:
+            guard let physicalCassetteCog else { return nil }
+            return "\(physicalChainring) × \(physicalCassetteCog) on cassette"
+        case nil:
+            return nil
+        }
+    }
+
     var canFinishSetup: Bool {
         hasValidKickr
             && hasValidClick
             && isCircumferenceConfirmed
             && hasSafeCircumference
+            && hasValidPhysicalSetup
+    }
+}
+
+enum PhysicalRearSetup: String, Codable, CaseIterable, Identifiable {
+    case zwiftCog
+    case cassette
+
+    var id: Self { self }
+
+    var name: String {
+        switch self {
+        case .zwiftCog: "Zwift Cog"
+        case .cassette: "Cassette"
+        }
     }
 }
 
@@ -73,23 +117,20 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .shimano105Di2:
             let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
-            let reference = gear(chainring: 50, cog: 17)
             let combinations =
                 gears(chainring: 34, cogs: [15, 17, 19, 21, 24, 27, 30, 34])
-                + gears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21])
+                + gears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
             return try! Drivetrain(
                 chainrings: [34, 50],
                 cassetteCogs: cassette,
-                allowedCombinations: combinations,
-                referenceGear: reference
+                allowedCombinations: combinations
             )
         case .simple1x:
             let cassette = [11, 13, 15, 18, 21, 24, 28, 32, 36, 42]
             return try! Drivetrain(
                 chainrings: [42],
                 cassetteCogs: cassette,
-                allowedCombinations: gears(chainring: 42, cogs: cassette),
-                referenceGear: gear(chainring: 42, cog: 15)
+                allowedCombinations: gears(chainring: 42, cogs: cassette)
             )
         }
     }
@@ -144,6 +185,15 @@ final class ConfigurationStore {
     func confirmCircumference() {
         configuration.confirmedCircumferenceMillimeters =
             configuration.neutralCircumferenceMillimeters
+    }
+
+    func setDrivetrainPreset(_ preset: DrivetrainPreset) {
+        configuration.drivetrainPreset = preset
+    }
+
+    func setPhysicalRearSetup(_ setup: PhysicalRearSetup?) {
+        configuration.physicalRearSetup = setup
+        configuration.physicalCassetteCog = nil
     }
 
     func finishSetup() {

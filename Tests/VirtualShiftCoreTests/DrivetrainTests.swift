@@ -13,8 +13,7 @@ final class DrivetrainTests: XCTestCase {
                 hardest,
                 easiest,
                 middle,
-            ],
-            referenceGear: middle
+            ]
         )
 
         XCTAssertEqual(drivetrain.gears, [easiest, middle, hardest])
@@ -33,8 +32,7 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [50, 30, 40],
                 cassetteCogs: [25, 15, 20],
-                allowedCombinations: [third, second, first],
-                referenceGear: second
+                allowedCombinations: [third, second, first]
             )
         ) {
             XCTAssertEqual(
@@ -44,28 +42,18 @@ final class DrivetrainTests: XCTestCase {
         }
     }
 
-    func testUsesExplicitReferenceGear() throws {
-        let drivetrain = try makeDrivetrain(cogs: [30, 20, 10], referenceCog: 10)
+    func testReferenceUsesMiddleForOddCount() throws {
+        let drivetrain = try makeDrivetrain(cogs: [30, 20, 10])
 
-        XCTAssertEqual(drivetrain.referenceIndex, 2)
-        XCTAssertEqual(drivetrain.referenceGear.cog, 10)
+        XCTAssertEqual(drivetrain.referenceIndex, 1)
+        XCTAssertEqual(drivetrain.referenceGear.cog, 20)
     }
 
-    func testRejectsReferenceOutsideAllowedCombinations() throws {
-        let unknown = try VirtualGear(chainring: 30, cog: 10)
-        XCTAssertThrowsError(
-            try Drivetrain(
-                chainrings: [30],
-                cassetteCogs: [20, 10],
-                allowedCombinations: [try VirtualGear(chainring: 30, cog: 20)],
-                referenceGear: unknown
-            )
-        ) {
-            XCTAssertEqual(
-                $0 as? DrivetrainError,
-                .unknownReferenceGear(unknown)
-            )
-        }
+    func testReferenceUsesLowerMiddleForEvenCount() throws {
+        let drivetrain = try makeDrivetrain(cogs: [30, 20, 15, 10])
+
+        XCTAssertEqual(drivetrain.referenceIndex, 1)
+        XCTAssertEqual(drivetrain.referenceGear.cog, 20)
     }
 
     func testRejectsEmptyComponentAndCombinationLists() throws {
@@ -75,24 +63,21 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [],
                 cassetteCogs: [20],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) { XCTAssertEqual($0 as? DrivetrainError, .emptyChainrings) }
         XCTAssertThrowsError(
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) { XCTAssertEqual($0 as? DrivetrainError, .emptyCassette) }
         XCTAssertThrowsError(
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20],
-                allowedCombinations: [],
-                referenceGear: gear
+                allowedCombinations: []
             )
         ) {
             XCTAssertEqual(
@@ -109,16 +94,14 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [30, 0],
                 cassetteCogs: [20],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) { XCTAssertEqual($0 as? DrivetrainError, .invalidChainring(0)) }
         XCTAssertThrowsError(
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20, -1],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) {
             XCTAssertEqual(
@@ -135,16 +118,14 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [30, 30],
                 cassetteCogs: [20],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) { XCTAssertEqual($0 as? DrivetrainError, .duplicateChainring(30)) }
         XCTAssertThrowsError(
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20, 20],
-                allowedCombinations: [gear],
-                referenceGear: gear
+                allowedCombinations: [gear]
             )
         ) {
             XCTAssertEqual(
@@ -156,8 +137,7 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20],
-                allowedCombinations: [gear, gear],
-                referenceGear: gear
+                allowedCombinations: [gear, gear]
             )
         ) {
             XCTAssertEqual(
@@ -175,8 +155,7 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20],
-                allowedCombinations: [unknownChainring],
-                referenceGear: unknownChainring
+                allowedCombinations: [unknownChainring]
             )
         ) {
             XCTAssertEqual(
@@ -188,8 +167,7 @@ final class DrivetrainTests: XCTestCase {
             try Drivetrain(
                 chainrings: [30],
                 cassetteCogs: [20],
-                allowedCombinations: [unknownCog],
-                referenceGear: unknownCog
+                allowedCombinations: [unknownCog]
             )
         ) {
             XCTAssertEqual(
@@ -199,18 +177,14 @@ final class DrivetrainTests: XCTestCase {
         }
     }
 
-    private func makeDrivetrain(
-        cogs: [Int],
-        referenceCog: Int? = nil
-    ) throws -> Drivetrain {
+    private func makeDrivetrain(cogs: [Int]) throws -> Drivetrain {
         let gears = try cogs.map {
             try VirtualGear(chainring: 30, cog: $0)
         }
         return try Drivetrain(
             chainrings: [30],
             cassetteCogs: cogs,
-            allowedCombinations: gears,
-            referenceGear: gears.first { $0.cog == (referenceCog ?? cogs[cogs.count / 2]) }!
+            allowedCombinations: gears
         )
     }
 }

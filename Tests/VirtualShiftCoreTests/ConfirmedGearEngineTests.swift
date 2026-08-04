@@ -116,8 +116,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         let drivetrain = try Drivetrain(
             chainrings: [100_000, 100_001, 50],
             cassetteCogs: [50_000, 20],
-            allowedCombinations: [first, second, harder],
-            referenceGear: second
+            allowedCombinations: [first, second, harder]
         )
         var engine = try ConfirmedGearEngine(
             drivetrain: drivetrain,
@@ -242,8 +241,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         return try Drivetrain(
             chainrings: [30],
             cassetteCogs: cogs,
-            allowedCombinations: gears,
-            referenceGear: gears[1]
+            allowedCombinations: gears
         )
     }
 
