@@ -28,6 +28,8 @@
 		A00000000000000000000006 /* ClickCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* ClickCentralService.swift */; };
 		A00000000000000000000007 /* FTMSPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FTMSPeripheral.swift */; };
 		A00000000000000000000008 /* ProxyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* ProxyCoordinator.swift */; };
+		A00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* Assets.xcassets */; };
+		10000000000000000000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -54,6 +56,8 @@
 		A10000000000000000000006 /* ClickCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
 		A10000000000000000000008 /* ProxyCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyCoordinator.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		200000000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -98,6 +102,7 @@
 				20000000000000000000000E /* RideAppProbeView.swift */,
 				20000000000000000000000F /* KickrFTMSProbeManager.swift */,
 				200000000000000000000010 /* KickrFTMSProbeView.swift */,
+				200000000000000000000011 /* Assets.xcassets */,
 				200000000000000000000004 /* Info.plist */,
 			);
 			path = VirtualShift;
@@ -115,6 +120,7 @@
 				A10000000000000000000006 /* ClickCentralService.swift */,
 				A10000000000000000000007 /* FTMSPeripheral.swift */,
 				A10000000000000000000008 /* ProxyCoordinator.swift */,
+				A10000000000000000000009 /* Assets.xcassets */,
 				20000000000000000000000B /* Info.plist */,
 			);
 			path = VirtualShiftProduct;
@@ -217,6 +223,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				10000000000000000000000E /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -224,6 +231,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A00000000000000000000009 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,6 +311,7 @@
 		700000000000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
@@ -327,6 +336,7 @@
 		700000000000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
@@ -351,6 +361,7 @@
 		700000000000000000000005 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;
@@ -375,6 +386,7 @@
 		700000000000000000000006 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = MNW6SJT4V7;

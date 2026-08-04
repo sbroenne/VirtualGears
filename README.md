@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="VirtualShift" width="160">
+</p>
+
 # VirtualShift
 
 VirtualShift is a focused iPhone FTMS proxy for a Wahoo KICKR V5 and Zwift
