@@ -350,10 +350,8 @@ private struct ActiveRideView: View {
     /// Changing gears mid-ride rebuilds the session rather than swapping the
     /// ladder underneath the trainer, so the wheel size the trainer is holding
     /// is always put back before the new gears are applied.
-    private func applyChangedGears() {
-        defer { gearsWhenOpened = nil }
-        guard let previous = gearsWhenOpened,
-              previous.gears != configuration.drivetrain?.gears else { return }
+    private func restartIfGearsChanged(from previous: Drivetrain?) {
+        guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
             await coordinator.stopRide()
@@ -381,9 +379,19 @@ private struct ActiveRideView: View {
                 // and everything harmless is put at the other end of the bar,
                 // as far from a sweaty thumb aiming for Stop as the bar allows.
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Settings", systemImage: "gearshape") {
+                    // Everything on this screen is aimed at while pedalling, so
+                    // the bar's controls are grown well past the size a phone
+                    // held in a calm hand would need. The symbol is drawn
+                    // explicitly because a Label leaves the toolbar free to pick
+                    // its own size and ignore the one asked for.
+                    Button {
                         showsSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2.weight(.semibold))
                     }
+                    .controlSize(.large)
+                    .accessibilityLabel("Settings")
                     .accessibilityHint("Change your gears, trainer, or Zwift Click")
                 }
                 // The middle of the bar says what the ride is doing whenever it
@@ -395,8 +403,7 @@ private struct ActiveRideView: View {
                             .foregroundStyle(statusColor)
                             .lineLimit(1)
                     } else {
-                        Text(configuration.drivetrainName)
-                            .font(.headline)
+                        gearsMenu
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -404,8 +411,9 @@ private struct ActiveRideView: View {
                         confirmsStop = true
                     } label: {
                         Text(coordinator.state == .stopping ? "Stopping" : "Stop")
-                            .font(.body.weight(.semibold))
+                            .font(.title3.weight(.bold))
                     }
+                    .controlSize(.large)
                     .tint(.red)
                     .disabled(coordinator.state == .stopping)
                     .accessibilityLabel("Stop ride")
@@ -426,7 +434,8 @@ private struct ActiveRideView: View {
             if isOpen {
                 gearsWhenOpened = configuration.drivetrain
             } else {
-                applyChangedGears()
+                restartIfGearsChanged(from: gearsWhenOpened)
+                gearsWhenOpened = nil
             }
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
@@ -479,6 +488,50 @@ private struct ActiveRideView: View {
     /// carries the visual weight on its own. It is a read-out, never a control:
     /// anything tappable has to look tappable, so all shifting lives in the two
     /// buttons below and nothing else on this screen reacts to a tap.
+    /// The drivetrain used to sit in the title bar as plain text, which said
+    /// nothing about being changeable and invited a tap that did nothing. It is
+    /// a control now: it names the gears, says how many there are, and offers
+    /// the only two changes worth making mid-ride without opening Settings.
+    private var gearsMenu: some View {
+        Menu {
+            Section("\(configuration.gearCount) gears") {
+                Picker("Gears", selection: gearKind) {
+                    Text("Virtual gears").tag(true)
+                    Text("Copy a real bike").tag(false)
+                }
+            }
+            Button("Gear Settings…", systemImage: "slider.horizontal.3") {
+                showsSettings = true
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(configuration.drivetrainName)
+                    .font(.headline)
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityLabel(
+            "\(configuration.drivetrainName), \(configuration.gearCount) gears"
+        )
+        .accessibilityHint("Change your gears")
+    }
+
+    /// Writing through a binding keeps the restart in one place, so gears that
+    /// change from the menu are put back safely exactly like gears that change
+    /// in Settings.
+    private var gearKind: Binding<Bool> {
+        Binding(
+            get: { configuration.usesVirtualGears },
+            set: { newValue in
+                let previous = configuration.drivetrain
+                store.configuration.usesVirtualGears = newValue
+                restartIfGearsChanged(from: previous)
+            }
+        )
+    }
+
     private func gearHero(
         _ geometry: GeometryProxy,
         landscape: Bool
@@ -502,7 +555,7 @@ private struct ActiveRideView: View {
             shiftButton(easier: true)
             shiftButton(easier: false)
         }
-        .frame(height: max(96, geometry.size.height * (landscape ? 0.36 : 0.44)))
+        .frame(height: max(120, geometry.size.height * (landscape ? 0.46 : 0.62)))
         .accessibilityElement(children: .contain)
     }
 
