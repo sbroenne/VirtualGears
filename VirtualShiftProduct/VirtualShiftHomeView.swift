@@ -622,7 +622,8 @@ private struct ActiveRideView: View {
         }
         if isShiftPending { return "Shifting…" }
         let total = coordinator.gearSequence.count
-        guard let gear = coordinator.displayedGear else {
+        guard let gear = coordinator.displayedGear,
+              !configuration.usesVirtualGears else {
             return "of \(total)"
         }
         return "of \(total) · \(gear.chainring)×\(gear.cog)"
@@ -633,9 +634,11 @@ private struct ActiveRideView: View {
               let index = coordinator.confirmedGearIndex else {
             return "Confirmed gear unavailable"
         }
-        return "Confirmed gear \(index + 1) of "
-            + "\(coordinator.gearSequence.count), \(gear.chainring) tooth "
-            + "chainring by \(gear.cog) tooth cog"
+        let position = "Confirmed gear \(index + 1) of "
+            + "\(coordinator.gearSequence.count)"
+        guard !configuration.usesVirtualGears else { return position }
+        return position + ", \(gear.chainring) tooth chainring by "
+            + "\(gear.cog) tooth cog"
     }
 
     private var statusText: String {

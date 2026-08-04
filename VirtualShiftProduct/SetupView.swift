@@ -405,31 +405,46 @@ private struct GearChoiceView: View {
     var body: some View {
         Form {
             Section {
-                NavigationLink {
-                    ChainringChoiceView(store: store)
-                } label: {
-                    LabeledContent(
-                        "Chainrings",
-                        value: store.configuration.chainring.name
-                    )
+                Picker("Gears", selection: $store.configuration.usesVirtualGears) {
+                    Text("Virtual gears").tag(true)
+                    Text("Copy a real bike").tag(false)
                 }
-
-                NavigationLink {
-                    CassetteChoiceView(store: store)
-                } label: {
-                    LabeledContent(
-                        "Cassette",
-                        value: store.configuration.cassette.name
-                    )
-                }
-            } header: {
-                Text("The bike you want to feel")
+                .pickerStyle(.segmented)
+                .labelsHidden()
             } footer: {
                 Text(
-                    "Copy the numbers printed on your own bike, or pick any "
-                        + "combination you would like to ride. It does not have "
-                        + "to be a set that anyone actually sells."
+                    store.configuration.usesVirtualGears
+                        ? "The same 24 virtual gears Zwift and Wahoo use. They "
+                            + "belong to no particular bike and suit everything "
+                            + "from a standing start to a sprint."
+                        : "Copy the numbers printed on your own bike, or pick "
+                            + "any combination you would like to ride. It does "
+                            + "not have to be a set that anyone sells."
                 )
+            }
+
+            if !store.configuration.usesVirtualGears {
+                Section {
+                    NavigationLink {
+                        ChainringChoiceView(store: store)
+                    } label: {
+                        LabeledContent(
+                            "Chainrings",
+                            value: store.configuration.chainring.name
+                        )
+                    }
+
+                    NavigationLink {
+                        CassetteChoiceView(store: store)
+                    } label: {
+                        LabeledContent(
+                            "Cassette",
+                            value: store.configuration.cassette.name
+                        )
+                    }
+                } header: {
+                    Text("The bike you want to feel")
+                }
             }
 
             Section {
@@ -456,12 +471,13 @@ private struct GearPreview: View {
                 Text(configuration.setupDescription)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                if drivetrain.gears.count < expectedCombinations {
+                if !configuration.usesVirtualGears,
+                   drivetrain.gears.count < expectedCombinations {
                     Text(
-                        "\(expectedCombinations - drivetrain.gears.count) of the "
-                            + "\(expectedCombinations) chainring and cog "
-                            + "combinations feel exactly the same as another one, "
-                            + "so they are not counted twice."
+                        "Fewer than the \(expectedCombinations) possible "
+                            + "pairings, because the ones that would cross the "
+                            + "chain badly are left out, along with any that "
+                            + "feel exactly like another."
                     )
                     .font(.caption)
                     .foregroundStyle(.tertiary)

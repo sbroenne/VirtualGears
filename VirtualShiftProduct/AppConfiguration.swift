@@ -9,6 +9,9 @@ struct AppConfiguration: Codable, Equatable {
     var clickUUID = ""
     var chainringID = DrivetrainCatalog.defaultChainringID
     var cassetteID = DrivetrainCatalog.defaultCassetteID
+    /// The gears Zwift and Wahoo hand out when the bike has none of its own.
+    /// It is the starting point because it needs no knowledge of the bike.
+    var usesVirtualGears = true
     var setupComplete = false
 
     var neutralCircumferenceMillimeters: Int {
@@ -27,7 +30,10 @@ struct AppConfiguration: Codable, Equatable {
 
     /// Nil when the chosen parts cover a wider spread than the trainer can copy.
     var drivetrain: Drivetrain? {
-        try? Drivetrain.build(
+        if usesVirtualGears {
+            return try? Drivetrain.virtualLadder()
+        }
+        return try? Drivetrain.build(
             chainrings: chainring.teeth,
             cassetteCogs: cassette.cogs
         )
@@ -95,7 +101,8 @@ extension AppConfiguration {
 
     /// What the rider chose, in the words printed on the parts.
     var drivetrainName: String {
-        "\(chainring.name) · \(cassette.name)"
+        guard !usesVirtualGears else { return "Virtual gears" }
+        return "\(chainring.name) · \(cassette.name)"
     }
 
     /// The one line that matters: how many gears they will actually have.

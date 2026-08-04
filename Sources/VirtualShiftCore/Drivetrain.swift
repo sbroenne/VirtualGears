@@ -19,13 +19,50 @@ public enum DrivetrainError: Error, Equatable {
 }
 
 public struct Drivetrain: Equatable, Sendable {
-    /// Builds the drivetrain a rider actually described: every chainring paired
-    /// with every cog, ordered from easiest to hardest.
+    /// The virtual gears Zwift and Wahoo give a rider who has no gears on the
+    /// bike at all: an even ladder of twenty-four ratios that belongs to no
+    /// real bike, tuned to feel right from a standstill to a sprint.
+    public static let virtualRatiosHundredths = [
+        75, 87, 99, 111, 123, 138, 153, 168,
+        186, 204, 222, 240, 261, 282, 303, 324,
+        349, 374, 399, 424, 454, 484, 514, 549,
+    ]
+
+    /// Built as ratios out of one hundred rather than real teeth, because these
+    /// gears are not parts anyone can buy.
+    public static func virtualLadder(
+        scaleRange: ClosedRange<Double> = TrainerSafety.provenScaleRange
+    ) throws -> Drivetrain {
+        let gears = try virtualRatiosHundredths
+            .sorted()
+            .map { try VirtualGear(chainring: $0, cog: 100) }
+        guard let reference = centredReferenceIndex(
+            of: gears,
+            scaleRange: scaleRange
+        ) else {
+            throw DrivetrainError.rangeTooWideForTrainer(
+                span: (gears.last?.ratio ?? 0) / (gears.first?.ratio ?? 1),
+                widest: scaleRange.upperBound / scaleRange.lowerBound
+            )
+        }
+        return try Drivetrain(
+            chainrings: [100],
+            cassetteCogs: [100],
+            allowedCombinations: gears,
+            referenceIndex: reference,
+            validatesAgainstComponents: false
+        )
+    }
+
+    /// Builds the drivetrain a rider actually described, using only the gears
+    /// they would really ride.
     ///
-    /// Two combinations can produce the identical ratio (34/17 and 50/25 both
-    /// give 2.0). On a real bike those are two positions that feel the same, and
-    /// here they would be two gear numbers that do nothing, so only the first is
-    /// kept. That is why a 2x12 is never 24 gears.
+    /// Pairing every chainring with every cog is wrong twice over. It invents
+    /// badly cross-chained gears nobody uses, such as the small ring on the
+    /// smallest cog, and it counts the same ratio twice: 34/17 and 50/25 both
+    /// give 2.0, so on the handlebar they would be two gear numbers that feel
+    /// identical. Cross-chained pairs are dropped and equal ratios are merged,
+    /// which is why a 2x12 gives about sixteen gears rather than twenty-four.
     public static func build(
         chainrings: [Int],
         cassetteCogs: [Int],
@@ -49,8 +86,13 @@ public struct Drivetrain: Equatable, Sendable {
         )
 
         var combinations: [VirtualGear] = []
-        for chainring in chainrings {
-            for cog in cassetteCogs {
+        let rings = chainrings.sorted()
+        for (position, chainring) in rings.enumerated() {
+            for cog in usableCogs(
+                cassetteCogs,
+                forRingAt: position,
+                ringCount: rings.count
+            ) {
                 combinations.append(try VirtualGear(chainring: chainring, cog: cog))
             }
         }
@@ -78,6 +120,35 @@ public struct Drivetrain: Equatable, Sendable {
             allowedCombinations: unique,
             referenceIndex: reference
         )
+    }
+
+    /// The cogs a rider would really use with one chainring. The chain has to
+    /// run at an angle to reach across the cassette, so a small ring is ridden
+    /// on the larger cogs and a big ring on the smaller ones. Ignoring that is
+    /// what produced gears like a 34 tooth ring on an 11 tooth cog, which no
+    /// rider would ever choose and which made the handlebar readout describe a
+    /// bike nobody owns.
+    private static func usableCogs(
+        _ cogs: [Int],
+        forRingAt position: Int,
+        ringCount: Int
+    ) -> [Int] {
+        guard ringCount > 1 else { return cogs }
+        // Largest cog first, so index 0 is the easiest gear on the cassette.
+        let ordered = cogs.sorted(by: >)
+        let last = ordered.count - 1
+        // The smallest ring sits at the easy end of the cassette and the
+        // largest at the hard end, with any middle ring spread in between.
+        let centre = Double(last)
+            * Double(position) / Double(ringCount - 1)
+        // Rings share the cassette, so each reaches over roughly the same span
+        // regardless of how many there are; more rings simply means each covers
+        // less of it and the whole drivetrain covers more ground.
+        let reach = max(1.0, Double(ordered.count) * 1.2 / Double(ringCount))
+        let lower = max(0, Int((centre - reach).rounded(.up)))
+        let upper = min(last, Int((centre + reach).rounded(.down)))
+        guard lower <= upper else { return [ordered[min(max(0, Int(centre)), last)]] }
+        return Array(ordered[lower...upper])
     }
 
     /// The starting gear is the one the trainer's real wheel size maps onto, so
@@ -126,7 +197,8 @@ public struct Drivetrain: Equatable, Sendable {
         chainrings: [Int],
         cassetteCogs: [Int],
         allowedCombinations: [VirtualGear],
-        referenceIndex: Int? = nil
+        referenceIndex: Int? = nil,
+        validatesAgainstComponents: Bool = true
     ) throws {
         guard !chainrings.isEmpty else {
             throw DrivetrainError.emptyChainrings
@@ -153,11 +225,13 @@ public struct Drivetrain: Equatable, Sendable {
         let cassetteSet = Set(cassetteCogs)
         var combinationSet = Set<VirtualGear>()
         for (index, gear) in allowedCombinations.enumerated() {
-            guard chainringSet.contains(gear.chainring) else {
-                throw DrivetrainError.unknownChainring(gear)
-            }
-            guard cassetteSet.contains(gear.cog) else {
-                throw DrivetrainError.unknownCassetteCog(gear)
+            if validatesAgainstComponents {
+                guard chainringSet.contains(gear.chainring) else {
+                    throw DrivetrainError.unknownChainring(gear)
+                }
+                guard cassetteSet.contains(gear.cog) else {
+                    throw DrivetrainError.unknownCassetteCog(gear)
+                }
             }
             guard combinationSet.insert(gear).inserted else {
                 throw DrivetrainError.duplicateCombination(gear)

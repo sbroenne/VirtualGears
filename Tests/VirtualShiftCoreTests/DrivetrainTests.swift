@@ -56,7 +56,10 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertEqual(drivetrain.referenceGear.cog, 20)
     }
 
-    func testBuildPairsEveryChainringWithEveryCogAndOrdersThemByRatio() throws {
+    /// The small ring belongs on the larger cogs and the big ring on the
+    /// smaller ones. Pairing everything with everything invents gears such as a
+    /// 34 tooth ring on an 11 tooth cog that no rider would use.
+    func testBuildSkipsCrossChainedCombinations() throws {
         let drivetrain = try Drivetrain.build(
             chainrings: [50, 34],
             cassetteCogs: [11, 17, 28]
@@ -64,10 +67,34 @@ final class DrivetrainTests: XCTestCase {
 
         XCTAssertEqual(
             drivetrain.gears.map { "\($0.chainring)x\($0.cog)" },
-            ["34x28", "50x28", "34x17", "50x17", "34x11", "50x11"]
+            ["34x28", "34x17", "50x17", "50x11"]
         )
         XCTAssertEqual(drivetrain.chainrings, [50, 34])
         XCTAssertEqual(drivetrain.cassetteCogs, [11, 17, 28])
+    }
+
+    /// A rider works up the cassette on the small ring, moves to the big ring,
+    /// and carries on. The chainring never gets smaller as the gear gets
+    /// harder, so the handlebar readout never jumps backwards between rings.
+    func testBuildNeverReturnsToASmallerChainringAsGearsGetHarder() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [50, 34],
+            cassetteCogs: [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
+        )
+
+        let rings = drivetrain.gears.map(\.chainring)
+        XCTAssertEqual(rings, rings.sorted())
+        XCTAssertEqual(drivetrain.gears.first.map { "\($0.chainring)x\($0.cog)" }, "34x34")
+        XCTAssertEqual(drivetrain.gears.last.map { "\($0.chainring)x\($0.cog)" }, "50x11")
+    }
+
+    /// One chainring reaches the whole cassette, so nothing is dropped.
+    func testBuildKeepsEveryCogOnASingleChainring() throws {
+        let cogs = [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 52]
+        let drivetrain = try Drivetrain.build(chainrings: [42], cassetteCogs: cogs)
+
+        XCTAssertEqual(drivetrain.gears.count, cogs.count)
+        XCTAssertEqual(drivetrain.gears.map(\.cog), cogs.sorted(by: >))
     }
 
     /// Two combinations can land on the identical ratio, and two gear numbers
@@ -293,4 +320,32 @@ final class DrivetrainTests: XCTestCase {
             allowedCombinations: gears
         )
     }
+    /// The gears a rider gets before describing any bike at all.
+    func testVirtualLadderIsTwentyFourGearsInsideTheProvenRange() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+
+        XCTAssertEqual(drivetrain.gears.count, 24)
+        // Judged on the value the trainer is actually sent, which is what any
+        // claim about proven hardware limits can honestly cover.
+        let reference = drivetrain.referenceGear.ratio
+        for gear in drivetrain.gears {
+            let circumference = try WheelCircumferenceScaler
+                .effectiveCircumference(
+                    neutralCircumference:
+                        TrainerSafety.referenceCircumferenceMillimeters,
+                    referenceRatio: reference,
+                    selectedRatio: gear.ratio
+                )
+            XCTAssertTrue(
+                TrainerSafety.provenCircumferenceMillimeters.contains(
+                    TrainerSafety.circumferenceAsSent(circumference)
+                ),
+                "Virtual gear \(gear.chainring)/\(gear.cog) would ask for "
+                    + "\(circumference) mm, outside the proven range"
+            )
+        }
+        let ratios = drivetrain.gears.map(\.ratio)
+        XCTAssertEqual(ratios, ratios.sorted())
+    }
+
 }
