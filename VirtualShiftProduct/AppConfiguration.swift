@@ -5,17 +5,13 @@ import VirtualShiftCore
 struct AppConfiguration: Codable, Equatable {
     var kickrName = ""
     var kickrUUID = ""
-    var usesClick = false
+    var usesClick = true
     var clickName = ""
     var clickUUID = ""
-    var neutralCircumferenceMillimeters = 2070
-    var confirmedCircumferenceMillimeters: Int?
     var drivetrainPreset = DrivetrainPreset.zwiftVirtual24
     var setupComplete = false
 
-    var isCircumferenceConfirmed: Bool {
-        confirmedCircumferenceMillimeters == neutralCircumferenceMillimeters
-    }
+    var neutralCircumferenceMillimeters: Int { 2_070 }
 
     var hasValidKickr: Bool {
         !kickrName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -61,7 +57,6 @@ struct AppConfiguration: Codable, Equatable {
     var canFinishSetup: Bool {
         hasValidKickr
             && hasValidClick
-            && isCircumferenceConfirmed
             && hasSafeCircumference
     }
 }
@@ -69,6 +64,10 @@ struct AppConfiguration: Codable, Equatable {
 enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
     case zwiftVirtual24
     case shimano105Di2
+    case sramRoadAxs
+    case shimanoGrx12
+    case sramXplr12
+    case mountain1x12
     case simple1x
 
     var id: Self { self }
@@ -78,9 +77,17 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         case .zwiftVirtual24:
             "Zwift Virtual 24"
         case .shimano105Di2:
-            "Shimano 105 Di2–like"
+            "Shimano Road 2×12"
+        case .sramRoadAxs:
+            "SRAM Road AXS 2×12"
+        case .shimanoGrx12:
+            "Shimano GRX 2×12"
+        case .sramXplr12:
+            "SRAM XPLR 1×12"
+        case .mountain1x12:
+            "MTB 1×12"
         case .simple1x:
-            "Simple 1×10"
+            "Classic 1×10"
         }
     }
 
@@ -90,8 +97,46 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
             "24 numbered gears · 0.75–5.49"
         case .shimano105Di2:
             "2×12 · 50/34 · 11–34"
+        case .sramRoadAxs:
+            "2×12 · 46/33 · 10–33"
+        case .shimanoGrx12:
+            "2×12 · 48/31 · 11–36"
+        case .sramXplr12:
+            "1×12 · 40 · 10–44"
+        case .mountain1x12:
+            "1×12 · 32 · 10–51"
         case .simple1x:
             "1×10 · 42 · 11–42"
+        }
+    }
+
+    var category: String {
+        switch self {
+        case .zwiftVirtual24:
+            "Virtual"
+        case .shimano105Di2, .sramRoadAxs:
+            "Road"
+        case .shimanoGrx12, .sramXplr12:
+            "Gravel"
+        case .mountain1x12:
+            "Mountain"
+        case .simple1x:
+            "Simple"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .zwiftVirtual24:
+            "number.circle.fill"
+        case .shimano105Di2, .sramRoadAxs:
+            "road.lanes"
+        case .shimanoGrx12, .sramXplr12:
+            "leaf.fill"
+        case .mountain1x12:
+            "mountain.2.fill"
+        case .simple1x:
+            "gearshape.fill"
         }
     }
 
@@ -103,6 +148,14 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         case .shimano105Di2:
             "17 sequential combinations; duplicate ratios and extreme "
                 + "cross-chaining are excluded."
+        case .sramRoadAxs:
+            "16 sequential combinations model a wide-range wireless road setup."
+        case .shimanoGrx12:
+            "17 sequential combinations balance gravel climbing and road speed."
+        case .sramXplr12:
+            "12 simple sequential gears model a wide-range gravel drivetrain."
+        case .mountain1x12:
+            "12 sequential gears cover a broad 10–51 tooth mountain range."
         case .simple1x:
             "10 sequential combinations from the defined 42-tooth drivetrain."
         }
@@ -113,31 +166,18 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         case .zwiftVirtual24:
             return .zwiftVirtual24
         case .shimano105Di2:
-            let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
-            let combinations =
-                gears(chainring: 34, cogs: [15, 17, 19, 21, 24, 27, 30, 34])
-                + gears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
-            return try! Drivetrain(
-                chainrings: [34, 50],
-                cassetteCogs: cassette,
-                allowedCombinations: combinations
-            )
+            return .shimanoRoad2x12
+        case .sramRoadAxs:
+            return .sramRoadAxs2x12
+        case .shimanoGrx12:
+            return .shimanoGrx2x12
+        case .sramXplr12:
+            return .sramXplr1x12
+        case .mountain1x12:
+            return .mountain1x12
         case .simple1x:
-            let cassette = [11, 13, 15, 18, 21, 24, 28, 32, 36, 42]
-            return try! Drivetrain(
-                chainrings: [42],
-                cassetteCogs: cassette,
-                allowedCombinations: gears(chainring: 42, cogs: cassette)
-            )
+            return .classic1x10
         }
-    }
-
-    private func gear(chainring: Int, cog: Int) -> VirtualGear {
-        try! VirtualGear(chainring: chainring, cog: cog)
-    }
-
-    private func gears(chainring: Int, cogs: [Int]) -> [VirtualGear] {
-        cogs.map { gear(chainring: chainring, cog: $0) }
     }
 }
 
@@ -174,21 +214,8 @@ final class ConfigurationStore {
         }
     }
 
-    func setCircumference(_ value: Int) {
-        configuration.neutralCircumferenceMillimeters = value
-        if configuration.confirmedCircumferenceMillimeters != value {
-            configuration.confirmedCircumferenceMillimeters = nil
-        }
-    }
-
-    func confirmCircumference() {
-        configuration.confirmedCircumferenceMillimeters =
-            configuration.neutralCircumferenceMillimeters
-    }
-
     func setDrivetrainPreset(_ preset: DrivetrainPreset) {
         configuration.drivetrainPreset = preset
-        configuration.confirmedCircumferenceMillimeters = nil
     }
 
     func finishSetup() {

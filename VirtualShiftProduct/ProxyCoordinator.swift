@@ -215,7 +215,7 @@ final class ProxyCoordinator {
                 )
             }
         } else {
-            failures.append("Neutral circumference could not be restored")
+            failures.append("Trainer starting state could not be restored")
         }
 
         peripheral.stopAdvertising()

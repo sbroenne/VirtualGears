@@ -15,8 +15,6 @@ struct SetupView: View {
             kickrSection
             clickSection
             drivetrainSection
-            fixedChainSection
-            circumferenceSection
             supportSection
         }
         .navigationTitle(isEditing ? "Settings" : "Set Up VirtualShift")
@@ -46,8 +44,8 @@ struct SetupView: View {
                 Text(isEditing ? "Ride setup" : "Let’s prepare your ride")
                     .font(.title2.bold())
                 Text(
-                    "Choose your actual trainer and, optionally, an original Zwift Click. "
-                        + "Selections are saved and can reconnect after interruption."
+                    "Connect your KICKR and original Zwift Click, then choose how "
+                        + "you want the virtual gears to feel."
                 )
                 .foregroundStyle(.secondary)
             }
@@ -58,19 +56,41 @@ struct SetupView: View {
 
     private var kickrSection: some View {
         Section {
+            if store.configuration.hasValidKickr {
+                equipmentCard(
+                    name: store.configuration.kickrName,
+                    state: kickr.state.label,
+                    symbol: "bicycle",
+                    connected: kickr.isReady
+                )
+                if !kickr.isReady, !kickr.isScanning {
+                    Button("Connect saved KICKR") {
+                        kickr.resumeSavedConnection()
+                    }
+                }
+            }
+
             Button {
                 kickr.isScanning ? kickr.stopScanning() : kickr.startScanning()
             } label: {
-                HStack {
-                    Label(
-                        kickr.isScanning ? "Stop scanning" : "Scan for KICKR",
-                        systemImage: "antenna.radiowaves.left.and.right"
-                    )
-                    Spacer()
-                    Text(kickr.state.label)
+                Label(
+                    kickr.isScanning
+                        ? "Stop looking"
+                        : (store.configuration.hasValidKickr
+                            ? "Choose a different KICKR" : "Find my KICKR"),
+                    systemImage: kickr.isScanning
+                        ? "stop.circle" : "antenna.radiowaves.left.and.right"
+                )
+                .frame(maxWidth: .infinity, minHeight: 54)
+            }
+            .buttonStyle(.borderedProminent)
+
+            if kickr.isScanning, kickr.candidates.isEmpty {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Looking for nearby KICKR trainers…")
                         .foregroundStyle(.secondary)
                 }
-                .frame(minHeight: 60)
             }
 
             ForEach(kickr.candidates) { candidate in
@@ -83,47 +103,56 @@ struct SetupView: View {
                 }
             }
 
-            if store.configuration.hasValidKickr {
-                savedDevice(
-                    name: store.configuration.kickrName,
-                    uuid: store.configuration.kickrUUID,
-                    state: kickr.state.label
-                )
-                if kickr.selectedID?.uuidString == store.configuration.kickrUUID,
-                   !kickr.isReady,
-                   !kickr.isScanning {
-                    Button("Reconnect saved KICKR") {
-                        kickr.resumeSavedConnection()
-                    }
-                }
-                bluetoothHelp(for: kickr.state)
-            }
+            bluetoothHelp(for: kickr.state)
         } header: {
-            Text("KICKR trainer")
+            Text("1. Trainer")
         } footer: {
-            Text("Required. The selected Core Bluetooth identity is stored on this iPhone.")
+            Text(
+                "Select the KICKR physically attached to your bike. VirtualShift "
+                    + "remembers it for future rides."
+            )
         }
     }
 
     private var clickSection: some View {
         Section {
-            Toggle("Configure a Zwift Click", isOn: usesClick)
+            Toggle("Use Zwift Click", isOn: usesClick)
                 .frame(minHeight: 60)
 
             if store.configuration.usesClick {
+                if !store.configuration.clickUUID.isEmpty {
+                    equipmentCard(
+                        name: store.configuration.clickName,
+                        state: click.state.label,
+                        symbol: "button.programmable",
+                        connected: click.isReady
+                    )
+                    if !click.isReady, !click.isScanning {
+                        Button("Connect saved Click") {
+                            click.resumeSavedConnection()
+                        }
+                    }
+                }
+
                 Button {
                     click.isScanning ? click.stopScanning() : click.startScanning()
                 } label: {
-                    HStack {
-                        Label(
-                            click.isScanning ? "Stop scanning" : "Scan for Click",
-                            systemImage: "antenna.radiowaves.left.and.right"
-                        )
-                        Spacer()
-                        Text(click.state.label)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+                    Label(
+                        click.isScanning ? "Stop looking" : "Find my Click",
+                        systemImage: click.isScanning
+                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                }
+                .buttonStyle(.borderedProminent)
+
+                if click.candidates.isEmpty {
+                    Label(
+                        "Nothing showing? Press either Click button once to wake "
+                            + "it, then try again.",
+                        systemImage: "hand.tap.fill"
+                    )
+                    .foregroundStyle(.secondary)
                 }
 
                 ForEach(click.candidates) { candidate in
@@ -136,112 +165,106 @@ struct SetupView: View {
                     }
                 }
 
-                if !store.configuration.clickUUID.isEmpty {
-                    savedDevice(
-                        name: store.configuration.clickName,
-                        uuid: store.configuration.clickUUID,
-                        state: click.state.label
-                    )
-                    if click.selectedID?.uuidString == store.configuration.clickUUID,
-                       !click.isReady,
-                       !click.isScanning {
-                        Button("Reconnect saved Click") {
-                            click.resumeSavedConnection()
-                        }
-                    }
-                    bluetoothHelp(for: click.state)
-                }
+                bluetoothHelp(for: click.state)
+            } else {
+                Text("Large on-screen shift buttons will be available during the ride.")
+                    .foregroundStyle(.secondary)
             }
         } header: {
-            Text("Shift controller")
+            Text("2. Shift controller")
         } footer: {
-            Text("Optional. Only the original Zwift Click protocol is supported.")
+            Text(
+                "Enabled by default. Turn this off only if you want to use "
+                    + "on-screen shifting."
+            )
         }
     }
 
     private var drivetrainSection: some View {
-        Section("Drivetrain") {
-            Picker("Preset", selection: drivetrainPreset) {
-                ForEach(DrivetrainPreset.allCases) { preset in
-                    VStack(alignment: .leading) {
-                        Text(preset.name)
-                        Text(preset.detail)
-                    }
-                    .tag(preset)
-                }
-            }
-            .pickerStyle(.inline)
-
-            Text(
-                store.configuration.drivetrainPreset.setupDescription
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-
-        }
-    }
-
-    private var fixedChainSection: some View {
         Section {
+            ScrollView(.horizontal) {
+                LazyHStack(spacing: 12) {
+                    ForEach(DrivetrainPreset.allCases) { preset in
+                        drivetrainCard(preset)
+                    }
+                }
+                .scrollTargetLayout()
+                .padding(.vertical, 4)
+            }
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+
             Label(
-                "Choose a quiet, straight chain line and leave the physical "
-                    + "chain there for the whole ride.",
+                "On the bike, choose one quiet, straight chain position and "
+                    + "leave it there. No tooth counts or physical gearing setup "
+                    + "are needed.",
                 systemImage: "link"
             )
             .font(.callout.weight(.semibold))
-        } header: {
-            Text("Physical bike setup")
-        } footer: {
-            Text(
-                "A Zwift Cog is already fixed. On a cassette, select one rear cog "
-                    + "with a straight chain line. Tooth counts are not needed because "
-                    + "this fixed position becomes the neutral reference."
-            )
-        }
-    }
 
-    private var circumferenceSection: some View {
-        Section {
-            TextField("Millimeters", value: circumference, format: .number)
-                .keyboardType(.numberPad)
-                .accessibilityLabel("Neutral wheel circumference in millimeters")
-
-            if store.configuration.isCircumferenceConfirmed {
+            if !store.configuration.hasSafeCircumference {
                 Label(
-                    "\(store.configuration.neutralCircumferenceMillimeters) mm confirmed",
-                    systemImage: "checkmark.circle.fill"
-                )
-                .foregroundStyle(.green)
-                .accessibilityLabel(
-                    "Neutral circumference confirmed at "
-                        + "\(store.configuration.neutralCircumferenceMillimeters) millimeters"
-                )
-            } else if !store.configuration.hasSafeCircumference {
-                Label(
-                    "This value is unsafe for the selected drivetrain.",
+                    "This preset cannot use the trainer's verified safe range.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .foregroundStyle(.red)
-            } else {
-                Button {
-                    store.confirmCircumference()
-                } label: {
-                    Text(
-                        "Confirm \(store.configuration.neutralCircumferenceMillimeters) mm"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 60)
-                }
-                .buttonStyle(.borderedProminent)
             }
         } header: {
-            Text("Neutral circumference")
+            Text("3. Virtual drivetrain")
         } footer: {
-            Text(
-                "Default: 2070 mm. Every virtual gear must stay inside the "
-                    + "physically verified 646.9–4800 mm KICKR range. Changing the "
-                    + "drivetrain or this value requires confirmation again."
-            )
+            Text(store.configuration.drivetrainPreset.setupDescription)
         }
+    }
+
+    private func drivetrainCard(_ preset: DrivetrainPreset) -> some View {
+        let selected = store.configuration.drivetrainPreset == preset
+        return Button {
+            store.setDrivetrainPreset(preset)
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(preset.category, systemImage: preset.symbol)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(selected ? Color.accentColor : .secondary)
+                    Spacer()
+                    if selected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.tint)
+                    }
+                }
+                Text(preset.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                Text(preset.detail)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Text("\(preset.drivetrain.gears.count) sequential gears")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(width: 250, height: 150, alignment: .topLeading)
+            .background(
+                selected
+                    ? Color.accentColor.opacity(0.12)
+                    : Color.secondary.opacity(0.08),
+                in: .rect(cornerRadius: 18)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 18)
+                    .stroke(
+                        selected ? Color.accentColor : Color.secondary.opacity(0.2),
+                        lineWidth: selected ? 2 : 1
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "\(preset.name), \(preset.detail), "
+                + "\(preset.drivetrain.gears.count) gears"
+        )
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var supportSection: some View {
@@ -278,7 +301,7 @@ struct SetupView: View {
         .accessibilityHint(
             canFinishSetup
                 ? "Saves setup and shows the ready screen"
-                : "Complete equipment, drivetrain, and circumference first"
+                : "Connect the selected equipment and choose a drivetrain first"
         )
     }
 
@@ -292,22 +315,6 @@ struct SetupView: View {
                 store.configuration.clickName = ""
                 store.configuration.clickUUID = ""
             }
-        }
-    }
-
-    private var drivetrainPreset: Binding<DrivetrainPreset> {
-        Binding {
-            store.configuration.drivetrainPreset
-        } set: {
-            store.setDrivetrainPreset($0)
-        }
-    }
-
-    private var circumference: Binding<Int> {
-        Binding {
-            store.configuration.neutralCircumferenceMillimeters
-        } set: {
-            store.setCircumference($0)
         }
     }
 
@@ -330,36 +337,48 @@ struct SetupView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(candidate.name)
-                    Text("\(candidate.rssi) dBm · \(candidate.id.uuidString)")
+                        .font(.headline)
+                    Text("Nearby device · signal \(candidate.rssi) dBm")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
                 Spacer()
                 if selected {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.tertiary)
                 }
             }
             .frame(minHeight: 52)
         }
     }
 
-    private func savedDevice(
+    private func equipmentCard(
         name: String,
-        uuid: String,
-        state: String
+        state: String,
+        symbol: String,
+        connected: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label(name, systemImage: "checkmark.circle")
-                .font(.headline)
-            Text(uuid)
-                .font(.caption.monospaced())
-                .foregroundStyle(.secondary)
-            Text(state)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.title2)
+                .foregroundStyle(connected ? .green : .secondary)
+                .frame(width: 38, height: 38)
+                .background(.thinMaterial, in: .circle)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(name)
+                    .font(.headline)
+                Text(state)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: connected ? "checkmark.circle.fill" : "circle.dashed")
+                .foregroundStyle(connected ? .green : .secondary)
         }
+        .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
     }
 

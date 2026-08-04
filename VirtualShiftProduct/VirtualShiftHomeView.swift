@@ -98,7 +98,7 @@ private struct ReadyView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Ready when you are")
                 .font(.largeTitle.bold())
-            Text("Equipment is saved and your neutral circumference is confirmed.")
+            Text("Your equipment and virtual drivetrain are ready.")
                 .font(.body)
                 .foregroundStyle(.secondary)
             Label(
@@ -140,15 +140,10 @@ private struct ReadyView: View {
                     store.configuration.drivetrainPreset.detail,
                     systemImage: "gearshape.2.fill"
                 )
-                Spacer()
-                Text("\(store.configuration.neutralCircumferenceMillimeters) mm")
-                    .font(.body.monospacedDigit().weight(.semibold))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "\(store.configuration.drivetrainPreset.detail) drivetrain, "
-                    + "\(store.configuration.neutralCircumferenceMillimeters) "
-                    + "millimeter neutral circumference, confirmed"
+                "\(store.configuration.drivetrainPreset.detail) virtual drivetrain"
             )
             Divider()
             Label(
@@ -313,7 +308,7 @@ private struct ActiveRideView: View {
         } message: {
             Text(
                 "VirtualShift will stop accepting controls, safely stop the trainer, "
-                    + "restore its neutral circumference, and disconnect."
+                    + "restore its starting state, and disconnect."
             )
         }
     }

@@ -13,6 +13,7 @@ public enum DrivetrainError: Error, Equatable {
     case emptyVirtualRatios
     case invalidVirtualRatio(Int)
     case duplicateVirtualRatio(Int)
+    case invalidReferenceIndex(Int)
 }
 
 public struct Drivetrain: Equatable, Sendable {
@@ -28,14 +29,71 @@ public struct Drivetrain: Equatable, Sendable {
         )
     }
 
+    public static var shimanoRoad2x12: Drivetrain {
+        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
+        return try! Drivetrain(
+            chainrings: [34, 50],
+            cassetteCogs: cassette,
+            allowedCombinations:
+                makeGears(chainring: 34, cogs: [15, 17, 19, 21, 24, 27, 30, 34])
+                + makeGears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
+        )
+    }
+
+    public static var sramRoadAxs2x12: Drivetrain {
+        let cassette = [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 33]
+        return try! Drivetrain(
+            chainrings: [33, 46],
+            cassetteCogs: cassette,
+            allowedCombinations:
+                makeGears(chainring: 33, cogs: [15, 17, 19, 21, 24, 28, 33])
+                + makeGears(chainring: 46, cogs: [10, 11, 12, 13, 14, 15, 17, 19, 21])
+        )
+    }
+
+    public static var shimanoGrx2x12: Drivetrain {
+        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32, 36]
+        return try! Drivetrain(
+            chainrings: [31, 48],
+            cassetteCogs: cassette,
+            allowedCombinations:
+                makeGears(chainring: 31, cogs: [15, 17, 19, 21, 24, 28, 32, 36])
+                + makeGears(chainring: 48, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
+        )
+    }
+
+    public static var sramXplr1x12: Drivetrain {
+        makeOneBy(
+            chainring: 40,
+            cassette: [10, 11, 12, 15, 17, 19, 21, 24, 28, 32, 38, 44]
+        )
+    }
+
+    public static var mountain1x12: Drivetrain {
+        makeOneBy(
+            chainring: 32,
+            cassette: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 51],
+            referenceIndex: 6
+        )
+    }
+
+    public static var classic1x10: Drivetrain {
+        makeOneBy(
+            chainring: 42,
+            cassette: [11, 13, 15, 18, 21, 24, 28, 32, 36, 42]
+        )
+    }
+
     public let chainrings: [Int]
     public let cassetteCogs: [Int]
     public let gears: [VirtualGear]
+    public let referenceIndex: Int
 
     public init(
         chainrings: [Int],
         cassetteCogs: [Int],
-        allowedCombinations: [VirtualGear]
+        allowedCombinations: [VirtualGear],
+        referenceIndex: Int? = nil
     ) throws {
         guard !chainrings.isEmpty else {
             throw DrivetrainError.emptyChainrings
@@ -80,9 +138,17 @@ public struct Drivetrain: Equatable, Sendable {
         self.chainrings = chainrings
         self.cassetteCogs = cassetteCogs
         gears = allowedCombinations.sorted(by: Self.gearOrder)
+        let resolvedReference = referenceIndex ?? (gears.count - 1) / 2
+        guard gears.indices.contains(resolvedReference) else {
+            throw DrivetrainError.invalidReferenceIndex(resolvedReference)
+        }
+        self.referenceIndex = resolvedReference
     }
 
-    public init(virtualRatiosHundredths: [Int]) throws {
+    public init(
+        virtualRatiosHundredths: [Int],
+        referenceIndex: Int? = nil
+    ) throws {
         guard !virtualRatiosHundredths.isEmpty else {
             throw DrivetrainError.emptyVirtualRatios
         }
@@ -105,14 +171,15 @@ public struct Drivetrain: Equatable, Sendable {
                 ratioHundredths: $0.element
             )
         }
+        let resolvedReference = referenceIndex ?? (gears.count - 1) / 2
+        guard gears.indices.contains(resolvedReference) else {
+            throw DrivetrainError.invalidReferenceIndex(resolvedReference)
+        }
+        self.referenceIndex = resolvedReference
     }
 
     public var usesNumberedGears: Bool {
         gears.first?.virtualNumber != nil
-    }
-
-    public var referenceIndex: Int {
-        (gears.count - 1) / 2
     }
 
     public var referenceGear: VirtualGear {
@@ -133,6 +200,29 @@ public struct Drivetrain: Equatable, Sendable {
                 throw duplicate(component)
             }
         }
+    }
+
+    private static func makeOneBy(
+        chainring: Int,
+        cassette: [Int],
+        referenceIndex: Int? = nil
+    ) -> Drivetrain {
+        try! Drivetrain(
+            chainrings: [chainring],
+            cassetteCogs: cassette,
+            allowedCombinations: makeGears(
+                chainring: chainring,
+                cogs: cassette
+            ),
+            referenceIndex: referenceIndex
+        )
+    }
+
+    private static func makeGears(
+        chainring: Int,
+        cogs: [Int]
+    ) -> [VirtualGear] {
+        cogs.map { try! VirtualGear(chainring: chainring, cog: $0) }
     }
 
     private static func gearOrder(

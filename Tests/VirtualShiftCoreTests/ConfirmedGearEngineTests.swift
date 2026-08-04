@@ -248,6 +248,43 @@ final class ConfirmedGearEngineTests: XCTestCase {
         XCTAssertTrue(encoded.allSatisfy { (6_469...48_000).contains($0) })
     }
 
+    func testEveryBuiltInPresetEncodesInsidePhysicallyProvenRange() throws {
+        let drivetrains: [Drivetrain] = [
+            .zwiftVirtual24,
+            .shimanoRoad2x12,
+            .sramRoadAxs2x12,
+            .shimanoGrx2x12,
+            .sramXplr1x12,
+            .mountain1x12,
+            .classic1x10,
+        ]
+
+        for drivetrain in drivetrains {
+            _ = try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: 2_070
+            )
+            for gear in drivetrain.gears {
+                let circumference = try WheelCircumferenceScaler
+                    .effectiveCircumference(
+                        neutralCircumference: 2_070,
+                        referenceRatio: drivetrain.referenceGear.ratio,
+                        selectedRatio: gear.ratio
+                    )
+                let bytes = Array(
+                    try WahooKickrCommand.setWheelCircumference(
+                        millimeters: circumference
+                    )
+                )
+                let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
+                XCTAssertTrue(
+                    (6_469...48_000).contains(encoded),
+                    "\(encoded) is outside the proven range"
+                )
+            }
+        }
+    }
+
     private func makeEngine() throws -> ConfirmedGearEngine {
         try ConfirmedGearEngine(
             drivetrain: makeDrivetrain(),

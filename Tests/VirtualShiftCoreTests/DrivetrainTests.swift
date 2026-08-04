@@ -99,6 +99,24 @@ final class DrivetrainTests: XCTestCase {
         ) {
             XCTAssertEqual($0 as? DrivetrainError, .duplicateVirtualRatio(75))
         }
+        XCTAssertThrowsError(
+            try Drivetrain(
+                virtualRatiosHundredths: [75, 87],
+                referenceIndex: 2
+            )
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .invalidReferenceIndex(2))
+        }
+    }
+
+    func testSupportsExplicitReferenceGear() throws {
+        let drivetrain = try Drivetrain(
+            virtualRatiosHundredths: [75, 87, 99, 111],
+            referenceIndex: 2
+        )
+
+        XCTAssertEqual(drivetrain.referenceIndex, 2)
+        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 3)
     }
 
     func testRejectsEmptyComponentAndCombinationLists() throws {
