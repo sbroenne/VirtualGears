@@ -16,7 +16,6 @@ struct SetupView: View {
             equipmentSection
             gearsSection
             chainLineSection
-            supportSection
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -39,7 +38,7 @@ struct SetupView: View {
                 SetupRow(
                     title: "Trainer",
                     value: store.configuration.hasValidKickr
-                        ? store.configuration.kickrName : "Not set up",
+                        ? store.configuration.kickrName : "None yet",
                     status: .init(state: kickr.state, isRequired: true)
                 )
             }
@@ -59,8 +58,9 @@ struct SetupView: View {
             Text("Your equipment")
         } footer: {
             Text(
-                "VirtualShift connects to these itself, and reconnects "
-                    + "automatically every time you ride."
+                "VirtualShift finds these by itself and reconnects to them "
+                    + "every time you ride. Change them here only if it picked "
+                    + "the wrong one."
             )
         }
     }
@@ -107,16 +107,6 @@ struct SetupView: View {
         }
     }
 
-    private var supportSection: some View {
-        Section {
-        } footer: {
-            Text(
-                "Your setup is kept if you leave this screen. Your ride starts "
-                    + "by itself whenever you open VirtualShift."
-            )
-        }
-    }
-
     private var finishButton: some View {
         VStack(spacing: 8) {
             if let blocker = remainingStep {
@@ -138,16 +128,14 @@ struct SetupView: View {
         .background(.bar)
     }
 
-    /// Names anything that would stop a ride, so leaving this screen never
-    /// hides a problem.
+    /// Nothing here is a gate, so this says what is currently true rather than
+    /// what the rider must go and do. The gears row raises its own problem, so
+    /// only the trainer is mentioned here.
     private var remainingStep: String? {
-        if !store.configuration.hasValidKickr || !kickr.isReady {
-            return "Connect your trainer to continue."
+        guard !store.configuration.hasValidKickr || !kickr.isReady else {
+            return nil
         }
-        if !store.configuration.hasSafeCircumference {
-            return "Choose a different set of gears to continue."
-        }
-        return nil
+        return "Your trainer is not connected, so a ride cannot start yet."
     }
 
     private func autoConnectSavedEquipment() {
