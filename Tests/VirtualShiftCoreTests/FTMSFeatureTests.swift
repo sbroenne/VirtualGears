@@ -45,6 +45,29 @@ final class FTMSFeatureTests: XCTestCase {
         )
     }
 
+    func testVirtualTrainerProfileDoesNotAdvertiseOrAcceptERG() {
+        XCTAssertEqual(
+            Array(VirtualTrainerFTMSProfile.feature.encode()),
+            [0x82, 0x50, 0x00, 0x00, 0x04, 0x60, 0x00, 0x00]
+        )
+        XCTAssertFalse(
+            VirtualTrainerFTMSProfile.feature.targetSettingFeatures.contains(.power)
+        )
+        XCTAssertFalse(
+            VirtualTrainerFTMSProfile.supports(.setTargetPower(watts: 250))
+        )
+        XCTAssertTrue(
+            VirtualTrainerFTMSProfile.supports(
+                .setIndoorBikeSimulationParameters(.init(
+                    windSpeedThousandthsMetersPerSecond: 0,
+                    gradeHundredthsPercent: 500,
+                    rollingResistanceCoefficientTenThousandths: 33,
+                    windResistanceCoefficientHundredthsKilogramsPerMeter: 35
+                ))
+            )
+        )
+    }
+
     func testPowerRangeSignedRoundTripAndValidation() throws {
         let range = try SupportedPowerRange(
             minimumWatts: -100,

@@ -311,6 +311,10 @@ final class ProxyCoordinator {
         guard state == .active, kickr.isReady else {
             return .init(result: .operationFailed, status: nil)
         }
+        guard VirtualTrainerFTMSProfile.supports(request) else {
+            log("Rejected unsupported ERG target-power command", .warning)
+            return .init(result: .opcodeNotSupported, status: nil)
+        }
         do {
             if case let .setWheelCircumference(tenths) = request {
                 return try await setBaseline(
@@ -455,6 +459,7 @@ final class ProxyCoordinator {
         }
         guard var engine = gearEngine else { return }
         let oldRequested = engine.requestedIndex
+        let oldConfirmed = engine.confirmedIndex
         let change = engine.requestShift(by: direction == .harder ? 1 : -1)
         gearEngine = engine
         if engine.requestedIndex == oldRequested {
@@ -462,8 +467,13 @@ final class ProxyCoordinator {
             return
         }
         pendingFeedback.append(feedback)
-        guard let change, shiftTask == nil else { return }
-        startShift(change)
+        if let change {
+            guard shiftTask == nil else { return }
+            startShift(change)
+        } else if engine.confirmedIndex != oldConfirmed {
+            updateDisplayedGear()
+            confirmShift(from: oldConfirmed, to: engine.confirmedIndex)
+        }
     }
 
     private func startShift(_ initial: PendingGearChange) {
@@ -504,7 +514,7 @@ final class ProxyCoordinator {
         case .reset: .reset
         case let .setTargetResistanceLevel(value):
             .targetResistanceLevelChanged(tenths: value)
-        case let .setTargetPower(value): .targetPowerChanged(watts: value)
+        case .setTargetPower: nil
         case .startOrResume: .startedOrResumed
         case let .stopOrPause(value): .stoppedOrPaused(value)
         case let .setIndoorBikeSimulationParameters(value):

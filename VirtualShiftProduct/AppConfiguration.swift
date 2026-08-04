@@ -73,26 +73,33 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .shimano105Di2:
             let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
+            let reference = gear(chainring: 50, cog: 17)
             let combinations =
                 gears(chainring: 34, cogs: [15, 17, 19, 21, 24, 27, 30, 34])
-                + gears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
+                + gears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21])
             return try! Drivetrain(
                 chainrings: [34, 50],
                 cassetteCogs: cassette,
-                allowedCombinations: combinations
+                allowedCombinations: combinations,
+                referenceGear: reference
             )
         case .simple1x:
             let cassette = [11, 13, 15, 18, 21, 24, 28, 32, 36, 42]
             return try! Drivetrain(
                 chainrings: [42],
                 cassetteCogs: cassette,
-                allowedCombinations: gears(chainring: 42, cogs: cassette)
+                allowedCombinations: gears(chainring: 42, cogs: cassette),
+                referenceGear: gear(chainring: 42, cog: 15)
             )
         }
     }
 
+    private func gear(chainring: Int, cog: Int) -> VirtualGear {
+        try! VirtualGear(chainring: chainring, cog: cog)
+    }
+
     private func gears(chainring: Int, cogs: [Int]) -> [VirtualGear] {
-        cogs.map { try! VirtualGear(chainring: chainring, cog: $0) }
+        cogs.map { gear(chainring: chainring, cog: $0) }
     }
 }
 

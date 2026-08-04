@@ -42,7 +42,6 @@ final class FTMSPeripheral: NSObject {
     private let resistanceUUID = CBUUID(
         string: FTMSUUID.supportedResistanceLevelRange
     )
-    private let powerUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let controlUUID = CBUUID(
         string: FTMSUUID.fitnessMachineControlPoint
     )
@@ -52,7 +51,6 @@ final class FTMSPeripheral: NSObject {
     private var featureCharacteristic: CBMutableCharacteristic!
     private var bikeDataCharacteristic: CBMutableCharacteristic!
     private var resistanceCharacteristic: CBMutableCharacteristic!
-    private var powerCharacteristic: CBMutableCharacteristic!
     private var controlCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
     private var startRequested = false
@@ -78,28 +76,13 @@ final class FTMSPeripheral: NSObject {
     private var updates: [Update] = []
 
     @ObservationIgnored
-    private lazy var featureData = FitnessMachineFeature(
-        machineFeatures: [
-            .cadence, .resistanceLevel, .elapsedTime, .powerMeasurement,
-        ],
-        targetSettingFeatures: [
-            .resistanceLevel, .power,
-            .indoorBikeSimulationParameters, .wheelCircumference,
-        ]
-    ).encode()
+    private lazy var featureData = VirtualTrainerFTMSProfile.feature.encode()
 
     @ObservationIgnored
     private lazy var resistanceData = try! SupportedResistanceLevelRange(
         minimumTenths: 0,
         maximumTenths: 1_000,
         incrementTenths: 5
-    ).encode()
-
-    @ObservationIgnored
-    private lazy var powerData = try! SupportedPowerRange(
-        minimumWatts: 0,
-        maximumWatts: 2_500,
-        incrementWatts: 1
     ).encode()
 
     init(diagnostics: ProductDiagnosticsStore) {
@@ -192,12 +175,6 @@ final class FTMSPeripheral: NSObject {
             value: nil,
             permissions: [.readable]
         )
-        powerCharacteristic = CBMutableCharacteristic(
-            type: powerUUID,
-            properties: [.read],
-            value: nil,
-            permissions: [.readable]
-        )
         controlCharacteristic = CBMutableCharacteristic(
             type: controlUUID,
             properties: [.write, .indicate],
@@ -213,8 +190,8 @@ final class FTMSPeripheral: NSObject {
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [
             featureCharacteristic, bikeDataCharacteristic,
-            resistanceCharacteristic, powerCharacteristic,
-            controlCharacteristic, statusCharacteristic,
+            resistanceCharacteristic, controlCharacteristic,
+            statusCharacteristic,
         ]
         manager.add(service)
     }
@@ -353,7 +330,6 @@ final class FTMSPeripheral: NSObject {
         switch uuid {
         case featureUUID: featureData
         case resistanceUUID: resistanceData
-        case powerUUID: powerData
         default: nil
         }
     }

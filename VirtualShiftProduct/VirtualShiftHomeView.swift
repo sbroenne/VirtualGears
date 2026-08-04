@@ -150,6 +150,21 @@ private struct ReadyView: View {
                     + "\(store.configuration.neutralCircumferenceMillimeters) "
                     + "millimeter neutral circumference, confirmed"
             )
+            let reference = store.configuration.drivetrainPreset.drivetrain.referenceGear
+            Divider()
+            Label(
+                "Before Start: physically select \(reference.chainring) × "
+                    + "\(reference.cog), then leave the chain there.",
+                systemImage: "link.circle.fill"
+            )
+            .font(.headline)
+            .foregroundStyle(.primary)
+            .accessibilityLabel(
+                "Before starting, physically shift to the "
+                    + "\(reference.chainring) tooth chainring and "
+                    + "\(reference.cog) tooth cog. Leave the physical chain in "
+                    + "that gear for the entire ride."
+            )
         }
         .padding(20)
         .background(.regularMaterial, in: .rect(cornerRadius: 24))

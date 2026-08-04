@@ -7,19 +7,23 @@ public enum DrivetrainError: Error, Equatable {
     case duplicateChainring(Int)
     case duplicateCassetteCog(Int)
     case duplicateCombination(VirtualGear)
+    case duplicateRatio(VirtualGear, VirtualGear)
     case unknownChainring(VirtualGear)
     case unknownCassetteCog(VirtualGear)
+    case unknownReferenceGear(VirtualGear)
 }
 
 public struct Drivetrain: Equatable, Sendable {
     public let chainrings: [Int]
     public let cassetteCogs: [Int]
     public let gears: [VirtualGear]
+    public let referenceIndex: Int
 
     public init(
         chainrings: [Int],
         cassetteCogs: [Int],
-        allowedCombinations: [VirtualGear]
+        allowedCombinations: [VirtualGear],
+        referenceGear: VirtualGear
     ) throws {
         guard !chainrings.isEmpty else {
             throw DrivetrainError.emptyChainrings
@@ -45,7 +49,7 @@ public struct Drivetrain: Equatable, Sendable {
         let chainringSet = Set(chainrings)
         let cassetteSet = Set(cassetteCogs)
         var combinationSet = Set<VirtualGear>()
-        for gear in allowedCombinations {
+        for (index, gear) in allowedCombinations.enumerated() {
             guard chainringSet.contains(gear.chainring) else {
                 throw DrivetrainError.unknownChainring(gear)
             }
@@ -55,15 +59,20 @@ public struct Drivetrain: Equatable, Sendable {
             guard combinationSet.insert(gear).inserted else {
                 throw DrivetrainError.duplicateCombination(gear)
             }
+            if let duplicate = allowedCombinations[..<index].first(where: {
+                Self.hasEqualRatio($0, gear)
+            }) {
+                throw DrivetrainError.duplicateRatio(duplicate, gear)
+            }
+        }
+        guard combinationSet.contains(referenceGear) else {
+            throw DrivetrainError.unknownReferenceGear(referenceGear)
         }
 
         self.chainrings = chainrings
         self.cassetteCogs = cassetteCogs
         gears = allowedCombinations.sorted(by: Self.gearOrder)
-    }
-
-    public var referenceIndex: Int {
-        (gears.count - 1) / 2
+        referenceIndex = gears.firstIndex(of: referenceGear)!
     }
 
     public var referenceGear: VirtualGear {
@@ -102,5 +111,13 @@ public struct Drivetrain: Equatable, Sendable {
             return lhs.chainring < rhs.chainring
         }
         return lhs.cog < rhs.cog
+    }
+
+    private static func hasEqualRatio(
+        _ lhs: VirtualGear,
+        _ rhs: VirtualGear
+    ) -> Bool {
+        lhs.chainring.multipliedFullWidth(by: rhs.cog)
+            == rhs.chainring.multipliedFullWidth(by: lhs.cog)
     }
 }

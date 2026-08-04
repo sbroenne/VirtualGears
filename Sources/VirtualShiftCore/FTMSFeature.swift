@@ -74,6 +74,27 @@ public struct FitnessMachineFeature: Equatable, Sendable {
     }
 }
 
+public enum VirtualTrainerFTMSProfile {
+    public static let feature = FitnessMachineFeature(
+        machineFeatures: [
+            .cadence, .resistanceLevel, .elapsedTime, .powerMeasurement,
+        ],
+        targetSettingFeatures: [
+            .resistanceLevel, .indoorBikeSimulationParameters,
+            .wheelCircumference,
+        ]
+    )
+
+    public static func supports(
+        _ request: FitnessMachineControlPointRequest
+    ) -> Bool {
+        if case .setTargetPower = request {
+            return false
+        }
+        return true
+    }
+}
+
 public struct SupportedPowerRange: Equatable, Sendable {
     public let minimumWatts: Int16
     public let maximumWatts: Int16

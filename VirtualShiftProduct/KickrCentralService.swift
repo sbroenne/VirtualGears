@@ -6,7 +6,6 @@ import VirtualShiftCore
 struct KickrCapabilities: Equatable, Sendable {
     var feature: FitnessMachineFeature?
     var resistanceRange: SupportedResistanceLevelRange?
-    var powerRange: SupportedPowerRange?
     var supportsWahooControl = false
 }
 
@@ -58,7 +57,6 @@ final class KickrCentralService: NSObject {
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
     private let bikeDataUUID = CBUUID(string: FTMSUUID.indoorBikeData)
     private let resistanceUUID = CBUUID(string: FTMSUUID.supportedResistanceLevelRange)
-    private let powerUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let controlUUID = CBUUID(string: FTMSUUID.fitnessMachineControlPoint)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
     private let wahooUUID = CBUUID(string: WahooKickrProtocol.controlCharacteristicUUID)
@@ -192,6 +190,11 @@ final class KickrCentralService: NSObject {
     func execute(
         _ request: FitnessMachineControlPointRequest
     ) async throws -> FitnessMachineControlPointResponse {
+        guard VirtualTrainerFTMSProfile.supports(request) else {
+            throw ProductBluetoothError.commandFailed(
+                "Target-power control is not supported"
+            )
+        }
         let result = try await withCheckedThrowingContinuation { continuation in
             enqueue(
                 .ftms(request),
@@ -217,10 +220,6 @@ final class KickrCentralService: NSObject {
             throw ProductBluetoothError.commandFailed("Unexpected trainer response")
         }
         return response
-    }
-
-    func setTargetPower(watts: Int16) {
-        enqueue(.ftms(.setTargetPower(watts: watts)), name: "Set target power")
     }
 
     func setTargetResistance(tenths: Int16) {
@@ -329,8 +328,8 @@ final class KickrCentralService: NSObject {
 
     private func finishDiscovery() {
         let required = [
-            featureUUID, bikeDataUUID, resistanceUUID, powerUUID,
-            controlUUID, statusUUID, wahooUUID,
+            featureUUID, bikeDataUUID, resistanceUUID, controlUUID,
+            statusUUID, wahooUUID,
         ]
         let missing = required.filter { characteristics[$0] == nil }
         guard missing.isEmpty else {
@@ -346,7 +345,7 @@ final class KickrCentralService: NSObject {
         }
         capabilities.supportsWahooControl = true
 
-        for uuid in [featureUUID, resistanceUUID, powerUUID] {
+        for uuid in [featureUUID, resistanceUUID] {
             peripheral?.readValue(for: characteristics[uuid]!)
         }
         requiredSubscriptions = [bikeDataUUID, statusUUID, controlUUID, wahooUUID]
@@ -723,7 +722,7 @@ extension KickrCentralService: CBPeripheralDelegate {
                 if service.uuid == ftmsService {
                     peripheral.discoverCharacteristics(
                         [
-                            featureUUID, bikeDataUUID, resistanceUUID, powerUUID,
+                            featureUUID, bikeDataUUID, resistanceUUID,
                             controlUUID, statusUUID,
                         ],
                         for: service
@@ -814,8 +813,6 @@ extension KickrCentralService: CBPeripheralDelegate {
                     capabilities.feature = try .decode(data)
                 case resistanceUUID:
                     capabilities.resistanceRange = try .decode(data)
-                case powerUUID:
-                    capabilities.powerRange = try .decode(data)
                 case bikeDataUUID:
                     let value = try IndoorBikeData.decode(data)
                     latestBikeData = value

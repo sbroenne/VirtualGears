@@ -110,13 +110,14 @@ final class ConfirmedGearEngineTests: XCTestCase {
     }
 
     func testEqualEncodedStepsDoNotSendDuplicateCommands() throws {
-        let first = try VirtualGear(chainring: 30, cog: 15)
-        let second = try VirtualGear(chainring: 40, cog: 20)
+        let first = try VirtualGear(chainring: 100_000, cog: 50_000)
+        let second = try VirtualGear(chainring: 100_001, cog: 50_000)
         let harder = try VirtualGear(chainring: 50, cog: 20)
         let drivetrain = try Drivetrain(
-            chainrings: [30, 40, 50],
-            cassetteCogs: [15, 20],
-            allowedCombinations: [first, second, harder]
+            chainrings: [100_000, 100_001, 50],
+            cassetteCogs: [50_000, 20],
+            allowedCombinations: [first, second, harder],
+            referenceGear: second
         )
         var engine = try ConfirmedGearEngine(
             drivetrain: drivetrain,
@@ -235,12 +236,14 @@ final class ConfirmedGearEngineTests: XCTestCase {
 
     private func makeDrivetrain() throws -> Drivetrain {
         let cogs = [30, 20, 15, 10]
+        let gears = try cogs.map {
+            try VirtualGear(chainring: 30, cog: $0)
+        }
         return try Drivetrain(
             chainrings: [30],
             cassetteCogs: cogs,
-            allowedCombinations: cogs.map {
-                try VirtualGear(chainring: 30, cog: $0)
-            }
+            allowedCombinations: gears,
+            referenceGear: gears[1]
         )
     }
 

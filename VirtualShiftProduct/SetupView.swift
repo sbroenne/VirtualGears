@@ -173,10 +173,26 @@ struct SetupView: View {
 
             Text(
                 "\(store.configuration.drivetrainPreset.drivetrain.gears.count) "
-                    + "allowed gear combinations; extreme cross-chaining is excluded."
+                    + "sequential gears; duplicate ratios and extreme cross-chaining "
+                    + "are excluded."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
+
+            let reference =
+                store.configuration.drivetrainPreset.drivetrain.referenceGear
+            Label(
+                "Leave the physical chain in \(reference.chainring) × "
+                    + "\(reference.cog) for the whole ride.",
+                systemImage: "link"
+            )
+            .font(.callout.weight(.semibold))
+            .accessibilityLabel(
+                "Before riding, physically shift to the "
+                    + "\(reference.chainring) tooth chainring and "
+                    + "\(reference.cog) tooth cog. Do not physically shift during "
+                    + "the ride."
+            )
         }
     }
 
