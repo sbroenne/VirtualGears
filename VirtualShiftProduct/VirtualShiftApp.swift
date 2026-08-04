@@ -30,8 +30,7 @@ struct VirtualShiftApp: App {
                 store: configurationStore,
                 kickr: kickr,
                 click: click,
-                coordinator: coordinator,
-                diagnostics: diagnostics
+                coordinator: coordinator
             )
             .onChange(of: configurationStore.configuration.setupComplete) {
                 if !configurationStore.configuration.setupComplete {

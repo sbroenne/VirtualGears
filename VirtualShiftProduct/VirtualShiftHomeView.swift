@@ -8,7 +8,6 @@ struct VirtualShiftHomeView: View {
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
-    @Bindable var diagnostics: ProductDiagnosticsStore
     /// Set once the rider stops a ride, so the app does not immediately start a
     /// new one. Reopening the app is the only way to ask for another ride.
     @State private var riderStopped = false
@@ -28,7 +27,6 @@ struct VirtualShiftHomeView: View {
                 kickr: kickr,
                 click: click,
                 coordinator: coordinator,
-                diagnostics: diagnostics,
                 autoStarts: !riderStopped
             )
         } else {
@@ -37,7 +35,6 @@ struct VirtualShiftHomeView: View {
                     store: store,
                     kickr: kickr,
                     click: click,
-                    diagnostics: diagnostics,
                     onStartRide: {
                         coordinator.startRide(configuration: store.configuration)
                     }
@@ -52,7 +49,6 @@ private struct ReadyView: View {
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
-    @Bindable var diagnostics: ProductDiagnosticsStore
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
     @State private var showsSettings = false
@@ -80,7 +76,7 @@ private struct ReadyView: View {
                     Button("Settings", systemImage: "gearshape") {
                         showsSettings = true
                     }
-                    .accessibilityHint("Review equipment, diagnostics, and ride setup")
+                    .accessibilityHint("Review your equipment and gears")
                 }
             }
             .sheet(isPresented: $showsSettings) {
@@ -89,7 +85,6 @@ private struct ReadyView: View {
                         store: store,
                         kickr: kickr,
                         click: click,
-                        diagnostics: diagnostics,
                         isEditing: true,
                         onFinish: { showsSettings = false }
                     )
@@ -870,143 +865,6 @@ private struct GearPositionRail: View {
     }
 }
 
-struct DiagnosticsView: View {
-    @Bindable var diagnostics: ProductDiagnosticsStore
-    @Bindable var kickr: KickrCentralService
-    @Bindable var click: ClickCentralService
-    @Environment(\.dismiss) private var dismiss
-    @State private var preparedExport: String?
-    @State private var copied = false
-
-    var body: some View {
-        List {
-            Section("Bluetooth") {
-                DiagnosticStatusRow(title: "KICKR", value: kickr.state.label)
-                DiagnosticStatusRow(title: "Click", value: click.state.label)
-                if needsBluetoothHelp {
-                    Text(
-                        "Allow Bluetooth in Settings, turn Bluetooth on, keep equipment "
-                            + "awake and nearby, then retry the connection."
-                    )
-                    Button("Open App Settings") {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
-                    }
-                }
-            }
-
-            Section("App & Device") {
-                DiagnosticStatusRow(title: "App", value: appVersion)
-                DiagnosticStatusRow(title: "Device", value: deviceDescription)
-                DiagnosticStatusRow(
-                    title: "Operation",
-                    value: "Foreground required · no ride history stored"
-                )
-            }
-
-            Section {
-                Button {
-                    preparedExport = diagnostics.exportText(
-                        appVersion: appVersion,
-                        deviceDescription: deviceDescription
-                    )
-                } label: {
-                    Label("Prepare Export", systemImage: "square.and.arrow.up")
-                }
-                if let preparedExport {
-                    ShareLink(item: preparedExport) {
-                        Label("Share Prepared Diagnostics", systemImage: "square.and.arrow.up.fill")
-                    }
-                }
-                Button {
-                    UIPasteboard.general.string = diagnostics.exportText(
-                        appVersion: appVersion,
-                        deviceDescription: deviceDescription
-                    )
-                    copied = true
-                } label: {
-                    Label(copied ? "Copied" : "Copy Diagnostics", systemImage: "doc.on.doc")
-                }
-            } footer: {
-                Text(
-                    "Export is generated only when requested. Bluetooth identifiers are "
-                        + "redacted and only the newest \(diagnostics.capacity) events are retained."
-                )
-            }
-
-            Section("Recent Events (\(diagnostics.entries.count))") {
-                if diagnostics.entries.isEmpty {
-                    ContentUnavailableView(
-                        "No Events",
-                        systemImage: "checkmark.circle",
-                        description: Text("Connection and recovery events will appear here.")
-                    )
-                } else {
-                    ForEach(Array(diagnostics.entries.suffix(100).reversed())) { entry in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(entry.source)
-                                    .font(.headline)
-                                Spacer()
-                                Text(entry.level.rawValue.capitalized)
-                                    .font(.caption.weight(.semibold))
-                            }
-                            Text(entry.message)
-                                .font(.subheadline)
-                                .textSelection(.enabled)
-                            Text(entry.date.formatted(date: .omitted, time: .standard))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-            }
-        }
-        .navigationTitle("Diagnostics")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-            }
-        }
-    }
-
-    private var needsBluetoothHelp: Bool {
-        [kickr.state.label, click.state.label].contains {
-            $0.localizedCaseInsensitiveContains("permission")
-                || $0.localizedCaseInsensitiveContains("unauthorized")
-                || $0.localizedCaseInsensitiveContains("off")
-        }
-    }
-
-    private var appVersion: String {
-        let version = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleShortVersionString"
-        ) as? String ?? "Unknown"
-        let build = Bundle.main.object(
-            forInfoDictionaryKey: "CFBundleVersion"
-        ) as? String ?? "Unknown"
-        return "\(version) (\(build))"
-    }
-
-    private var deviceDescription: String {
-        "\(UIDevice.current.model) · \(UIDevice.current.systemName) "
-            + "\(UIDevice.current.systemVersion)"
-    }
-}
-
-private struct DiagnosticStatusRow: View {
-    let title: String
-    let value: String
-
-    var body: some View {
-        LabeledContent(title, value: value)
-            .accessibilityElement(children: .combine)
-    }
-}
-
 #Preview("First run") {
     let diagnostics = ProductDiagnosticsStore()
     let kickr = KickrCentralService(diagnostics: diagnostics)
@@ -1019,7 +877,6 @@ private struct DiagnosticStatusRow: View {
             kickr: kickr,
             click: click,
             diagnostics: diagnostics
-        ),
-        diagnostics: diagnostics
+        )
     )
 }

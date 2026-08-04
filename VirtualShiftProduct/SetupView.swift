@@ -9,7 +9,6 @@ struct SetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
-    @Bindable var diagnostics: ProductDiagnosticsStore
     var isEditing = false
     var onFinish: (() -> Void)?
     var onStartRide: (() -> Void)?
@@ -132,15 +131,10 @@ struct SetupView: View {
 
     private var supportSection: some View {
         Section {
-            NavigationLink {
-                DiagnosticsView(diagnostics: diagnostics, kickr: kickr, click: click)
-            } label: {
-                Label("Diagnostics & app info", systemImage: "stethoscope")
-            }
         } footer: {
             Text(
-                "Your setup is kept if you leave this screen. Start Ride turns on "
-                    + "once your equipment is really connected."
+                "Your setup is kept if you leave this screen. Your ride starts "
+                    + "by itself whenever you open VirtualShift."
             )
         }
     }
@@ -852,8 +846,7 @@ private struct EquipmentSummary: View {
         SetupView(
             store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!),
             kickr: KickrCentralService(diagnostics: diagnostics),
-            click: ClickCentralService(diagnostics: diagnostics),
-            diagnostics: diagnostics
+            click: ClickCentralService(diagnostics: diagnostics)
         )
     }
 }
