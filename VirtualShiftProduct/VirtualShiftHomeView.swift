@@ -251,17 +251,12 @@ private struct ActiveRideView: View {
             let landscape = geometry.size.width > geometry.size.height
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
-                if landscape {
-                    landscapeContent(geometry)
-                } else {
-                    portraitContent(geometry)
-                }
-                if isDimmed {
-                    Color.black
-                        .opacity(reduceTransparency ? 0.62 : 0.48)
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
+                VStack(spacing: 8) {
+                    rideHeader
+                        .opacity(showsChrome ? 1 : 0.45)
+                    connectionChips
+                        .opacity(showsChrome ? 1 : 0)
+                    shiftSurface(geometry, landscape: landscape)
                 }
             }
             .safeAreaPadding(.horizontal, landscape ? 18 : 12)
@@ -312,38 +307,41 @@ private struct ActiveRideView: View {
         }
     }
 
-    private func portraitContent(_ geometry: GeometryProxy) -> some View {
-        VStack(spacing: 10) {
-            rideHeader
-            connectionChips
-            gearDisplay(
-                fontSize: min(geometry.size.width * 0.46, geometry.size.height * 0.24)
+    /// The whole area below the header is one shifting surface: the left half
+    /// always shifts easier and the right half always shifts harder, so the
+    /// rider never has to aim. The gear readout floats on top and passes taps
+    /// through, which keeps the centre of the screen usable while riding.
+    private func shiftSurface(
+        _ geometry: GeometryProxy,
+        landscape: Bool
+    ) -> some View {
+        ZStack {
+            HStack(spacing: 10) {
+                shiftPad(easier: true, landscape: landscape)
+                shiftPad(easier: false, landscape: landscape)
+            }
+            .accessibilityElement(children: .contain)
+
+            gearReadout(
+                fontSize: landscape
+                    ? min(geometry.size.width * 0.2, geometry.size.height * 0.34)
+                    : min(geometry.size.width * 0.46, geometry.size.height * 0.26)
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            shiftControls
-                .frame(height: max(190, geometry.size.height * 0.36))
+            .frame(maxWidth: landscape ? geometry.size.width * 0.52 : .infinity)
+            .allowsHitTesting(false)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func landscapeContent(_ geometry: GeometryProxy) -> some View {
-        VStack(spacing: 8) {
-            rideHeader
-            HStack(spacing: 12) {
-                shiftPad(easier: true)
-                    .frame(width: max(130, geometry.size.width * 0.26))
-                VStack(spacing: 8) {
-                    connectionChips
-                    gearDisplay(
-                        fontSize: min(geometry.size.width * 0.22, geometry.size.height * 0.38)
-                    )
-                    .frame(maxHeight: .infinity)
-                }
-                .frame(maxWidth: .infinity)
-                shiftPad(easier: false)
-                    .frame(width: max(130, geometry.size.width * 0.26))
-            }
-            .frame(maxHeight: .infinity)
-        }
+    /// Equipment trouble always wins over the ambient state, so a problem can
+    /// never hide behind a faded screen. The Stop control and the layout stay
+    /// put either way, so no target ever moves under the rider's thumb.
+    private var showsChrome: Bool {
+        !isDimmed || hasEquipmentProblem || coordinator.state != .active
+    }
+
+    private var hasEquipmentProblem: Bool {
+        equipmentItems.contains { $0.state != .ok }
     }
 
     private var rideHeader: some View {
@@ -463,9 +461,8 @@ private struct ActiveRideView: View {
         return items
     }
 
-    private func gearDisplay(fontSize: CGFloat) -> some View {
-        VStack(spacing: 2) {
-            Spacer(minLength: 0)
+    private func gearReadout(fontSize: CGFloat) -> some View {
+        VStack(spacing: 4) {
             Text(primaryGearText)
                 .font(.system(
                     size: max(44, fontSize),
@@ -475,43 +472,51 @@ private struct ActiveRideView: View {
                 .minimumScaleFactor(0.3)
                 .lineLimit(1)
                 .contentTransition(reduceMotion ? .identity : .numericText())
-                .foregroundStyle(coordinator.state == .active ? Color.primary : Color.secondary)
+                .foregroundStyle(
+                    coordinator.state == .active ? Color.primary : Color.secondary
+                )
                 .accessibilityLabel(gearAccessibilityLabel)
             Text(secondaryGearText)
                 .font(.headline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(isShiftPending ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .accessibilityHidden(true)
-            Spacer(minLength: 0)
             GearPositionRail(
                 gears: coordinator.gearSequence,
-                selectedIndex: coordinator.confirmedGearIndex
+                selectedIndex: coordinator.confirmedGearIndex,
+                requestedIndex: coordinator.requestedGearIndex
             )
+            .padding(.top, 10)
+            .padding(.horizontal, 18)
         }
+        .padding(.horizontal, 14)
         .frame(maxWidth: .infinity)
     }
 
-    private var shiftControls: some View {
-        HStack(spacing: 12) {
-            shiftPad(easier: true)
-            shiftPad(easier: false)
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private func shiftPad(easier: Bool) -> some View {
+    private func shiftPad(easier: Bool, landscape: Bool) -> some View {
         ShiftPad(
             title: easier ? "Easier" : "Harder",
             symbol: easier ? "minus" : "plus",
+            alignment: landscape
+                ? (easier ? .bottomLeading : .bottomTrailing)
+                : .bottom,
             hint: easier
                 ? "Requests the next easier gear"
                 : "Requests the next harder gear",
-            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder
+            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder,
+            quiet: !showsChrome
         ) {
             wake()
             coordinator.shift(easier ? .easier : .harder)
         }
+    }
+
+    /// True while the rider has asked for a gear the trainer has not confirmed.
+    private var isShiftPending: Bool {
+        guard let requested = coordinator.requestedGearIndex,
+              let confirmed = coordinator.confirmedGearIndex else { return false }
+        return requested != confirmed
     }
 
     private var primaryGearText: String {
@@ -527,7 +532,12 @@ private struct ActiveRideView: View {
             return coordinator.state == .active
                 ? "Waiting for the trainer" : statusText
         }
-        return "Gear \(index + 1) of \(coordinator.gearSequence.count)"
+        if isShiftPending { return "Shifting…" }
+        let total = coordinator.gearSequence.count
+        if coordinator.displayedGear?.virtualNumber != nil {
+            return "of \(total)"
+        }
+        return "Gear \(index + 1) of \(total)"
     }
 
     private var gearAccessibilityLabel: String {
@@ -628,15 +638,22 @@ private struct EquipmentItem: Identifiable {
 private struct ShiftPad: View {
     let title: String
     let symbol: String
+    /// In landscape the label moves to the outer corner so the gear readout
+    /// keeps the middle of the screen to itself.
+    let alignment: Alignment
     let hint: String
     let disabled: Bool
+    /// Ambient state: the pad recedes so the gear stays readable without
+    /// covering the screen in a dark overlay.
+    let quiet: Bool
     let action: () -> Void
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
-    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 64
+    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 6) {
+            VStack(spacing: 2) {
+                Spacer(minLength: 0)
                 Image(systemName: symbol)
                     .font(.system(size: symbolSize, weight: .black, design: .rounded))
                     .frame(height: symbolSize)
@@ -645,10 +662,14 @@ private struct ShiftPad: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.bottom, 26)
+            .padding(.horizontal, 26)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
             .contentShape(.rect)
         }
-        .buttonStyle(ShiftPadStyle(disabled: disabled, outlined: differentiate))
+        .buttonStyle(
+            ShiftPadStyle(disabled: disabled, outlined: differentiate, quiet: quiet)
+        )
         .disabled(disabled)
         .accessibilityLabel("Shift \(title.lowercased())")
         .accessibilityHint(
@@ -660,33 +681,62 @@ private struct ShiftPad: View {
 private struct ShiftPadStyle: ButtonStyle {
     let disabled: Bool
     let outlined: Bool
+    let quiet: Bool
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(disabled ? Color.secondary : Color.white)
+            .foregroundStyle(foreground(pressed: configuration.isPressed))
             .background {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
-                        disabled
-                            ? AnyShapeStyle(Color.secondary.opacity(0.18))
-                            : AnyShapeStyle(Color.accentColor)
+                        tint(
+                            peak: fill(pressed: configuration.isPressed),
+                            uniform: configuration.isPressed
+                        )
                     )
             }
             .overlay {
-                if outlined {
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .stroke(disabled ? Color.secondary : Color.primary, lineWidth: 2)
-                }
+                RoundedRectangle(cornerRadius: 30, style: .continuous)
+                    .stroke(tint(peak: border, uniform: false), lineWidth: outlined ? 3 : 2)
             }
-            .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.8), value: quiet)
+    }
+
+    /// The pad fades out towards the top so the gear readout sits on clean
+    /// space, while the thumb end stays an obvious, solid target.
+    private func tint(peak: Double, uniform: Bool) -> LinearGradient {
+        LinearGradient(
+            colors: [
+                Color.accentColor.opacity(peak * (uniform ? 0.75 : 0.12)),
+                Color.accentColor.opacity(peak)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private func fill(pressed: Bool) -> Double {
+        if disabled { return 0.05 }
+        if pressed { return 0.34 }
+        return quiet ? 0.06 : 0.18
+    }
+
+    private var border: Double {
+        if disabled { return 0.12 }
+        return quiet ? 0.16 : 0.45
+    }
+
+    private func foreground(pressed: Bool) -> Color {
+        if disabled { return .secondary.opacity(0.45) }
+        return .accentColor.opacity(quiet && !pressed ? 0.3 : 1)
     }
 }
 
 private struct GearPositionRail: View {
     let gears: [VirtualGear]
     let selectedIndex: Int?
+    let requestedIndex: Int?
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
@@ -700,11 +750,11 @@ private struct GearPositionRail: View {
             HStack(spacing: spacing) {
                 ForEach(Array(gears.indices), id: \.self) { index in
                     Capsule()
-                        .fill(index == selectedIndex ? Color.accentColor : Color.secondary.opacity(0.25))
+                        .fill(fill(for: index))
                         .frame(width: width, height: index == selectedIndex ? 22 : 10)
                         .overlay {
-                            if differentiate && index == selectedIndex {
-                                Capsule().stroke(Color.primary, lineWidth: 2)
+                            if isTarget(index) || (differentiate && index == selectedIndex) {
+                                Capsule().stroke(Color.accentColor, lineWidth: 2)
                             }
                         }
                 }
@@ -718,6 +768,18 @@ private struct GearPositionRail: View {
                 "Gear position \($0 + 1) of \(gears.count)"
             } ?? "Gear position unavailable"
         )
+    }
+
+    private func fill(for index: Int) -> Color {
+        if index == selectedIndex { return .accentColor }
+        return .secondary.opacity(0.25)
+    }
+
+    /// The gear the rider asked for is outlined until the trainer confirms it,
+    /// so a tap is acknowledged without ever showing it as the current gear.
+    private func isTarget(_ index: Int) -> Bool {
+        guard let requestedIndex, requestedIndex != selectedIndex else { return false }
+        return index == requestedIndex
     }
 }
 

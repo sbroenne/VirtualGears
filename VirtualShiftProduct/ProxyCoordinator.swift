@@ -34,6 +34,10 @@ final class ProxyCoordinator {
     private(set) var state: ProxySessionState = .idle
     private(set) var displayedGear: VirtualGear?
     private(set) var confirmedGearIndex: Int?
+    /// The gear the rider asked for. It differs from `confirmedGearIndex` only
+    /// while the trainer has not acknowledged a shift, so the ride screen can
+    /// acknowledge a tap without ever displaying an unconfirmed gear.
+    private(set) var requestedGearIndex: Int?
     private(set) var gearSequence: [VirtualGear] = []
     private(set) var shiftConfirmation = 0
     private(set) var shiftInteraction = 0
@@ -236,6 +240,7 @@ final class ProxyCoordinator {
         gearEngine = nil
         displayedGear = nil
         confirmedGearIndex = nil
+        requestedGearIndex = nil
         gearSequence = []
         pendingFeedback = []
         sessionBaselineMillimeters = nil
@@ -476,6 +481,7 @@ final class ProxyCoordinator {
             log("Ignored shift at drivetrain boundary")
             return
         }
+        updateDisplayedGear()
         pendingFeedback.append(feedback)
         if let change {
             guard shiftTask == nil else { return }
@@ -537,6 +543,7 @@ final class ProxyCoordinator {
     private func updateDisplayedGear() {
         displayedGear = gearEngine?.confirmedGear
         confirmedGearIndex = gearEngine?.confirmedIndex
+        requestedGearIndex = gearEngine?.requestedIndex
     }
 
     private func confirmShift(from oldIndex: Int, to newIndex: Int) {
@@ -557,6 +564,7 @@ final class ProxyCoordinator {
         gearEngine = nil
         displayedGear = nil
         confirmedGearIndex = nil
+        requestedGearIndex = nil
         gearSequence = []
         pendingFeedback = []
         sessionBaselineMillimeters = nil
