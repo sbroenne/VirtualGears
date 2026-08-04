@@ -19,9 +19,9 @@ struct VirtualShiftHomeView: View {
                 configuration: store.configuration,
                 kickr: kickr,
                 click: click,
-                coordinator: coordinator
+                coordinator: coordinator,
+                onRiderStop: { riderStopped = true }
             )
-            .onDisappear { riderStopped = true }
         } else if store.configuration.setupComplete {
             ReadyView(
                 store: store,
@@ -327,6 +327,9 @@ private struct ActiveRideView: View {
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
+    /// Called only when the rider chooses to stop, so a ride that ends by
+    /// itself is never mistaken for one they meant to end.
+    let onRiderStop: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var confirmsStop = false
     @State private var lastInteraction = Date()
@@ -403,6 +406,7 @@ private struct ActiveRideView: View {
         ) {
             Button("Stop Ride", role: .destructive) {
                 wake()
+                onRiderStop()
                 Task { await coordinator.stopRide() }
             }
             Button("Keep Riding", role: .cancel) {}
