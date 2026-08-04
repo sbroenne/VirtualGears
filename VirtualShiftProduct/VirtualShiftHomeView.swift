@@ -242,7 +242,6 @@ private struct ActiveRideView: View {
     @Bindable var coordinator: ProxyCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @ScaledMetric(relativeTo: .largeTitle) private var gearFontSize: CGFloat = 86
     @State private var confirmsStop = false
     @State private var lastInteraction = Date()
     @State private var isDimmed = false
@@ -253,9 +252,9 @@ private struct ActiveRideView: View {
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
                 if landscape {
-                    landscapeContent
+                    landscapeContent(geometry)
                 } else {
-                    portraitContent
+                    portraitContent(geometry)
                 }
                 if isDimmed {
                     Color.black
@@ -313,159 +312,222 @@ private struct ActiveRideView: View {
         }
     }
 
-    private var portraitContent: some View {
-        VStack(spacing: 12) {
+    private func portraitContent(_ geometry: GeometryProxy) -> some View {
+        VStack(spacing: 10) {
             rideHeader
             connectionChips
-            Spacer(minLength: 0)
-            gearPanel
-            Spacer(minLength: 0)
-            if showsTouchControls { shiftControls }
+            gearDisplay(
+                fontSize: min(geometry.size.width * 0.46, geometry.size.height * 0.24)
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            shiftControls
+                .frame(height: max(190, geometry.size.height * 0.36))
         }
     }
 
-    private var landscapeContent: some View {
+    private func landscapeContent(_ geometry: GeometryProxy) -> some View {
         VStack(spacing: 8) {
             rideHeader
-            HStack(spacing: 18) {
-                VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                shiftPad(easier: true)
+                    .frame(width: max(130, geometry.size.width * 0.26))
+                VStack(spacing: 8) {
                     connectionChips
-                    gearPanel
+                    gearDisplay(
+                        fontSize: min(geometry.size.width * 0.22, geometry.size.height * 0.38)
+                    )
+                    .frame(maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity)
-                if showsTouchControls {
-                    shiftControls
-                        .frame(maxWidth: .infinity)
-                }
+                shiftPad(easier: false)
+                    .frame(width: max(130, geometry.size.width * 0.26))
             }
+            .frame(maxHeight: .infinity)
         }
     }
 
     private var rideHeader: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("VirtualShift")
-                    .font(.headline)
-                Label(statusText, systemImage: statusSymbol)
+            HStack(spacing: 8) {
+                Image(systemName: statusSymbol)
+                    .font(.subheadline.weight(.bold))
+                Text(statusText)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(statusColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
-            Spacer()
+            .foregroundStyle(statusColor)
+            .padding(.horizontal, 14)
+            .frame(height: 52)
+            .background(statusColor.opacity(0.14), in: .capsule)
+            .accessibilityElement(children: .combine)
+
+            Spacer(minLength: 4)
+
             Button(role: .destructive) {
                 confirmsStop = true
             } label: {
-                Label(
-                    coordinator.state == .stopping ? "Stopping…" : "Stop",
-                    systemImage: "stop.circle.fill"
-                )
-                .frame(minWidth: 76, minHeight: 44)
+                HStack(spacing: 7) {
+                    Image(systemName: "stop.fill")
+                        .font(.subheadline.weight(.bold))
+                    Text(coordinator.state == .stopping ? "Stopping" : "Stop")
+                        .font(.headline)
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .frame(height: 52)
+                .background(Color.red, in: .capsule)
+                .opacity(coordinator.state == .stopping ? 0.5 : 1)
+                .contentShape(.capsule)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.plain)
             .disabled(coordinator.state == .stopping)
+            .accessibilityLabel("Stop ride")
         }
         .accessibilityElement(children: .contain)
     }
 
     private var connectionChips: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 7) { chips }
-            VStack(alignment: .leading, spacing: 6) { chips }
+        VStack(spacing: 6) {
+            HStack(spacing: 0) {
+                ForEach(Array(equipmentItems.enumerated()), id: \.element.id) { index, item in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.22))
+                            .frame(width: 1, height: 20)
+                    }
+                    HStack(spacing: 6) {
+                        Image(systemName: item.state.symbol)
+                            .font(.footnote.weight(.bold))
+                            .foregroundStyle(item.state.tint)
+                        Text(item.title)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(item.title), \(item.detail)")
+                }
+            }
+            .frame(height: 40)
+            .frame(maxWidth: .infinity)
+            .background(Color.secondary.opacity(0.10), in: .rect(cornerRadius: 14))
+
+            if let problem = equipmentItems.first(where: { $0.state != .ok }) {
+                Text("\(problem.title) · \(problem.detail)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityHidden(true)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    @ViewBuilder
-    private var chips: some View {
-        ConnectionChip(
-            title: "KICKR",
-            status: kickr.state.label,
-            connected: kickr.isReady
+    private var equipmentItems: [EquipmentItem] {
+        var items: [EquipmentItem] = [
+            EquipmentItem(
+                id: "kickr",
+                title: "KICKR",
+                state: kickr.isReady
+                    ? .ok : (kickr.state.isConnectionInProgress ? .pending : .warn),
+                detail: kickr.state.label
+            )
+        ]
+        let isSubscribed = coordinator.peripheral.activeCentralID != nil
+        let isAdvertising = coordinator.peripheral.isAdvertising
+        items.append(
+            EquipmentItem(
+                id: "realvelo",
+                title: "RealVelo",
+                state: isSubscribed ? .ok : (isAdvertising ? .pending : .warn),
+                detail: isSubscribed
+                    ? "Connected"
+                    : (isAdvertising ? "Waiting to be found" : "Not advertising")
+            )
         )
-        ConnectionChip(
-            title: "RealVelo",
-            status: coordinator.peripheral.activeCentralID == nil
-                ? (coordinator.peripheral.isAdvertising ? "Advertising" : "Not advertising")
-                : "Subscribed",
-            connected: coordinator.peripheral.activeCentralID != nil
-        )
-        ConnectionChip(
-            title: "Click",
-            status: configuration.usesClick ? click.state.label : "On-screen controls",
-            connected: configuration.usesClick && click.isReady
-        )
+        if configuration.usesClick {
+            items.append(
+                EquipmentItem(
+                    id: "click",
+                    title: "Click",
+                    state: click.isReady
+                        ? .ok : (click.state.isConnectionInProgress ? .pending : .warn),
+                    detail: click.state.label
+                )
+            )
+        }
+        return items
     }
 
-    private var gearPanel: some View {
-        VStack(spacing: 12) {
-            Text(gearText)
+    private func gearDisplay(fontSize: CGFloat) -> some View {
+        VStack(spacing: 2) {
+            Spacer(minLength: 0)
+            Text(primaryGearText)
                 .font(.system(
-                    size: gearFontSize,
-                    weight: .heavy,
+                    size: max(44, fontSize),
+                    weight: .black,
                     design: .rounded
                 ).monospacedDigit())
-                .minimumScaleFactor(0.55)
+                .minimumScaleFactor(0.3)
                 .lineLimit(1)
                 .contentTransition(reduceMotion ? .identity : .numericText())
+                .foregroundStyle(coordinator.state == .active ? Color.primary : Color.secondary)
                 .accessibilityLabel(gearAccessibilityLabel)
-            if configuration.drivetrainPreset.drivetrain.usesNumberedGears {
-                NumberedDrivetrainGraphic(
-                    gearNumber: coordinator.displayedGear?.virtualNumber,
-                    gearCount: coordinator.gearSequence.count
-                )
-            } else {
-                DrivetrainGraphic(
-                    chainrings: configuration.drivetrainPreset.drivetrain.chainrings,
-                    cassette: configuration.drivetrainPreset.drivetrain.cassetteCogs,
-                    gear: coordinator.displayedGear
-                )
-            }
+            Text(secondaryGearText)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .accessibilityHidden(true)
+            Spacer(minLength: 0)
             GearPositionRail(
                 gears: coordinator.gearSequence,
                 selectedIndex: coordinator.confirmedGearIndex
             )
         }
-        .padding(16)
         .frame(maxWidth: .infinity)
-        .background(.regularMaterial, in: .rect(cornerRadius: 26))
     }
 
     private var shiftControls: some View {
-        HStack(spacing: 14) {
-            ShiftButton(
-                title: "Easier",
-                symbol: "minus",
-                accessibilityHint: "Requests the next easier gear",
-                disabled: !coordinator.canShiftEasier
-            ) {
-                wake()
-                coordinator.shift(.easier)
-            }
-            ShiftButton(
-                title: "Harder",
-                symbol: "plus",
-                accessibilityHint: "Requests the next harder gear",
-                disabled: !coordinator.canShiftHarder
-            ) {
-                wake()
-                coordinator.shift(.harder)
-            }
+        HStack(spacing: 12) {
+            shiftPad(easier: true)
+            shiftPad(easier: false)
         }
         .accessibilityElement(children: .contain)
     }
 
-    private var showsTouchControls: Bool {
-        !configuration.usesClick || !click.isReady
+    private func shiftPad(easier: Bool) -> some View {
+        ShiftPad(
+            title: easier ? "Easier" : "Harder",
+            symbol: easier ? "minus" : "plus",
+            hint: easier
+                ? "Requests the next easier gear"
+                : "Requests the next harder gear",
+            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder
+        ) {
+            wake()
+            coordinator.shift(easier ? .easier : .harder)
+        }
     }
 
-    private var gearText: String {
-        guard let gear = coordinator.displayedGear else {
-            return configuration.drivetrainPreset.drivetrain.usesNumberedGears
-                ? "Gear —" : "— × —"
-        }
+    private var primaryGearText: String {
+        guard let gear = coordinator.displayedGear else { return "—" }
         if let virtualNumber = gear.virtualNumber {
-            return "Gear \(virtualNumber)"
+            return "\(virtualNumber)"
         }
-        return "\(gear.chainring) × \(gear.cog)"
+        return "\(gear.chainring)×\(gear.cog)"
+    }
+
+    private var secondaryGearText: String {
+        guard let index = coordinator.confirmedGearIndex else {
+            return coordinator.state == .active
+                ? "Waiting for the trainer" : statusText
+        }
+        return "Gear \(index + 1) of \(coordinator.gearSequence.count)"
     }
 
     private var gearAccessibilityLabel: String {
@@ -534,60 +596,91 @@ private struct ActiveRideView: View {
     }
 }
 
-private struct ConnectionChip: View {
-    let title: String
-    let status: String
-    let connected: Bool
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+private struct EquipmentItem: Identifiable {
+    enum LinkState: Equatable {
+        case ok
+        case pending
+        case warn
 
-    var body: some View {
-        Label {
-            Text("\(title) · \(status)")
-                .lineLimit(1)
-        } icon: {
-            Image(systemName: connected ? "checkmark.circle.fill" : "circle.dotted")
-        }
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 10)
-        .frame(minHeight: 34)
-        .background(
-            connected ? Color.green.opacity(0.16) : Color.secondary.opacity(0.12),
-            in: .capsule
-        )
-        .overlay {
-            if differentiate {
-                Capsule().stroke(connected ? Color.primary : Color.secondary)
+        var symbol: String {
+            switch self {
+            case .ok: "checkmark.circle.fill"
+            case .pending: "circle.dotted"
+            case .warn: "exclamationmark.triangle.fill"
             }
         }
-        .accessibilityLabel("\(title), \(status)")
+
+        var tint: Color {
+            switch self {
+            case .ok: .green
+            case .pending: .secondary
+            case .warn: .orange
+            }
+        }
     }
+
+    let id: String
+    let title: String
+    let state: LinkState
+    let detail: String
 }
 
-private struct ShiftButton: View {
+private struct ShiftPad: View {
     let title: String
     let symbol: String
-    let accessibilityHint: String
+    let hint: String
     let disabled: Bool
     let action: () -> Void
-    @ScaledMetric(relativeTo: .title) private var symbolSize: CGFloat = 60
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 64
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 6) {
                 Image(systemName: symbol)
-                    .font(.system(size: symbolSize, weight: .bold, design: .rounded))
+                    .font(.system(size: symbolSize, weight: .black, design: .rounded))
+                    .frame(height: symbolSize)
                 Text(title)
-                    .font(.headline)
+                    .font(.title3.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
-            .frame(maxWidth: .infinity, minHeight: 112)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(.rect)
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(ShiftPadStyle(disabled: disabled, outlined: differentiate))
         .disabled(disabled)
         .accessibilityLabel("Shift \(title.lowercased())")
         .accessibilityHint(
-            disabled ? "Unavailable at the drivetrain boundary" : accessibilityHint
+            disabled ? "Unavailable at the drivetrain boundary" : hint
         )
+    }
+}
+
+private struct ShiftPadStyle: ButtonStyle {
+    let disabled: Bool
+    let outlined: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(disabled ? Color.secondary : Color.white)
+            .background {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        disabled
+                            ? AnyShapeStyle(Color.secondary.opacity(0.18))
+                            : AnyShapeStyle(Color.accentColor)
+                    )
+            }
+            .overlay {
+                if outlined {
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(disabled ? Color.secondary : Color.primary, lineWidth: 2)
+                }
+            }
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
@@ -598,7 +691,7 @@ private struct GearPositionRail: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let spacing: CGFloat = 3
+            let spacing: CGFloat = 4
             let width = max(
                 3,
                 (proxy.size.width - spacing * CGFloat(max(0, gears.count - 1)))
@@ -607,8 +700,8 @@ private struct GearPositionRail: View {
             HStack(spacing: spacing) {
                 ForEach(Array(gears.indices), id: \.self) { index in
                     Capsule()
-                        .fill(index == selectedIndex ? Color.accentColor : Color.secondary.opacity(0.22))
-                        .frame(width: width, height: index == selectedIndex ? 12 : 6)
+                        .fill(index == selectedIndex ? Color.accentColor : Color.secondary.opacity(0.25))
+                        .frame(width: width, height: index == selectedIndex ? 22 : 10)
                         .overlay {
                             if differentiate && index == selectedIndex {
                                 Capsule().stroke(Color.primary, lineWidth: 2)
@@ -618,77 +711,13 @@ private struct GearPositionRail: View {
             }
             .frame(maxHeight: .infinity)
         }
-        .frame(height: 16)
+        .frame(height: 24)
         .accessibilityElement()
         .accessibilityLabel(
             selectedIndex.map {
                 "Gear position \($0 + 1) of \(gears.count)"
             } ?? "Gear position unavailable"
         )
-    }
-}
-
-private struct DrivetrainGraphic: View {
-    let chainrings: [Int]
-    let cassette: [Int]
-    let gear: VirtualGear?
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                ForEach(Array(chainrings.enumerated()), id: \.offset) { index, teeth in
-                    Circle()
-                        .stroke(
-                            gear?.chainring == teeth ? Color.accentColor : Color.secondary,
-                            lineWidth: gear?.chainring == teeth ? 5 : 2
-                        )
-                        .frame(
-                            width: CGFloat(48 - index * 12),
-                            height: CGFloat(48 - index * 12)
-                        )
-                }
-            }
-            Rectangle()
-                .fill(Color.secondary.opacity(0.55))
-                .frame(maxWidth: .infinity, minHeight: 2, maxHeight: 2)
-            HStack(alignment: .center, spacing: 2) {
-                ForEach(Array(cassette.enumerated()), id: \.offset) { _, teeth in
-                    Capsule()
-                        .fill(gear?.cog == teeth ? Color.accentColor : Color.secondary.opacity(0.5))
-                        .frame(
-                            width: gear?.cog == teeth ? 5 : 3,
-                            height: CGFloat(12 + teeth / 2)
-                        )
-                }
-            }
-        }
-        .frame(height: 50)
-        .accessibilityHidden(true)
-    }
-}
-
-private struct NumberedDrivetrainGraphic: View {
-    let gearNumber: Int?
-    let gearCount: Int
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Text("1")
-                .font(.caption.monospacedDigit().weight(.semibold))
-            Rectangle()
-                .fill(Color.secondary.opacity(0.55))
-                .frame(maxWidth: .infinity, minHeight: 2, maxHeight: 2)
-            Image(systemName: "gearshape.2.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-            Rectangle()
-                .fill(Color.secondary.opacity(0.55))
-                .frame(maxWidth: .infinity, minHeight: 2, maxHeight: 2)
-            Text("\(gearCount)")
-                .font(.caption.monospacedDigit().weight(.semibold))
-        }
-        .frame(height: 50)
-        .accessibilityHidden(true)
     }
 }
 

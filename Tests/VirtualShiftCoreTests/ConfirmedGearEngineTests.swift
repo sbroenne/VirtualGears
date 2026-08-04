@@ -258,6 +258,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
             .sramXplr1x12,
             .sramXplr1x13,
             .campagnoloEkar1x13,
+            .campagnoloRoad2x12,
             .mountain1x12,
             .mountain1x11,
             .classic1x10,

@@ -70,6 +70,7 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
     case sramXplr12
     case sramXplr13
     case campagnoloEkar13
+    case campagnoloRoad12
     case mountain1x12
     case mountain1x11
     case simple1x
@@ -94,6 +95,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
             "SRAM Red XPLR 1×13"
         case .campagnoloEkar13:
             "Campagnolo Ekar 1×13"
+        case .campagnoloRoad12:
+            "Campagnolo Super Record 2×12"
         case .mountain1x12:
             "MTB 1×12"
         case .mountain1x11:
@@ -121,6 +124,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
             "1×13 · 44 · 10–46"
         case .campagnoloEkar13:
             "1×13 · 40 · 9–42"
+        case .campagnoloRoad12:
+            "2×12 · 45/29 · 10–27"
         case .mountain1x12:
             "1×12 · 32 · 10–51"
         case .mountain1x11:
@@ -134,7 +139,7 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .zwiftVirtual24:
             "Virtual"
-        case .shimano105Di2, .shimanoRoad2x11, .sramRoadAxs:
+        case .shimano105Di2, .shimanoRoad2x11, .sramRoadAxs, .campagnoloRoad12:
             "Road"
         case .shimanoGrx12, .sramXplr12, .sramXplr13, .campagnoloEkar13:
             "Gravel"
@@ -149,7 +154,7 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .zwiftVirtual24:
             "number.circle.fill"
-        case .shimano105Di2, .shimanoRoad2x11, .sramRoadAxs:
+        case .shimano105Di2, .shimanoRoad2x11, .sramRoadAxs, .campagnoloRoad12:
             "road.lanes"
         case .shimanoGrx12, .sramXplr12, .sramXplr13, .campagnoloEkar13:
             "leaf.fill"
@@ -180,6 +185,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
             "13 sequential gears model the wide 10–46 tooth 13-speed gravel range."
         case .campagnoloEkar13:
             "13 sequential gears model the tightly spaced 9–42 tooth Ekar range."
+        case .campagnoloRoad12:
+            "16 sequential gears from the 45/29 tooth 12-speed Campagnolo road range."
         case .mountain1x12:
             "12 sequential gears cover a broad 10–51 tooth mountain range."
         case .mountain1x11:
@@ -207,6 +214,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
             return .sramXplr1x13
         case .campagnoloEkar13:
             return .campagnoloEkar1x13
+        case .campagnoloRoad12:
+            return .campagnoloRoad2x12
         case .mountain1x12:
             return .mountain1x12
         case .mountain1x11:

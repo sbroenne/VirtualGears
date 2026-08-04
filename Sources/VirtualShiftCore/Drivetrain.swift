@@ -83,6 +83,17 @@ public struct Drivetrain: Equatable, Sendable {
         )
     }
 
+    public static var campagnoloRoad2x12: Drivetrain {
+        let cassette = [10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 27]
+        return try! Drivetrain(
+            chainrings: [29, 45],
+            cassetteCogs: cassette,
+            allowedCombinations:
+                makeGears(chainring: 29, cogs: [14, 15, 16, 17, 19, 21, 24, 27])
+                + makeGears(chainring: 45, cogs: [10, 11, 12, 13, 14, 15, 16, 17])
+        )
+    }
+
     public static var shimanoRoad2x11: Drivetrain {
         let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32]
         return try! Drivetrain(
