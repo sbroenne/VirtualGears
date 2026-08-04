@@ -1,4 +1,5 @@
 import SwiftUI
+import VirtualShiftCore
 
 /// Setup follows the ordinary iOS Settings pattern: a short list of rows that
 /// each show their current value and push to a screen where it can be changed.
@@ -101,7 +102,7 @@ struct SetupView: View {
             } label: {
                 LabeledContent(
                     "Gears",
-                    value: store.configuration.drivetrainPreset.name
+                    value: store.configuration.drivetrainName
                 )
             }
 
@@ -114,7 +115,7 @@ struct SetupView: View {
                 .foregroundStyle(.red)
             }
         } footer: {
-            Text(store.configuration.drivetrainPreset.setupDescription)
+            Text(store.configuration.setupDescription)
         }
     }
     private var chainLineSection: some View {
@@ -388,45 +389,225 @@ private struct ShiftingSetupView: View {
 
 // MARK: - Gears
 
+/// Gears are described the way a bike shop describes them: which chainrings are
+/// on the front, and which cassette is on the back. A rider can copy the numbers
+/// stamped on their own bike, or invent a bike they would rather be riding.
 private struct GearChoiceView: View {
     @Bindable var store: ConfigurationStore
 
     var body: some View {
         Form {
-            ForEach(Self.categories, id: \.self) { category in
-                Section {
-                    ForEach(presets(in: category)) { preset in
-                        gearRow(preset)
-                    }
-                } header: {
-                    Text(category)
-                } footer: {
-                    if let note = Self.categoryNote[category] {
-                        Text(note)
-                    }
+            Section {
+                NavigationLink {
+                    ChainringChoiceView(store: store)
+                } label: {
+                    LabeledContent(
+                        "Chainrings",
+                        value: store.configuration.chainring.name
+                    )
                 }
+
+                NavigationLink {
+                    CassetteChoiceView(store: store)
+                } label: {
+                    LabeledContent(
+                        "Cassette",
+                        value: store.configuration.cassette.name
+                    )
+                }
+            } header: {
+                Text("The bike you want to feel")
+            } footer: {
+                Text(
+                    "Copy the numbers printed on your own bike, or pick any "
+                        + "combination you would like to ride. It does not have "
+                        + "to be a set that anyone actually sells."
+                )
+            }
+
+            Section {
+                GearPreview(configuration: store.configuration)
+            } header: {
+                Text("What you get")
             }
         }
         .navigationTitle("Gears")
         .navigationBarTitleDisplayMode(.inline)
     }
+}
 
-    private func gearRow(_ preset: DrivetrainPreset) -> some View {
-        let selected = store.configuration.drivetrainPreset == preset
-        return Button {
-            store.setDrivetrainPreset(preset)
-        } label: {
+/// The result of the two choices above, kept on the same screen so a change is
+/// seen immediately rather than discovered mid-ride.
+private struct GearPreview: View {
+    let configuration: AppConfiguration
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let drivetrain = configuration.drivetrain {
+                Text("\(drivetrain.gears.count) gears")
+                    .font(.title2.weight(.semibold))
+                Text(configuration.setupDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if drivetrain.gears.count < expectedCombinations {
+                    Text(
+                        "\(expectedCombinations - drivetrain.gears.count) of the "
+                            + "\(expectedCombinations) chainring and cog "
+                            + "combinations feel exactly the same as another one, "
+                            + "so they are not counted twice."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                }
+            } else {
+                Label(
+                    "Too wide for the trainer",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.red)
+                Text(configuration.setupDescription)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var expectedCombinations: Int {
+        configuration.chainring.teeth.count * configuration.cassette.cogs.count
+    }
+}
+
+private struct ChainringChoiceView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            ForEach(Self.groups, id: \.title) { group in
+                Section {
+                    ForEach(options(count: group.count)) { option in
+                        ChoiceRow(
+                            title: option.name,
+                            note: option.note,
+                            detail: nil,
+                            selected: option.id == store.configuration.chainringID,
+                            fits: fits(option)
+                        ) {
+                            store.setChainring(option)
+                        }
+                    }
+                } header: {
+                    Text(group.title)
+                } footer: {
+                    Text(group.note)
+                }
+            }
+        }
+        .navigationTitle("Chainrings")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private static let groups: [(title: String, count: Int, note: String)] = [
+        (
+            "One chainring",
+            1,
+            "A single ring. Simple, and every gear is a different one."
+        ),
+        (
+            "Two chainrings",
+            2,
+            "The usual road setup. More gears, but some of them repeat."
+        ),
+        (
+            "Three chainrings",
+            3,
+            "Older bikes. A very wide spread, so it will not fit every cassette."
+        ),
+    ]
+
+    private func options(count: Int) -> [ChainringOption] {
+        DrivetrainCatalog.chainrings.filter { $0.teeth.count == count }
+    }
+
+    private func fits(_ option: ChainringOption) -> Bool {
+        (try? Drivetrain.build(
+            chainrings: option.teeth,
+            cassetteCogs: store.configuration.cassette.cogs
+        )) != nil
+    }
+}
+
+private struct CassetteChoiceView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            ForEach(speedCounts, id: \.self) { speeds in
+                Section {
+                    ForEach(options(speeds: speeds)) { option in
+                        ChoiceRow(
+                            title: option.name,
+                            note: option.note,
+                            detail: option.cogs.map(String.init)
+                                .joined(separator: ", "),
+                            selected: option.id == store.configuration.cassetteID,
+                            fits: fits(option)
+                        ) {
+                            store.setCassette(option)
+                        }
+                    }
+                } header: {
+                    Text("\(speeds) cogs")
+                }
+            }
+        }
+        .navigationTitle("Cassette")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var speedCounts: [Int] {
+        Array(Set(DrivetrainCatalog.cassettes.map(\.speeds))).sorted()
+    }
+
+    private func options(speeds: Int) -> [CassetteOption] {
+        DrivetrainCatalog.cassettes.filter { $0.speeds == speeds }
+    }
+
+    private func fits(_ option: CassetteOption) -> Bool {
+        (try? Drivetrain.build(
+            chainrings: store.configuration.chainring.teeth,
+            cassetteCogs: option.cogs
+        )) != nil
+    }
+}
+
+/// One selectable part. A part that cannot work with the other choice is shown
+/// dimmed and says why, rather than disappearing and leaving the rider guessing.
+private struct ChoiceRow: View {
+    let title: String
+    let note: String
+    let detail: String?
+    let selected: Bool
+    let fits: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(preset.name)
+                    Text(title)
                         .font(.body)
                         .foregroundStyle(.primary)
-                    Text(preset.summary)
+                    Text(fits ? note : "Too wide to combine with your other choice")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text(preset.specification)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(fits ? .secondary : Color.red)
+                    if let detail, fits {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "checkmark")
@@ -438,19 +619,14 @@ private struct GearChoiceView: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(preset.name), \(preset.summary)")
+        .disabled(!fits)
+        .opacity(fits ? 1 : 0.5)
+        .accessibilityLabel(
+            fits
+                ? "\(title), \(note)"
+                : "\(title), too wide to combine with your other choice"
+        )
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    private static let categories = ["Virtual", "Road", "Gravel", "Mountain", "Simple"]
-
-    private static let categoryNote = [
-        "Virtual": "Start here if you are not copying a real bike.",
-        "Simple": "Fewer gears, so each shift makes a bigger difference.",
-    ]
-
-    private func presets(in category: String) -> [DrivetrainPreset] {
-        DrivetrainPreset.allCases.filter { $0.category == category }
     }
 }
 

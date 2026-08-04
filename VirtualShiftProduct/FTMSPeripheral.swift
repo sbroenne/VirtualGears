@@ -45,6 +45,7 @@ final class FTMSPeripheral: NSObject {
     private let controlUUID = CBUUID(
         string: FTMSUUID.fitnessMachineControlPoint
     )
+    private let powerRangeUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
 
     private var manager: CBPeripheralManager!
@@ -52,6 +53,7 @@ final class FTMSPeripheral: NSObject {
     private var bikeDataCharacteristic: CBMutableCharacteristic!
     private var resistanceCharacteristic: CBMutableCharacteristic!
     private var controlCharacteristic: CBMutableCharacteristic!
+    private var powerRangeCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
     private var startRequested = false
     private var servicePublished = false
@@ -77,6 +79,11 @@ final class FTMSPeripheral: NSObject {
 
     @ObservationIgnored
     private lazy var featureData = VirtualTrainerFTMSProfile.feature.encode()
+
+    @ObservationIgnored
+    @ObservationIgnored
+    private lazy var powerRangeData =
+        VirtualTrainerFTMSProfile.powerRange.encode()
 
     @ObservationIgnored
     private lazy var resistanceData = try! SupportedResistanceLevelRange(
@@ -181,6 +188,12 @@ final class FTMSPeripheral: NSObject {
             value: nil,
             permissions: [.writeable]
         )
+        powerRangeCharacteristic = CBMutableCharacteristic(
+            type: powerRangeUUID,
+            properties: [.read],
+            value: nil,
+            permissions: [.readable]
+        )
         statusCharacteristic = CBMutableCharacteristic(
             type: statusUUID,
             properties: [.notify],
@@ -190,8 +203,8 @@ final class FTMSPeripheral: NSObject {
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [
             featureCharacteristic, bikeDataCharacteristic,
-            resistanceCharacteristic, controlCharacteristic,
-            statusCharacteristic,
+            resistanceCharacteristic, powerRangeCharacteristic,
+            controlCharacteristic, statusCharacteristic,
         ]
         manager.add(service)
     }
@@ -330,6 +343,7 @@ final class FTMSPeripheral: NSObject {
         switch uuid {
         case featureUUID: featureData
         case resistanceUUID: resistanceData
+        case powerRangeUUID: powerRangeData
         default: nil
         }
     }

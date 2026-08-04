@@ -35,17 +35,15 @@ final class VirtualGearTests: XCTestCase {
         XCTAssertThrowsError(try VirtualGear(chainring: 0, cog: 17))
     }
 
-    func testNumberedGearUsesPublishedRatio() throws {
-        let drivetrain = try Drivetrain(
-            virtualRatiosHundredths: [75, 240, 549]
+    func testGearRatioComesFromTheToothCounts() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [40],
+            cassetteCogs: [10, 20, 40]
         )
 
-        XCTAssertEqual(drivetrain.gears[0].virtualNumber, 1)
-        XCTAssertEqual(drivetrain.gears[0].ratio, 0.75, accuracy: 0.000_001)
-        XCTAssertEqual(drivetrain.gears[1].virtualNumber, 2)
-        XCTAssertEqual(drivetrain.gears[1].ratio, 2.40, accuracy: 0.000_001)
-        XCTAssertEqual(drivetrain.gears[2].virtualNumber, 3)
-        XCTAssertEqual(drivetrain.gears[2].ratio, 5.49, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.gears[0].ratio, 1.00, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.gears[1].ratio, 2.00, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.gears[2].ratio, 4.00, accuracy: 0.000_001)
     }
 
     func testScalerRejectsCircumferenceOutsideWahooBounds() {

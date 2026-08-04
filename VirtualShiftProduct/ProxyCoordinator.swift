@@ -124,12 +124,18 @@ final class ProxyCoordinator {
         sessionID id: UUID
     ) async {
         do {
+            guard let drivetrain = configuration.drivetrain,
+                  AppConfiguration.isSafe(drivetrain) else {
+                throw ProductBluetoothError.commandFailed(
+                    "These gears are outside the trainer's safe range"
+                )
+            }
             gearEngine = try ConfirmedGearEngine(
-                drivetrain: configuration.drivetrainPreset.drivetrain,
+                drivetrain: drivetrain,
                 baselineCircumferenceMillimeters:
                     Double(configuration.neutralCircumferenceMillimeters)
             )
-            gearSequence = configuration.drivetrainPreset.drivetrain.gears
+            gearSequence = drivetrain.gears
             updateDisplayedGear()
             sessionBaselineMillimeters =
                 Double(configuration.neutralCircumferenceMillimeters)

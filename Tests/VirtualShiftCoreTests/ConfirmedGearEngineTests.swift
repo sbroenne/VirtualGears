@@ -226,67 +226,121 @@ final class ConfirmedGearEngineTests: XCTestCase {
         )
     }
 
-    func testZwiftVirtual24EncodesInsidePhysicallyProvenRange() throws {
-        let drivetrain = Drivetrain.zwiftVirtual24
-        let circumferences = try drivetrain.gears.map {
-            try WheelCircumferenceScaler.effectiveCircumference(
-                neutralCircumference: 2_070,
-                referenceRatio: drivetrain.referenceGear.ratio,
-                selectedRatio: $0.ratio
-            )
-        }
-        let encoded = try circumferences.map {
-            let bytes = Array(
-                try WahooKickrCommand.setWheelCircumference(millimeters: $0)
-            )
-            return Int(bytes[1]) | Int(bytes[2]) << 8
+    /// The safety promise of the whole app: whatever a rider picks in setup, the
+    /// trainer is only ever asked for a wheel size that was staged on real
+    /// hardware. Every catalog pairing is checked, not a chosen sample.
+    func testEveryCatalogCombinationStaysInsideThePhysicallyProvenRange() throws {
+        var built = 0
+        var refused = 0
+
+        for chainring in DrivetrainCatalog.chainrings {
+            for cassette in DrivetrainCatalog.cassettes {
+                let drivetrain: Drivetrain
+                do {
+                    drivetrain = try Drivetrain.build(
+                        chainrings: chainring.teeth,
+                        cassetteCogs: cassette.cogs
+                    )
+                } catch let error as DrivetrainError {
+                    guard case .rangeTooWideForTrainer = error else {
+                        return XCTFail(
+                            "\(chainring.name) with \(cassette.name) failed "
+                                + "for an unexpected reason: \(error)"
+                        )
+                    }
+                    refused += 1
+                    continue
+                }
+
+                built += 1
+                _ = try ConfirmedGearEngine(
+                    drivetrain: drivetrain,
+                    baselineCircumferenceMillimeters:
+                        TrainerSafety.referenceCircumferenceMillimeters
+                )
+
+                for gear in drivetrain.gears {
+                    let circumference = try WheelCircumferenceScaler
+                        .effectiveCircumference(
+                            neutralCircumference:
+                                TrainerSafety.referenceCircumferenceMillimeters,
+                            referenceRatio: drivetrain.referenceGear.ratio,
+                            selectedRatio: gear.ratio
+                        )
+                    let bytes = Array(
+                        try WahooKickrCommand.setWheelCircumference(
+                            millimeters: circumference
+                        )
+                    )
+                    let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
+                    XCTAssertTrue(
+                        (6_469...48_000).contains(encoded),
+                        "\(chainring.name) with \(cassette.name), gear "
+                            + "\(gear.chainring)x\(gear.cog) encodes \(encoded), "
+                            + "outside the proven range"
+                    )
+                }
+            }
         }
 
-        XCTAssertEqual(encoded.first, 6_469)
-        XCTAssertEqual(encoded[11], 20_700)
-        XCTAssertEqual(encoded.last, 47_351)
-        XCTAssertTrue(encoded.allSatisfy { (6_469...48_000).contains($0) })
+        XCTAssertEqual(
+            built + refused,
+            DrivetrainCatalog.chainrings.count * DrivetrainCatalog.cassettes.count
+        )
+        // A refused pairing is always explained in setup, so a handful of absurd
+        // ones is fine, but most of the catalog must actually be usable.
+        XCTAssertGreaterThan(built, refused * 5)
     }
 
-    func testEveryBuiltInPresetEncodesInsidePhysicallyProvenRange() throws {
-        let drivetrains: [Drivetrain] = [
-            .zwiftVirtual24,
-            .shimanoRoad2x12,
-            .shimanoRoad2x11,
-            .sramRoadAxs2x12,
-            .shimanoGrx2x12,
-            .sramXplr1x12,
-            .sramXplr1x13,
-            .campagnoloEkar1x13,
-            .campagnoloRoad2x12,
-            .mountain1x12,
-            .mountain1x11,
-            .classic1x10,
-        ]
+    /// The default a rider gets before touching anything must always work.
+    func testDefaultPartsBuildASafeDrivetrain() throws {
+        let chainring = try XCTUnwrap(
+            DrivetrainCatalog.chainring(id: DrivetrainCatalog.defaultChainringID)
+        )
+        let cassette = try XCTUnwrap(
+            DrivetrainCatalog.cassette(id: DrivetrainCatalog.defaultCassetteID)
+        )
+        let drivetrain = try Drivetrain.build(
+            chainrings: chainring.teeth,
+            cassetteCogs: cassette.cogs
+        )
 
-        for drivetrain in drivetrains {
-            _ = try ConfirmedGearEngine(
-                drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: 2_070
+        XCTAssertGreaterThanOrEqual(drivetrain.gears.count, 12)
+        _ = try ConfirmedGearEngine(
+            drivetrain: drivetrain,
+            baselineCircumferenceMillimeters:
+                TrainerSafety.referenceCircumferenceMillimeters
+        )
+    }
+
+    /// Cassettes are listed smallest cog first and chainrings largest ring
+    /// first, because that is how the parts are named. The builder relies on it.
+    func testCatalogEntriesAreOrderedAndUnique() {
+        XCTAssertEqual(
+            Set(DrivetrainCatalog.chainrings.map(\.id)).count,
+            DrivetrainCatalog.chainrings.count
+        )
+        XCTAssertEqual(
+            Set(DrivetrainCatalog.cassettes.map(\.id)).count,
+            DrivetrainCatalog.cassettes.count
+        )
+        for chainring in DrivetrainCatalog.chainrings {
+            XCTAssertEqual(
+                chainring.teeth,
+                chainring.teeth.sorted(by: >),
+                "\(chainring.id) should list its largest ring first"
             )
-            for gear in drivetrain.gears {
-                let circumference = try WheelCircumferenceScaler
-                    .effectiveCircumference(
-                        neutralCircumference: 2_070,
-                        referenceRatio: drivetrain.referenceGear.ratio,
-                        selectedRatio: gear.ratio
-                    )
-                let bytes = Array(
-                    try WahooKickrCommand.setWheelCircumference(
-                        millimeters: circumference
-                    )
-                )
-                let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
-                XCTAssertTrue(
-                    (6_469...48_000).contains(encoded),
-                    "\(encoded) is outside the proven range"
-                )
-            }
+        }
+        for cassette in DrivetrainCatalog.cassettes {
+            XCTAssertEqual(
+                cassette.cogs,
+                cassette.cogs.sorted(),
+                "\(cassette.id) should list its smallest cog first"
+            )
+            XCTAssertEqual(
+                cassette.name,
+                "\(cassette.cogs.first!)-\(cassette.cogs.last!)"
+            )
         }
     }
 

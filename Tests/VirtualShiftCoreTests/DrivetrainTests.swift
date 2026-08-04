@@ -56,67 +56,110 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertEqual(drivetrain.referenceGear.cog, 20)
     }
 
-    func testCreatesNumberedVirtualDrivetrainWithLowerMiddleReference() throws {
-        let drivetrain = try Drivetrain(
-            virtualRatiosHundredths: [75, 87, 99, 111]
+    func testBuildPairsEveryChainringWithEveryCogAndOrdersThemByRatio() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [50, 34],
+            cassetteCogs: [11, 17, 28]
         )
 
-        XCTAssertTrue(drivetrain.usesNumberedGears)
-        XCTAssertEqual(drivetrain.gears.map(\.virtualNumber), [1, 2, 3, 4])
-        XCTAssertEqual(drivetrain.gears.map(\.ratio), [0.75, 0.87, 0.99, 1.11])
-        XCTAssertEqual(drivetrain.referenceIndex, 1)
-        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 2)
-        XCTAssertTrue(drivetrain.chainrings.isEmpty)
-        XCTAssertTrue(drivetrain.cassetteCogs.isEmpty)
-    }
-
-    func testZwiftVirtual24UsesPublishedRatiosAndGear12Reference() {
-        let drivetrain = Drivetrain.zwiftVirtual24
-
-        XCTAssertEqual(drivetrain.gears.count, 24)
         XCTAssertEqual(
-            drivetrain.gears.map { Int(($0.ratio * 100).rounded()) },
-            Drivetrain.zwiftVirtual24RatiosHundredths
+            drivetrain.gears.map { "\($0.chainring)x\($0.cog)" },
+            ["34x28", "50x28", "34x17", "50x17", "34x11", "50x11"]
         )
-        XCTAssertEqual(drivetrain.referenceIndex, 11)
-        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 12)
-        XCTAssertEqual(drivetrain.referenceGear.ratio, 2.40, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.chainrings, [50, 34])
+        XCTAssertEqual(drivetrain.cassetteCogs, [11, 17, 28])
     }
 
-    func testRejectsInvalidNumberedVirtualRatios() {
+    /// Two combinations can land on the identical ratio, and two gear numbers
+    /// that feel the same would be two shifts that do nothing.
+    func testBuildKeepsOnlyOneGearPerDistinctRatio() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [50, 25],
+            cassetteCogs: [10, 20]
+        )
+
+        XCTAssertEqual(
+            drivetrain.gears.map { "\($0.chainring)x\($0.cog)" },
+            ["25x20", "25x10", "50x10"]
+        )
+    }
+
+    /// The trainer can be pushed about 2.3x harder than the starting gear but
+    /// 3.2x easier. There is more room downwards, so on a wide mountain setup
+    /// the starting gear sits above the middle of the range, not on it.
+    func testBuildPlacesStartingGearWhereBothEndsFit() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [32],
+            cassetteCogs: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 51]
+        )
+
+        let reference = drivetrain.referenceGear.ratio
+        let hardest = drivetrain.gears.last!.ratio
+        let easiest = drivetrain.gears.first!.ratio
+        XCTAssertLessThanOrEqual(
+            hardest / reference,
+            TrainerSafety.provenScaleRange.upperBound
+        )
+        XCTAssertGreaterThanOrEqual(
+            easiest / reference,
+            TrainerSafety.provenScaleRange.lowerBound
+        )
+        XCTAssertGreaterThan(
+            drivetrain.referenceIndex,
+            (drivetrain.gears.count - 1) / 2
+        )
+    }
+
+    func testBuildRefusesARangeTheTrainerCannotCover() {
         XCTAssertThrowsError(
-            try Drivetrain(virtualRatiosHundredths: [])
-        ) {
-            XCTAssertEqual($0 as? DrivetrainError, .emptyVirtualRatios)
-        }
-        XCTAssertThrowsError(
-            try Drivetrain(virtualRatiosHundredths: [75, 0])
-        ) {
-            XCTAssertEqual($0 as? DrivetrainError, .invalidVirtualRatio(0))
-        }
-        XCTAssertThrowsError(
-            try Drivetrain(virtualRatiosHundredths: [75, 87, 75])
-        ) {
-            XCTAssertEqual($0 as? DrivetrainError, .duplicateVirtualRatio(75))
-        }
-        XCTAssertThrowsError(
-            try Drivetrain(
-                virtualRatiosHundredths: [75, 87],
-                referenceIndex: 2
+            try Drivetrain.build(
+                chainrings: [50, 34],
+                cassetteCogs: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 52]
             )
         ) {
-            XCTAssertEqual($0 as? DrivetrainError, .invalidReferenceIndex(2))
+            guard case .rangeTooWideForTrainer = $0 as? DrivetrainError else {
+                return XCTFail("expected a too-wide failure, got \($0)")
+            }
+        }
+    }
+
+    func testBuildRejectsEmptyOrRepeatedParts() {
+        XCTAssertThrowsError(
+            try Drivetrain.build(chainrings: [], cassetteCogs: [11])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .emptyChainrings)
+        }
+        XCTAssertThrowsError(
+            try Drivetrain.build(chainrings: [50], cassetteCogs: [])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .emptyCassette)
+        }
+        XCTAssertThrowsError(
+            try Drivetrain.build(chainrings: [50, 50], cassetteCogs: [11])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .duplicateChainring(50))
+        }
+        XCTAssertThrowsError(
+            try Drivetrain.build(chainrings: [50], cassetteCogs: [11, 11])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .duplicateCassetteCog(11))
         }
     }
 
     func testSupportsExplicitReferenceGear() throws {
         let drivetrain = try Drivetrain(
-            virtualRatiosHundredths: [75, 87, 99, 111],
+            chainrings: [40],
+            cassetteCogs: [11, 17, 28],
+            allowedCombinations: [
+                try VirtualGear(chainring: 40, cog: 11),
+                try VirtualGear(chainring: 40, cog: 17),
+                try VirtualGear(chainring: 40, cog: 28),
+            ],
             referenceIndex: 2
         )
 
         XCTAssertEqual(drivetrain.referenceIndex, 2)
-        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 3)
+        XCTAssertEqual(drivetrain.referenceGear.cog, 11)
     }
 
     func testRejectsEmptyComponentAndCombinationLists() throws {

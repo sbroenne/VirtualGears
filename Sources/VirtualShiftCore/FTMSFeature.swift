@@ -75,16 +75,35 @@ public struct FitnessMachineFeature: Equatable, Sendable {
 }
 
 public enum VirtualTrainerFTMSProfile {
+    /// Riding apps decide whether a device is a *controllable trainer* or just a
+    /// power and cadence sensor by reading this, and they expect a trainer to
+    /// declare power as a target it accepts and to publish a Supported Power
+    /// Range. Leaving those out, which VirtualShift originally did because it has
+    /// no ERG mode, made riding apps list it under power and cadence only and
+    /// refuse to pair it as a trainer. So the standard trainer capabilities are
+    /// declared, and a target-power command is declined politely at the control
+    /// point instead of being hidden here.
     public static let feature = FitnessMachineFeature(
         machineFeatures: [
             .cadence, .resistanceLevel, .elapsedTime, .powerMeasurement,
         ],
         targetSettingFeatures: [
-            .resistanceLevel, .indoorBikeSimulationParameters,
+            .resistanceLevel, .power, .indoorBikeSimulationParameters,
             .wheelCircumference,
         ]
     )
 
+    /// What the trainer can be asked for. Published so riding apps can classify
+    /// the device; VirtualShift still sets resistance from gears, never ERG.
+    public static let powerRange = try! SupportedPowerRange(
+        minimumWatts: 0,
+        maximumWatts: 2_000,
+        incrementWatts: 1
+    )
+
+    /// VirtualShift puts the rider in charge of the gears, so it never takes a
+    /// power target. The request is refused, not ignored, so a riding app is
+    /// told plainly rather than left believing ERG is running.
     public static func supports(
         _ request: FitnessMachineControlPointRequest
     ) -> Bool {

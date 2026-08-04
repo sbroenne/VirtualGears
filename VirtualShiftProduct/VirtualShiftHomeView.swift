@@ -124,14 +124,14 @@ private struct ReadyView: View {
             Divider()
             HStack {
                 Label(
-                    store.configuration.drivetrainPreset.summary,
+                    store.configuration.gearSummary,
                     systemImage: "gearshape.2.fill"
                 )
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(
-                "Gears: \(store.configuration.drivetrainPreset.name), "
-                    + store.configuration.drivetrainPreset.summary
+                "Gears: \(store.configuration.drivetrainName), "
+                    + store.configuration.gearSummary
             )
             Divider()
             Label(
@@ -302,7 +302,7 @@ private struct ActiveRideView: View {
                 .padding(.horizontal, landscape ? 18 : 14)
                 .padding(.bottom, 4)
             }
-            .navigationTitle(configuration.drivetrainPreset.name)
+            .navigationTitle(configuration.drivetrainName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -559,25 +559,24 @@ private struct ActiveRideView: View {
         return requested != confirmed
     }
 
+    /// Shifting is sequential, so the position is the only number worth reading
+    /// at arm's length. The real chainring and cog go underneath, small.
     private var primaryGearText: String {
-        guard let gear = coordinator.displayedGear else { return "—" }
-        if let virtualNumber = gear.virtualNumber {
-            return "\(virtualNumber)"
-        }
-        return "\(gear.chainring)×\(gear.cog)"
+        guard let index = coordinator.confirmedGearIndex else { return "—" }
+        return "\(index + 1)"
     }
 
     private var secondaryGearText: String {
-        guard let index = coordinator.confirmedGearIndex else {
+        guard coordinator.confirmedGearIndex != nil else {
             return coordinator.state == .active
                 ? "Waiting for the trainer" : statusText
         }
         if isShiftPending { return "Shifting…" }
         let total = coordinator.gearSequence.count
-        if coordinator.displayedGear?.virtualNumber != nil {
+        guard let gear = coordinator.displayedGear else {
             return "of \(total)"
         }
-        return "Gear \(index + 1) of \(total)"
+        return "of \(total) · \(gear.chainring)×\(gear.cog)"
     }
 
     private var gearAccessibilityLabel: String {
@@ -585,13 +584,9 @@ private struct ActiveRideView: View {
               let index = coordinator.confirmedGearIndex else {
             return "Confirmed gear unavailable"
         }
-        if let virtualNumber = gear.virtualNumber {
-            return "Confirmed virtual gear \(virtualNumber) of "
-                + "\(coordinator.gearSequence.count)"
-        }
-        return "Confirmed gear \(gear.chainring) tooth chainring by "
-            + "\(gear.cog) tooth cog, position \(index + 1) of "
-            + "\(coordinator.gearSequence.count)"
+        return "Confirmed gear \(index + 1) of "
+            + "\(coordinator.gearSequence.count), \(gear.chainring) tooth "
+            + "chainring by \(gear.cog) tooth cog"
     }
 
     private var statusText: String {

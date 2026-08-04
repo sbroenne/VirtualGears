@@ -45,13 +45,24 @@ final class FTMSFeatureTests: XCTestCase {
         )
     }
 
-    func testVirtualTrainerProfileDoesNotAdvertiseOrAcceptERG() {
+    /// A riding app must be able to classify VirtualShift as a controllable
+    /// trainer, which means declaring the standard trainer capabilities, while
+    /// still refusing an actual power target because gears are the rider's job.
+    func testVirtualTrainerProfileLooksLikeATrainerButRefusesERG() {
         XCTAssertEqual(
             Array(VirtualTrainerFTMSProfile.feature.encode()),
-            [0x82, 0x50, 0x00, 0x00, 0x04, 0x60, 0x00, 0x00]
+            [0x82, 0x50, 0x00, 0x00, 0x0C, 0x60, 0x00, 0x00]
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             VirtualTrainerFTMSProfile.feature.targetSettingFeatures.contains(.power)
+        )
+        XCTAssertTrue(
+            VirtualTrainerFTMSProfile.feature.targetSettingFeatures
+                .contains(.indoorBikeSimulationParameters)
+        )
+        XCTAssertEqual(
+            Array(VirtualTrainerFTMSProfile.powerRange.encode()),
+            [0x00, 0x00, 0xD0, 0x07, 0x01, 0x00]
         )
         XCTAssertFalse(
             VirtualTrainerFTMSProfile.supports(.setTargetPower(watts: 250))

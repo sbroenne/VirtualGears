@@ -6,7 +6,6 @@ public enum VirtualGearError: Error, Equatable {
 public struct VirtualGear: Equatable, Hashable, Sendable {
     public let chainring: Int
     public let cog: Int
-    public let virtualNumber: Int?
 
     public init(chainring: Int, cog: Int) throws {
         guard chainring > 0, cog > 0 else {
@@ -15,17 +14,6 @@ public struct VirtualGear: Equatable, Hashable, Sendable {
 
         self.chainring = chainring
         self.cog = cog
-        virtualNumber = nil
-    }
-
-    init(virtualNumber: Int, ratioHundredths: Int) throws {
-        guard virtualNumber > 0, ratioHundredths > 0 else {
-            throw VirtualGearError.invalidToothCount
-        }
-
-        chainring = ratioHundredths
-        cog = 100
-        self.virtualNumber = virtualNumber
     }
 
     public var ratio: Double {

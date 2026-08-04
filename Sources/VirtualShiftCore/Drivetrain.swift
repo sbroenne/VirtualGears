@@ -1,3 +1,5 @@
+import Foundation
+
 public enum DrivetrainError: Error, Equatable {
     case emptyChainrings
     case emptyCassette
@@ -10,121 +12,109 @@ public enum DrivetrainError: Error, Equatable {
     case duplicateRatio(VirtualGear, VirtualGear)
     case unknownChainring(VirtualGear)
     case unknownCassetteCog(VirtualGear)
-    case emptyVirtualRatios
-    case invalidVirtualRatio(Int)
-    case duplicateVirtualRatio(Int)
     case invalidReferenceIndex(Int)
+    /// The easiest and hardest gear are too far apart for the trainer to cover,
+    /// no matter which gear the ride starts in.
+    case rangeTooWideForTrainer(span: Double, widest: Double)
 }
 
 public struct Drivetrain: Equatable, Sendable {
-    public static let zwiftVirtual24RatiosHundredths = [
-        75, 87, 99, 111, 123, 138, 153, 168,
-        186, 204, 222, 240, 261, 282, 303, 324,
-        349, 374, 399, 424, 454, 484, 514, 549,
-    ]
+    /// Builds the drivetrain a rider actually described: every chainring paired
+    /// with every cog, ordered from easiest to hardest.
+    ///
+    /// Two combinations can produce the identical ratio (34/17 and 50/25 both
+    /// give 2.0). On a real bike those are two positions that feel the same, and
+    /// here they would be two gear numbers that do nothing, so only the first is
+    /// kept. That is why a 2x12 is never 24 gears.
+    public static func build(
+        chainrings: [Int],
+        cassetteCogs: [Int],
+        scaleRange: ClosedRange<Double> = TrainerSafety.provenScaleRange
+    ) throws -> Drivetrain {
+        guard !chainrings.isEmpty else {
+            throw DrivetrainError.emptyChainrings
+        }
+        guard !cassetteCogs.isEmpty else {
+            throw DrivetrainError.emptyCassette
+        }
+        try validateComponents(
+            chainrings,
+            invalid: DrivetrainError.invalidChainring,
+            duplicate: DrivetrainError.duplicateChainring
+        )
+        try validateComponents(
+            cassetteCogs,
+            invalid: DrivetrainError.invalidCassetteCog,
+            duplicate: DrivetrainError.duplicateCassetteCog
+        )
 
-    public static var zwiftVirtual24: Drivetrain {
-        try! Drivetrain(
-            virtualRatiosHundredths: zwiftVirtual24RatiosHundredths
+        var combinations: [VirtualGear] = []
+        for chainring in chainrings {
+            for cog in cassetteCogs {
+                combinations.append(try VirtualGear(chainring: chainring, cog: cog))
+            }
+        }
+        combinations.sort(by: gearOrder)
+
+        var unique: [VirtualGear] = []
+        for gear in combinations
+        where !unique.contains(where: { hasEqualRatio($0, gear) }) {
+            unique.append(gear)
+        }
+
+        guard let reference = centredReferenceIndex(
+            of: unique,
+            scaleRange: scaleRange
+        ) else {
+            throw DrivetrainError.rangeTooWideForTrainer(
+                span: (unique.last?.ratio ?? 0) / (unique.first?.ratio ?? 1),
+                widest: scaleRange.upperBound / scaleRange.lowerBound
+            )
+        }
+
+        return try Drivetrain(
+            chainrings: chainrings,
+            cassetteCogs: cassetteCogs,
+            allowedCombinations: unique,
+            referenceIndex: reference
         )
     }
 
-    public static var shimanoRoad2x12: Drivetrain {
-        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
-        return try! Drivetrain(
-            chainrings: [34, 50],
-            cassetteCogs: cassette,
-            allowedCombinations:
-                makeGears(chainring: 34, cogs: [15, 17, 19, 21, 24, 27, 30, 34])
-                + makeGears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
-        )
-    }
+    /// The starting gear is the one the trainer's real wheel size maps onto, so
+    /// every other gear is scaled away from it. The trainer accepts a limited
+    /// range, and that range is lopsided: a gear can be made about 2.3 times
+    /// harder than the reference but 3.2 times easier. Centring on the middle
+    /// gear therefore wastes the margin, so the reference is placed where the
+    /// tighter of the two ends has the most room left.
+    private static func centredReferenceIndex(
+        of gears: [VirtualGear],
+        scaleRange: ClosedRange<Double>
+    ) -> Int? {
+        guard let easiest = gears.first?.ratio,
+              let hardest = gears.last?.ratio,
+              easiest > 0, hardest > 0
+        else {
+            return nil
+        }
+        let headroom = Foundation.log(scaleRange.upperBound)
+        let legroom = -Foundation.log(scaleRange.lowerBound)
+        guard headroom > 0, legroom > 0 else { return nil }
 
-    public static var sramRoadAxs2x12: Drivetrain {
-        let cassette = [10, 11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 33]
-        return try! Drivetrain(
-            chainrings: [33, 46],
-            cassetteCogs: cassette,
-            allowedCombinations:
-                makeGears(chainring: 33, cogs: [15, 17, 19, 21, 24, 28, 33])
-                + makeGears(chainring: 46, cogs: [10, 11, 12, 13, 14, 15, 17, 19, 21])
-        )
-    }
+        // How much of the available room the worst end would use, as a fraction.
+        // Anything above 1 does not fit.
+        func worstUse(_ ratio: Double) -> Double {
+            max(
+                Foundation.log(hardest / ratio) / headroom,
+                Foundation.log(ratio / easiest) / legroom
+            )
+        }
 
-    public static var shimanoGrx2x12: Drivetrain {
-        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32, 36]
-        return try! Drivetrain(
-            chainrings: [31, 48],
-            cassetteCogs: cassette,
-            allowedCombinations:
-                makeGears(chainring: 31, cogs: [15, 17, 19, 21, 24, 28, 32, 36])
-                + makeGears(chainring: 48, cogs: [11, 12, 13, 14, 15, 17, 19, 21, 24])
-        )
-    }
-
-    public static var sramXplr1x12: Drivetrain {
-        makeOneBy(
-            chainring: 40,
-            cassette: [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 35, 44]
-        )
-    }
-
-    public static var sramXplr1x13: Drivetrain {
-        makeOneBy(
-            chainring: 44,
-            cassette: [10, 11, 12, 13, 15, 17, 19, 21, 24, 28, 32, 38, 46]
-        )
-    }
-
-    public static var campagnoloEkar1x13: Drivetrain {
-        makeOneBy(
-            chainring: 40,
-            cassette: [9, 10, 11, 12, 13, 14, 16, 18, 20, 23, 27, 34, 42]
-        )
-    }
-
-    public static var campagnoloRoad2x12: Drivetrain {
-        let cassette = [10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 24, 27]
-        return try! Drivetrain(
-            chainrings: [29, 45],
-            cassetteCogs: cassette,
-            allowedCombinations:
-                makeGears(chainring: 29, cogs: [14, 15, 16, 17, 19, 21, 24, 27])
-                + makeGears(chainring: 45, cogs: [10, 11, 12, 13, 14, 15, 16, 17])
-        )
-    }
-
-    public static var shimanoRoad2x11: Drivetrain {
-        let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 28, 32]
-        return try! Drivetrain(
-            chainrings: [34, 50],
-            cassetteCogs: cassette,
-            allowedCombinations:
-                makeGears(chainring: 34, cogs: [15, 17, 19, 21, 24, 28, 32])
-                + makeGears(chainring: 50, cogs: [11, 12, 13, 14, 15, 17, 19, 21])
-        )
-    }
-
-    public static var mountain1x11: Drivetrain {
-        makeOneBy(
-            chainring: 32,
-            cassette: [11, 13, 15, 17, 19, 21, 24, 28, 32, 37, 46]
-        )
-    }
-
-    public static var mountain1x12: Drivetrain {
-        makeOneBy(
-            chainring: 32,
-            cassette: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 51],
-            referenceIndex: 6
-        )
-    }
-
-    public static var classic1x10: Drivetrain {
-        makeOneBy(
-            chainring: 42,
-            cassette: [11, 13, 15, 18, 21, 24, 28, 32, 36, 42]
-        )
+        guard let best = gears.indices.min(by: {
+            worstUse(gears[$0].ratio) < worstUse(gears[$1].ratio)
+        }) else {
+            return nil
+        }
+        return worstUse(gears[best].ratio) <= 1 ? best : nil
     }
 
     public let chainrings: [Int]
@@ -188,43 +178,6 @@ public struct Drivetrain: Equatable, Sendable {
         self.referenceIndex = resolvedReference
     }
 
-    public init(
-        virtualRatiosHundredths: [Int],
-        referenceIndex: Int? = nil
-    ) throws {
-        guard !virtualRatiosHundredths.isEmpty else {
-            throw DrivetrainError.emptyVirtualRatios
-        }
-
-        var seen = Set<Int>()
-        for ratio in virtualRatiosHundredths {
-            guard ratio > 0 else {
-                throw DrivetrainError.invalidVirtualRatio(ratio)
-            }
-            guard seen.insert(ratio).inserted else {
-                throw DrivetrainError.duplicateVirtualRatio(ratio)
-            }
-        }
-
-        chainrings = []
-        cassetteCogs = []
-        gears = try virtualRatiosHundredths.enumerated().map {
-            try VirtualGear(
-                virtualNumber: $0.offset + 1,
-                ratioHundredths: $0.element
-            )
-        }
-        let resolvedReference = referenceIndex ?? (gears.count - 1) / 2
-        guard gears.indices.contains(resolvedReference) else {
-            throw DrivetrainError.invalidReferenceIndex(resolvedReference)
-        }
-        self.referenceIndex = resolvedReference
-    }
-
-    public var usesNumberedGears: Bool {
-        gears.first?.virtualNumber != nil
-    }
-
     public var referenceGear: VirtualGear {
         gears[referenceIndex]
     }
@@ -243,29 +196,6 @@ public struct Drivetrain: Equatable, Sendable {
                 throw duplicate(component)
             }
         }
-    }
-
-    private static func makeOneBy(
-        chainring: Int,
-        cassette: [Int],
-        referenceIndex: Int? = nil
-    ) -> Drivetrain {
-        try! Drivetrain(
-            chainrings: [chainring],
-            cassetteCogs: cassette,
-            allowedCombinations: makeGears(
-                chainring: chainring,
-                cogs: cassette
-            ),
-            referenceIndex: referenceIndex
-        )
-    }
-
-    private static func makeGears(
-        chainring: Int,
-        cogs: [Int]
-    ) -> [VirtualGear] {
-        cogs.map { try! VirtualGear(chainring: chainring, cog: $0) }
     }
 
     private static func gearOrder(
