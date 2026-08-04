@@ -150,19 +150,13 @@ private struct ReadyView: View {
                     + "\(store.configuration.neutralCircumferenceMillimeters) "
                     + "millimeter neutral circumference, confirmed"
             )
-            if let physicalGear = store.configuration.physicalGearDescription {
-                Divider()
-                Label(
-                    "Before Start: select \(physicalGear), then leave the chain there.",
-                    systemImage: "link.circle.fill"
-                )
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .accessibilityLabel(
-                    "Before starting, select \(physicalGear). Leave the physical "
-                        + "chain there for the entire ride."
-                )
-            }
+            Divider()
+            Label(
+                "Before Start: choose a quiet, straight chain line and leave it there.",
+                systemImage: "link.circle.fill"
+            )
+            .font(.headline)
+            .foregroundStyle(.primary)
         }
         .padding(20)
         .background(.regularMaterial, in: .rect(cornerRadius: 24))
@@ -418,11 +412,18 @@ private struct ActiveRideView: View {
                 .lineLimit(1)
                 .contentTransition(reduceMotion ? .identity : .numericText())
                 .accessibilityLabel(gearAccessibilityLabel)
-            DrivetrainGraphic(
-                chainrings: configuration.drivetrainPreset.drivetrain.chainrings,
-                cassette: configuration.drivetrainPreset.drivetrain.cassetteCogs,
-                gear: coordinator.displayedGear
-            )
+            if configuration.drivetrainPreset.drivetrain.usesNumberedGears {
+                NumberedDrivetrainGraphic(
+                    gearNumber: coordinator.displayedGear?.virtualNumber,
+                    gearCount: coordinator.gearSequence.count
+                )
+            } else {
+                DrivetrainGraphic(
+                    chainrings: configuration.drivetrainPreset.drivetrain.chainrings,
+                    cassette: configuration.drivetrainPreset.drivetrain.cassetteCogs,
+                    gear: coordinator.displayedGear
+                )
+            }
             GearPositionRail(
                 gears: coordinator.gearSequence,
                 selectedIndex: coordinator.confirmedGearIndex
@@ -462,7 +463,13 @@ private struct ActiveRideView: View {
     }
 
     private var gearText: String {
-        guard let gear = coordinator.displayedGear else { return "— × —" }
+        guard let gear = coordinator.displayedGear else {
+            return configuration.drivetrainPreset.drivetrain.usesNumberedGears
+                ? "Gear —" : "— × —"
+        }
+        if let virtualNumber = gear.virtualNumber {
+            return "Gear \(virtualNumber)"
+        }
         return "\(gear.chainring) × \(gear.cog)"
     }
 
@@ -470,6 +477,10 @@ private struct ActiveRideView: View {
         guard let gear = coordinator.displayedGear,
               let index = coordinator.confirmedGearIndex else {
             return "Confirmed gear unavailable"
+        }
+        if let virtualNumber = gear.virtualNumber {
+            return "Confirmed virtual gear \(virtualNumber) of "
+                + "\(coordinator.gearSequence.count)"
         }
         return "Confirmed gear \(gear.chainring) tooth chainring by "
             + "\(gear.cog) tooth cog, position \(index + 1) of "
@@ -655,6 +666,31 @@ private struct DrivetrainGraphic: View {
                         )
                 }
             }
+        }
+        .frame(height: 50)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct NumberedDrivetrainGraphic: View {
+    let gearNumber: Int?
+    let gearCount: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("1")
+                .font(.caption.monospacedDigit().weight(.semibold))
+            Rectangle()
+                .fill(Color.secondary.opacity(0.55))
+                .frame(maxWidth: .infinity, minHeight: 2, maxHeight: 2)
+            Image(systemName: "gearshape.2.fill")
+                .font(.title2)
+                .foregroundStyle(.tint)
+            Rectangle()
+                .fill(Color.secondary.opacity(0.55))
+                .frame(maxWidth: .infinity, minHeight: 2, maxHeight: 2)
+            Text("\(gearCount)")
+                .font(.caption.monospacedDigit().weight(.semibold))
         }
         .frame(height: 50)
         .accessibilityHidden(true)

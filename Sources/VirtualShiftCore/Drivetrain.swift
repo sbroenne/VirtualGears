@@ -10,9 +10,24 @@ public enum DrivetrainError: Error, Equatable {
     case duplicateRatio(VirtualGear, VirtualGear)
     case unknownChainring(VirtualGear)
     case unknownCassetteCog(VirtualGear)
+    case emptyVirtualRatios
+    case invalidVirtualRatio(Int)
+    case duplicateVirtualRatio(Int)
 }
 
 public struct Drivetrain: Equatable, Sendable {
+    public static let zwiftVirtual24RatiosHundredths = [
+        75, 87, 99, 111, 123, 138, 153, 168,
+        186, 204, 222, 240, 261, 282, 303, 324,
+        349, 374, 399, 424, 454, 484, 514, 549,
+    ]
+
+    public static var zwiftVirtual24: Drivetrain {
+        try! Drivetrain(
+            virtualRatiosHundredths: zwiftVirtual24RatiosHundredths
+        )
+    }
+
     public let chainrings: [Int]
     public let cassetteCogs: [Int]
     public let gears: [VirtualGear]
@@ -65,6 +80,35 @@ public struct Drivetrain: Equatable, Sendable {
         self.chainrings = chainrings
         self.cassetteCogs = cassetteCogs
         gears = allowedCombinations.sorted(by: Self.gearOrder)
+    }
+
+    public init(virtualRatiosHundredths: [Int]) throws {
+        guard !virtualRatiosHundredths.isEmpty else {
+            throw DrivetrainError.emptyVirtualRatios
+        }
+
+        var seen = Set<Int>()
+        for ratio in virtualRatiosHundredths {
+            guard ratio > 0 else {
+                throw DrivetrainError.invalidVirtualRatio(ratio)
+            }
+            guard seen.insert(ratio).inserted else {
+                throw DrivetrainError.duplicateVirtualRatio(ratio)
+            }
+        }
+
+        chainrings = []
+        cassetteCogs = []
+        gears = try virtualRatiosHundredths.enumerated().map {
+            try VirtualGear(
+                virtualNumber: $0.offset + 1,
+                ratioHundredths: $0.element
+            )
+        }
+    }
+
+    public var usesNumberedGears: Bool {
+        gears.first?.virtualNumber != nil
     }
 
     public var referenceIndex: Int {

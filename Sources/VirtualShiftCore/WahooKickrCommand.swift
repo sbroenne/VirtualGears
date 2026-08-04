@@ -77,68 +77,6 @@ public enum WahooKickrProtocol {
         "A026E005-0A7D-4AB3-97FA-F1500F9FEB8B"
 }
 
-public enum WahooKickrProofSelection: CaseIterable, Sendable {
-    case easier
-    case baseline
-    case harder
-
-    public var label: String {
-        switch self {
-        case .easier:
-            "Easier"
-        case .baseline:
-            "Starting value"
-        case .harder:
-            "Harder"
-        }
-    }
-}
-
-public enum WahooKickrProofValuesError: Error, Equatable {
-    case invalidBaseline(Double)
-    case invalidTestOffset(Double)
-}
-
-public struct WahooKickrProofValues: Equatable, Sendable {
-    public static let defaultBaseline = 2070.0
-    public static let defaultTestOffset = 500.0
-
-    public let baseline: Double
-    public let easier: Double
-    public let harder: Double
-
-    public init(
-        baseline: Double,
-        testOffset: Double = defaultTestOffset
-    ) throws {
-        guard testOffset.isFinite, testOffset > 0 else {
-            throw WahooKickrProofValuesError.invalidTestOffset(testOffset)
-        }
-        guard baseline.isFinite,
-              baseline - testOffset > 0,
-              baseline + testOffset
-                <= WahooKickrCommand.maximumCircumferenceMillimeters
-        else {
-            throw WahooKickrProofValuesError.invalidBaseline(baseline)
-        }
-
-        self.baseline = baseline
-        easier = baseline - testOffset
-        harder = baseline + testOffset
-    }
-
-    public subscript(selection: WahooKickrProofSelection) -> Double {
-        switch selection {
-        case .easier:
-            easier
-        case .baseline:
-            baseline
-        case .harder:
-            harder
-        }
-    }
-}
-
 public enum WahooKickrCommand {
     public static let unlock = Data([0x20, 0xEE, 0xFC])
     public static let maximumCircumferenceMillimeters =

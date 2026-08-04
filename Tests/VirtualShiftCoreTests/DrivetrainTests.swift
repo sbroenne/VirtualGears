@@ -56,6 +56,51 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertEqual(drivetrain.referenceGear.cog, 20)
     }
 
+    func testCreatesNumberedVirtualDrivetrainWithLowerMiddleReference() throws {
+        let drivetrain = try Drivetrain(
+            virtualRatiosHundredths: [75, 87, 99, 111]
+        )
+
+        XCTAssertTrue(drivetrain.usesNumberedGears)
+        XCTAssertEqual(drivetrain.gears.map(\.virtualNumber), [1, 2, 3, 4])
+        XCTAssertEqual(drivetrain.gears.map(\.ratio), [0.75, 0.87, 0.99, 1.11])
+        XCTAssertEqual(drivetrain.referenceIndex, 1)
+        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 2)
+        XCTAssertTrue(drivetrain.chainrings.isEmpty)
+        XCTAssertTrue(drivetrain.cassetteCogs.isEmpty)
+    }
+
+    func testZwiftVirtual24UsesPublishedRatiosAndGear12Reference() {
+        let drivetrain = Drivetrain.zwiftVirtual24
+
+        XCTAssertEqual(drivetrain.gears.count, 24)
+        XCTAssertEqual(
+            drivetrain.gears.map { Int(($0.ratio * 100).rounded()) },
+            Drivetrain.zwiftVirtual24RatiosHundredths
+        )
+        XCTAssertEqual(drivetrain.referenceIndex, 11)
+        XCTAssertEqual(drivetrain.referenceGear.virtualNumber, 12)
+        XCTAssertEqual(drivetrain.referenceGear.ratio, 2.40, accuracy: 0.000_001)
+    }
+
+    func testRejectsInvalidNumberedVirtualRatios() {
+        XCTAssertThrowsError(
+            try Drivetrain(virtualRatiosHundredths: [])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .emptyVirtualRatios)
+        }
+        XCTAssertThrowsError(
+            try Drivetrain(virtualRatiosHundredths: [75, 0])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .invalidVirtualRatio(0))
+        }
+        XCTAssertThrowsError(
+            try Drivetrain(virtualRatiosHundredths: [75, 87, 75])
+        ) {
+            XCTAssertEqual($0 as? DrivetrainError, .duplicateVirtualRatio(75))
+        }
+    }
+
     func testRejectsEmptyComponentAndCombinationLists() throws {
         let gear = try VirtualGear(chainring: 30, cog: 20)
 

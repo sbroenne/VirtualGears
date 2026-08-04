@@ -226,6 +226,28 @@ final class ConfirmedGearEngineTests: XCTestCase {
         )
     }
 
+    func testZwiftVirtual24EncodesInsidePhysicallyProvenRange() throws {
+        let drivetrain = Drivetrain.zwiftVirtual24
+        let circumferences = try drivetrain.gears.map {
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference: 2_070,
+                referenceRatio: drivetrain.referenceGear.ratio,
+                selectedRatio: $0.ratio
+            )
+        }
+        let encoded = try circumferences.map {
+            let bytes = Array(
+                try WahooKickrCommand.setWheelCircumference(millimeters: $0)
+            )
+            return Int(bytes[1]) | Int(bytes[2]) << 8
+        }
+
+        XCTAssertEqual(encoded.first, 6_469)
+        XCTAssertEqual(encoded[11], 20_700)
+        XCTAssertEqual(encoded.last, 47_351)
+        XCTAssertTrue(encoded.allSatisfy { (6_469...48_000).contains($0) })
+    }
+
     private func makeEngine() throws -> ConfirmedGearEngine {
         try ConfirmedGearEngine(
             drivetrain: makeDrivetrain(),

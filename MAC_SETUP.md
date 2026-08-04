@@ -17,49 +17,20 @@ The iPhone application and KICKR V5 proof must be created and run on macOS.
 7. Select the physical iPhone as the run destination and run the app. The
    simulator cannot perform the required hardware proof.
 
-## KICKR V5 proof procedure
+## KICKR V5 range validation
 
 1. Make sure no other phone, watch, computer, or cycling app is connected to
    the KICKR.
-2. Open VirtualShift, tap **Scan for KICKR**, and select the intended trainer.
-3. Enter the wheel circumference currently configured for the trainer and tap
-   **Confirm starting value**. The field starts at 2070 mm, but do not assume
-   that value is correct for the user's setup.
-4. Wait until the app says **Ready for proof commands**. This means the unlock
-   and initial restore of the confirmed starting value both received matching
-   replies from the KICKR.
-5. Record the exact KICKR model and firmware in the app.
-6. While pedalling steadily, send the value 500 mm lower, the confirmed starting
-   value, and the value 500 mm higher one at a time. Wait for **KICKR verified**
-   in the log for each command, hold cadence as steady as possible, and compare
-   the live watt reading. Record whether resistance changes in the expected
-   easier/baseline/harder direction.
-7. Capture any notification shown in the diagnostic log.
-8. Tap **Stop and restore**. Do not close the app until the log says the
-   starting value was restored and the trainer disconnected safely.
-9. Reconnect once. Confirm that the app restores the same starting value before
-   enabling the test buttons, then stop safely again.
-10. Tap **Copy result summary** and add it to issue #1 with the exact iOS
-   version, discovered UUID and properties, command results, notifications,
-   physical resistance result, and restoration result.
-
-If a write fails, the expected control characteristic is missing, physical
-resistance does not change, or the restore warning appears, stop the proof and
-record that result. Do not proceed with the full proxy.
-
-## KICKR full-range command proof
-
-Run this after the basic KICKR proof and do not pedal during it.
-
-1. Confirm the trainer's starting circumference and connect as described above.
-2. In **Full-range command test**, tap the single enabled test button.
-3. Wait for the app to confirm both the test value and the automatic restoration
-   of the starting circumference. The next value remains disabled until both
-   replies succeed.
-4. Repeat until all ten values are confirmed. The sequence covers the previously
-   tested range, the exact 646.9–4735.1 mm range required by the proposed
+2. Open **VirtualShift Hardware Lab**, choose the **KICKR** tab, tap
+   **Find my KICKR**, and select the intended trainer.
+3. Wait until the app prepares the trainer. It automatically unlocks the KICKR
+   and confirms the fixed 2070 mm neutral value.
+4. Do not pedal. Tap **Run next check** and wait for the automatic 2070 mm
+   restore before continuing.
+5. Repeat until all ten values are confirmed. The sequence covers the previously
+   tested range, the exact 646.9–4735.1 mm range required by the default
    24-speed profile at a 2070 mm baseline, and a 4800 mm upper safety margin.
-5. Tap **Copy result summary** and save the complete list and diagnostic log.
+6. Tap **Copy test report** and save the complete list and diagnostic log.
 
 Stop immediately if the red neutral-restore warning appears. The app disconnects
 instead of issuing another command when the Bluetooth write state is uncertain.

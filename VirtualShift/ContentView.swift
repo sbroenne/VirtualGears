@@ -4,232 +4,39 @@ import VirtualShiftCore
 
 struct ContentView: View {
     @EnvironmentObject private var bluetooth: KickrBluetoothManager
-    @State private var baselineText = "2070"
-    @State private var kickrModel = "KICKR V5"
-    @State private var kickrFirmware = ""
-    @State private var resistanceResult = "Not tested"
 
     var body: some View {
         NavigationStack {
             List {
-                liveDataSection
-                statusSection
-                baselineSection
-                trainerSection
-                commandSection
-                rangeTestSection
+                overviewSection
                 safetySection
-                hardwareSection
-                logSection
+                connectionSection
+                rangeTestSection
+                reportSection
             }
-            .navigationTitle("KICKR V5 Proof")
+            .navigationTitle("KICKR Range Test")
+            .listStyle(.insetGrouped)
         }
     }
 
-    private var liveDataSection: some View {
-        Section("Live trainer data") {
-            HStack {
-                metric(
-                    value: bluetooth.powerWatts.map(String.init) ?? "--",
-                    unit: "watts"
+    private var overviewSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: "checkmark.shield.fill")
+                    .font(.system(size: 42))
+                    .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
+                Text("Validate a KICKR V5 safely")
+                    .font(.title2.bold())
+                Text(
+                    "Connect the trainer, then run each staged check without pedalling. "
+                        + "Every check automatically returns the trainer to 2070 mm."
                 )
-                Spacer()
-                metric(
-                    value: bluetooth.cadenceRPM.map {
-                        String(format: "%.0f", $0)
-                    } ?? "--",
-                    unit: "rpm"
-                )
-            }
-            Text(
-                "Keep cadence steady, then compare watts after each "
-                    + "circumference change."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-        }
-    }
-
-    private func metric(value: String, unit: String) -> some View {
-        VStack(alignment: .leading) {
-            Text(value)
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-            Text(unit)
                 .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var baselineSection: some View {
-        Section("Starting circumference") {
-            TextField("Starting value in millimetres", text: $baselineText)
-                .keyboardType(.decimalPad)
-                .disabled(bluetooth.isConnected || bluetooth.isConnecting)
-                .onChange(of: baselineText) {
-                    bluetooth.clearBaselineConfirmation()
-                }
-
-            Button("Confirm starting value") {
-                guard let value = Double(baselineText) else {
-                    bluetooth.confirmBaseline(.nan)
-                    return
-                }
-                bluetooth.confirmBaseline(value)
+                Label(currentStep, systemImage: currentStepSymbol)
+                    .font(.headline)
             }
-            .disabled(bluetooth.isConnected || bluetooth.isConnecting)
-
-            if let values = bluetooth.proofValues {
-                Text(
-                    "Confirmed: \(values.baseline.formatted()) mm. "
-                        + "Tests: \(values.easier.formatted()) mm and "
-                        + "\(values.harder.formatted()) mm."
-                )
-                .foregroundStyle(.green)
-            } else {
-                Text("Confirm this value before connecting to the trainer.")
-                    .foregroundStyle(.secondary)
-            }
-
-            if let error = bluetooth.baselineError {
-                Text(error)
-                    .foregroundStyle(.red)
-            }
-        }
-    }
-
-    private var statusSection: some View {
-        Section("Status") {
-            LabeledContent("Bluetooth", value: bluetooth.bluetoothStatus)
-            LabeledContent("Connection", value: bluetooth.connectionStatus)
-            LabeledContent(
-                "Control properties",
-                value: bluetooth.characteristicProperties
-            )
-            if let circumference = bluetooth.lastConfirmedCircumference {
-                LabeledContent(
-                    "Last confirmed",
-                    value: "\(Int(circumference)) mm"
-                )
-            }
-        }
-    }
-
-    private var trainerSection: some View {
-        Section("Choose trainer") {
-            Button(bluetooth.isScanning ? "Stop scanning" : "Scan for KICKR") {
-                if bluetooth.isScanning {
-                    bluetooth.stopScanning()
-                } else {
-                    bluetooth.startScanning()
-                }
-            }
-            .disabled(bluetooth.isConnected || bluetooth.isConnecting)
-
-            if bluetooth.trainers.isEmpty {
-                Text("No KICKR trainers found yet")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(bluetooth.trainers) { trainer in
-                    Button {
-                        bluetooth.connect(to: trainer.id)
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(trainer.name)
-                                Text(trainer.id.uuidString)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text("\(trainer.rssi) dBm")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .disabled(
-                        bluetooth.isBusy
-                            || bluetooth.isConnected
-                            || bluetooth.isConnecting
-                            || bluetooth.proofValues == nil
-                    )
-                }
-            }
-        }
-    }
-
-    private var commandSection: some View {
-        Section("Wheel circumference") {
-            Text(
-                "The app unlocks the trainer and restores the confirmed "
-                    + "starting value before "
-                    + "these controls become available."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-
-            if let values = bluetooth.proofValues {
-                ForEach(WahooKickrProofSelection.allCases, id: \.self) {
-                    selection in
-                    Button(
-                        "\(selection.label) - "
-                            + "\(values[selection].formatted()) mm"
-                    ) {
-                        bluetooth.send(selection)
-                    }
-                    .disabled(!bluetooth.isReady || bluetooth.isBusy)
-                }
-            }
-
-            Button(stopButtonTitle, role: .destructive) {
-                bluetooth.stop()
-            }
-        }
-    }
-
-    private var rangeTestSection: some View {
-        Section("Full-range command test") {
-            Text(
-                "Do not pedal during this acceptance test. Each tap sends one test "
-                    + "value, requires a matching successful KICKR reply, then restores "
-                    + "the confirmed starting circumference before enabling the next tap."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-
-            ProgressView(
-                value: Double(bluetooth.confirmedRangeProbeValues.count),
-                total: Double(KickrBluetoothManager.rangeProbeValues.count)
-            )
-            Text(
-                "\(bluetooth.confirmedRangeProbeValues.count) of "
-                    + "\(KickrBluetoothManager.rangeProbeValues.count) values confirmed"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            if let next = bluetooth.nextRangeProbeValue {
-                Button("Test \(next.formatted()) mm, then restore neutral") {
-                    bluetooth.sendNextRangeProbe()
-                }
-                .disabled(!bluetooth.isReady || bluetooth.isBusy)
-            } else {
-                Label(
-                    "All staged values received matching successful replies",
-                    systemImage: "checkmark.seal.fill"
-                )
-                .foregroundStyle(.green)
-            }
-
-            if !bluetooth.confirmedRangeProbeValues.isEmpty {
-                Text(
-                    "Passed: "
-                        + bluetooth.confirmedRangeProbeValues
-                            .map { $0.formatted() }
-                            .joined(separator: ", ")
-                        + " mm"
-                )
-                .font(.caption.monospacedDigit())
-            }
+            .padding(.vertical, 8)
         }
     }
 
@@ -237,74 +44,219 @@ struct ContentView: View {
     private var safetySection: some View {
         if let warning = bluetooth.safetyWarning {
             Section("Safety warning") {
-                Text(warning)
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                     .fontWeight(.semibold)
             }
         }
     }
 
-    private var hardwareSection: some View {
-        Section("Hardware result") {
-            TextField("KICKR model", text: $kickrModel)
-            TextField("KICKR firmware", text: $kickrFirmware)
-            LabeledContent(
-                "iOS version",
-                value: UIDevice.current.systemVersion
+    private var connectionSection: some View {
+        Section {
+            LabeledContent("Bluetooth", value: bluetooth.bluetoothStatus)
+            LabeledContent("Trainer", value: bluetooth.connectionStatus)
+
+            if bluetooth.isConnected || bluetooth.isConnecting {
+                Button("Stop and restore 2070 mm", role: .destructive) {
+                    bluetooth.stop()
+                }
+            } else {
+                Button {
+                    bluetooth.isScanning
+                        ? bluetooth.stopScanning()
+                        : bluetooth.startScanning()
+                } label: {
+                    Label(
+                        bluetooth.isScanning ? "Stop scanning" : "Find my KICKR",
+                        systemImage: bluetooth.isScanning
+                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(.borderedProminent)
+
+                if bluetooth.trainers.isEmpty {
+                    Text(
+                        bluetooth.isScanning
+                            ? "Keep the KICKR awake and nearby."
+                            : "Tap Find my KICKR to begin."
+                    )
+                    .foregroundStyle(.secondary)
+                } else {
+                    ForEach(bluetooth.trainers) { trainer in
+                        Button {
+                            bluetooth.connect(to: trainer.id)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(trainer.name)
+                                        .font(.headline)
+                                    Text("Signal \(trainer.rssi) dBm")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(minHeight: 52)
+                        }
+                    }
+                }
+            }
+        } header: {
+            Text("1. Connect")
+        } footer: {
+            Text(
+                "The app unlocks the KICKR and confirms 2070 mm before enabling "
+                    + "the test."
             )
-            Picker("Resistance direction", selection: $resistanceResult) {
-                Text("Not tested").tag("Not tested")
-                Text("Confirmed").tag("Confirmed")
-                Text("Wrong direction").tag("Wrong direction")
-                Text("No physical change").tag("No physical change")
-            }
-            Button("Copy result summary") {
-                UIPasteboard.general.string = resultSummary
-            }
         }
     }
 
-    private var logSection: some View {
-        Section("Diagnostic log") {
-            if bluetooth.entries.isEmpty {
-                Text("No events yet")
-                    .foregroundStyle(.secondary)
-            } else {
-                ScrollView(.horizontal) {
-                    Text(bluetooth.diagnosticText)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
-                }
-                Button("Copy diagnostic log") {
-                    UIPasteboard.general.string = bluetooth.diagnosticText
-                }
+    private var rangeTestSection: some View {
+        Section {
+            ProgressView(
+                value: Double(bluetooth.confirmedRangeProbeValues.count),
+                total: Double(KickrBluetoothManager.rangeProbeValues.count)
+            )
+            .tint(testComplete ? .green : .accentColor)
+
+            HStack {
+                Text("Progress")
+                Spacer()
+                Text(
+                    "\(bluetooth.confirmedRangeProbeValues.count) of "
+                        + "\(KickrBluetoothManager.rangeProbeValues.count)"
+                )
+                .monospacedDigit()
+                .fontWeight(.semibold)
             }
+
+            if testComplete {
+                Label(
+                    "Complete range confirmed",
+                    systemImage: "checkmark.seal.fill"
+                )
+                .font(.headline)
+                .foregroundStyle(.green)
+
+                Button("Run the test again") {
+                    bluetooth.resetRangeTest()
+                }
+                .disabled(!bluetooth.isReady || bluetooth.isBusy)
+            } else if let next = bluetooth.nextRangeProbeValue {
+                Button {
+                    bluetooth.sendNextRangeProbe()
+                } label: {
+                    VStack(spacing: 4) {
+                        Text(
+                            bluetooth.isBusy
+                                ? "Checking and restoring…"
+                                : "Run next check"
+                        )
+                        Text(
+                            "\(next.formatted()) mm · then restore 2070 mm"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!bluetooth.isReady || bluetooth.isBusy)
+            }
+
+            Text("Do not pedal during these command-acceptance checks.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text("2. Validate")
         }
+    }
+
+    private var reportSection: some View {
+        Section {
+            LabeledContent("Model", value: "KICKR V5")
+            LabeledContent(
+                "Validated range",
+                value: testComplete ? "646.9–4800 mm" : "Not complete"
+            )
+            LabeledContent(
+                "Last confirmed",
+                value: bluetooth.lastConfirmedCircumference.map {
+                    "\($0.formatted()) mm"
+                } ?? "None"
+            )
+
+            Button {
+                UIPasteboard.general.string = resultSummary
+            } label: {
+                Label(
+                    "Copy test report",
+                    systemImage: "doc.on.doc"
+                )
+                .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .disabled(bluetooth.entries.isEmpty)
+
+            DisclosureGroup("Technical details") {
+                LabeledContent(
+                    "Control properties",
+                    value: bluetooth.characteristicProperties
+                )
+                Text(bluetooth.diagnosticText.isEmpty
+                    ? "No diagnostic events yet."
+                    : bluetooth.diagnosticText)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+            }
+        } header: {
+            Text("3. Report")
+        }
+    }
+
+    private var testComplete: Bool {
+        bluetooth.confirmedRangeProbeValues.count
+            == KickrBluetoothManager.rangeProbeValues.count
+    }
+
+    private var currentStep: String {
+        if testComplete {
+            return "Validation complete"
+        }
+        if bluetooth.isReady {
+            return "Run check \(bluetooth.confirmedRangeProbeValues.count + 1)"
+        }
+        if bluetooth.isConnected || bluetooth.isConnecting {
+            return "Preparing trainer"
+        }
+        return "Connect your trainer"
+    }
+
+    private var currentStepSymbol: String {
+        if testComplete {
+            return "checkmark.circle.fill"
+        }
+        if bluetooth.isReady {
+            return "play.circle.fill"
+        }
+        return "1.circle.fill"
     }
 
     private var resultSummary: String {
-        let proofValues = bluetooth.proofValues
-        return """
-        KICKR model: \(kickrModel)
-        KICKR firmware: \(kickrFirmware.isEmpty ? "Not recorded" : kickrFirmware)
+        """
+        KICKR range validation
+        Model: KICKR V5
         iOS version: \(UIDevice.current.systemVersion)
-        Starting circumference: \(proofValues?.baseline.formatted() ?? "Not confirmed") mm
-        Easier test: \(proofValues?.easier.formatted() ?? "Not calculated") mm
-        Harder test: \(proofValues?.harder.formatted() ?? "Not calculated") mm
+        Neutral circumference: \(KickrBluetoothManager.neutralCircumference.formatted()) mm
         Control characteristic: \(WahooKickrProtocol.controlCharacteristicUUID)
         Properties: \(bluetooth.characteristicProperties)
-        Resistance direction: \(resistanceResult)
-        Range probes passed: \(bluetooth.confirmedRangeProbeValues.map { $0.formatted() }.joined(separator: ", ")) mm
+        Result: \(testComplete ? "PASS" : "INCOMPLETE")
+        Confirmed values: \(bluetooth.confirmedRangeProbeValues.map { $0.formatted() }.joined(separator: ", ")) mm
 
         Diagnostic log:
         \(bluetooth.diagnosticText)
         """
-    }
-
-    private var stopButtonTitle: String {
-        guard let baseline = bluetooth.proofValues?.baseline else {
-            return "Stop"
-        }
-        return "Stop and restore \(baseline.formatted()) mm"
     }
 }

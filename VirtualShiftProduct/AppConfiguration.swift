@@ -10,10 +10,7 @@ struct AppConfiguration: Codable, Equatable {
     var clickUUID = ""
     var neutralCircumferenceMillimeters = 2070
     var confirmedCircumferenceMillimeters: Int?
-    var drivetrainPreset = DrivetrainPreset.shimano105Di2
-    var physicalRearSetup: PhysicalRearSetup?
-    var physicalChainring: Int?
-    var physicalCassetteCog: Int?
+    var drivetrainPreset = DrivetrainPreset.zwiftVirtual24
     var setupComplete = false
 
     var isCircumferenceConfirmed: Bool {
@@ -33,36 +30,31 @@ struct AppConfiguration: Codable, Equatable {
     }
 
     var hasSafeCircumference: Bool {
-        (try? ConfirmedGearEngine(
+        guard (try? ConfirmedGearEngine(
             drivetrain: drivetrainPreset.drivetrain,
             baselineCircumferenceMillimeters:
                 Double(neutralCircumferenceMillimeters)
-        )) != nil
-    }
-
-    var hasValidPhysicalSetup: Bool {
-        guard physicalRearSetup != nil,
-              let physicalChainring,
-              (20...60).contains(physicalChainring) else {
+        )) != nil else {
             return false
         }
-        if physicalRearSetup == .cassette {
-            guard let physicalCassetteCog else { return false }
-            return (9...52).contains(physicalCassetteCog)
-        }
-        return true
-    }
 
-    var physicalGearDescription: String? {
-        guard hasValidPhysicalSetup, let physicalChainring else { return nil }
-        switch physicalRearSetup {
-        case .zwiftCog:
-            return "\(physicalChainring) × 14 on Zwift Cog"
-        case .cassette:
-            guard let physicalCassetteCog else { return nil }
-            return "\(physicalChainring) × \(physicalCassetteCog) on cassette"
-        case nil:
-            return nil
+        let drivetrain = drivetrainPreset.drivetrain
+        return drivetrain.gears.allSatisfy { gear in
+            guard let circumference = try? WheelCircumferenceScaler
+                .effectiveCircumference(
+                    neutralCircumference:
+                        Double(neutralCircumferenceMillimeters),
+                    referenceRatio: drivetrain.referenceGear.ratio,
+                    selectedRatio: gear.ratio
+                ),
+                let command = try? WahooKickrCommand.setWheelCircumference(
+                    millimeters: circumference
+                ) else {
+                return false
+            }
+            let bytes = Array(command)
+            let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
+            return (6_469...48_000).contains(encoded)
         }
     }
 
@@ -71,25 +63,11 @@ struct AppConfiguration: Codable, Equatable {
             && hasValidClick
             && isCircumferenceConfirmed
             && hasSafeCircumference
-            && hasValidPhysicalSetup
-    }
-}
-
-enum PhysicalRearSetup: String, Codable, CaseIterable, Identifiable {
-    case zwiftCog
-    case cassette
-
-    var id: Self { self }
-
-    var name: String {
-        switch self {
-        case .zwiftCog: "Zwift Cog"
-        case .cassette: "Cassette"
-        }
     }
 }
 
 enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
+    case zwiftVirtual24
     case shimano105Di2
     case simple1x
 
@@ -97,6 +75,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
 
     var name: String {
         switch self {
+        case .zwiftVirtual24:
+            "Zwift Virtual 24"
         case .shimano105Di2:
             "Shimano 105 Di2–like"
         case .simple1x:
@@ -106,6 +86,8 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
 
     var detail: String {
         switch self {
+        case .zwiftVirtual24:
+            "24 numbered gears · 0.75–5.49"
         case .shimano105Di2:
             "2×12 · 50/34 · 11–34"
         case .simple1x:
@@ -113,8 +95,23 @@ enum DrivetrainPreset: String, Codable, CaseIterable, Identifiable {
         }
     }
 
+    var setupDescription: String {
+        switch self {
+        case .zwiftVirtual24:
+            "The default Zwift-style sequence uses 24 numbered gears. Gear 12 "
+                + "is the neutral starting point."
+        case .shimano105Di2:
+            "17 sequential combinations; duplicate ratios and extreme "
+                + "cross-chaining are excluded."
+        case .simple1x:
+            "10 sequential combinations from the defined 42-tooth drivetrain."
+        }
+    }
+
     var drivetrain: Drivetrain {
         switch self {
+        case .zwiftVirtual24:
+            return .zwiftVirtual24
         case .shimano105Di2:
             let cassette = [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
             let combinations =
@@ -163,12 +160,14 @@ final class ConfigurationStore {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        let loaded: AppConfiguration
         if let data = defaults.data(forKey: Self.storageKey),
            let saved = try? JSONDecoder().decode(AppConfiguration.self, from: data) {
-            configuration = saved
+            loaded = saved
         } else {
-            configuration = AppConfiguration()
+            loaded = AppConfiguration()
         }
+        configuration = loaded
         if configuration.setupComplete && !configuration.canFinishSetup {
             configuration.setupComplete = false
             save()
@@ -189,11 +188,7 @@ final class ConfigurationStore {
 
     func setDrivetrainPreset(_ preset: DrivetrainPreset) {
         configuration.drivetrainPreset = preset
-    }
-
-    func setPhysicalRearSetup(_ setup: PhysicalRearSetup?) {
-        configuration.physicalRearSetup = setup
-        configuration.physicalCassetteCog = nil
+        configuration.confirmedCircumferenceMillimeters = nil
     }
 
     func finishSetup() {

@@ -33,8 +33,6 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     @Published private(set) var characteristicProperties = "Not discovered"
     @Published private(set) var entries: [DiagnosticEntry] = []
     @Published private(set) var lastConfirmedCircumference: Double?
-    @Published private(set) var proofValues: WahooKickrProofValues?
-    @Published private(set) var baselineError: String?
     @Published private(set) var powerWatts: Int?
     @Published private(set) var cadenceRPM: Double?
     @Published private(set) var confirmedRangeProbeValues: [Double] = []
@@ -74,6 +72,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     static let rangeProbeValues: [Double] = [
         1_570, 2_570, 1_200, 3_200, 900, 3_800, 646.9, 4_200, 4_735.1, 4_800,
     ]
+    static let neutralCircumference = 2_070.0
 
     private let serviceUUID = CBUUID(
         string: WahooKickrProtocol.cyclingPowerServiceUUID
@@ -124,37 +123,6 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         }
     }
 
-    func confirmBaseline(_ millimeters: Double) {
-        guard !isConnected && !isConnecting else {
-            baselineError = "Stop the current session before changing the starting value."
-            return
-        }
-
-        do {
-            let values = try WahooKickrProofValues(baseline: millimeters)
-            proofValues = values
-            confirmedRangeProbeValues = []
-            baselineError = nil
-            log(
-                "Starting value confirmed: \(values.baseline.formatted()) mm; "
-                    + "tests are \(values.easier.formatted()) and "
-                    + "\(values.harder.formatted()) mm"
-            )
-        } catch {
-            proofValues = nil
-            confirmedRangeProbeValues = []
-            baselineError =
-                "Enter a starting value above 500 mm and no more than "
-                + "\(Int(WahooKickrCommand.maximumCircumferenceMillimeters - 500)) mm."
-        }
-    }
-
-    func clearBaselineConfirmation() {
-        guard !isConnected && !isConnecting else { return }
-        proofValues = nil
-        baselineError = nil
-    }
-
     func startScanning() {
         guard !isConnected && !isConnecting else {
             reportError("Stop the current session before choosing another trainer")
@@ -182,10 +150,6 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     }
 
     func connect(to id: UUID) {
-        guard proofValues != nil else {
-            baselineError = "Confirm the starting value before connecting."
-            return
-        }
         guard !isConnected && !isConnecting else {
             reportError("Stop the current session before choosing another trainer")
             return
@@ -195,6 +159,8 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
             return
         }
 
+        confirmedRangeProbeValues = []
+        lastConfirmedCircumference = nil
         stopScanning()
         selectedTrainerID = id
         pendingPeripheral = peripheral
@@ -209,46 +175,13 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         log("Connecting to \(peripheral.name ?? id.uuidString)")
     }
 
-    func send(_ selection: WahooKickrProofSelection) {
-        guard isReady else {
-            reportError("Wait for unlock and neutral setup to finish")
-            return
-        }
-
-        guard let values = proofValues else {
-            reportError("The starting value is not confirmed")
-            return
-        }
-
-        do {
-            let circumference = values[selection]
-            let data = try WahooKickrCommand.setWheelCircumference(
-                millimeters: circumference
-            )
-            enqueue(
-                PendingCommand(
-                    name: "\(selection.label) \(circumference.formatted()) mm",
-                    data: data,
-                    circumference: circumference,
-                    marksUnlocked: false,
-                    makesReady: false,
-                    disconnectAfterWrite: false
-                )
-            )
-        } catch {
-            reportError(
-                "Could not create \(selection.label.lowercased()) command: \(error)"
-            )
-        }
-    }
-
     func sendNextRangeProbe() {
         guard isReady, !isBusy else {
             reportError("Wait until the trainer is ready before testing the next value")
             return
         }
-        guard let baseline = proofValues?.baseline,
-              let probe = nextRangeProbeValue else { return }
+        guard let probe = nextRangeProbeValue else { return }
+        let baseline = Self.neutralCircumference
 
         do {
             let probeData = try WahooKickrCommand.setWheelCircumference(
@@ -285,6 +218,12 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
         }
     }
 
+    func resetRangeTest() {
+        guard isReady, !isBusy else { return }
+        confirmedRangeProbeValues = []
+        log("Full-range test reset")
+    }
+
     func stop(reason: String = "Stop requested") {
         if let peripheral = pendingPeripheral, connectedPeripheral == nil {
             stopping = true
@@ -300,10 +239,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
             return
         }
         guard !stopping else { return }
-        guard let baseline = proofValues?.baseline else {
-            failSafetyRestore("The confirmed starting value is missing")
-            return
-        }
+        let baseline = Self.neutralCircumference
 
         stopping = true
         safeDisconnectConfirmed = false
@@ -356,10 +292,7 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     }
 
     private func beginSafeSession() {
-        guard let baseline = proofValues?.baseline else {
-            reportError("Confirm the starting value before connecting")
-            return
-        }
+        let baseline = Self.neutralCircumference
         guard let characteristic = controlCharacteristic else {
             reportError("The Wahoo control characteristic was not found")
             return

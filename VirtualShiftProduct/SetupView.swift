@@ -15,7 +15,7 @@ struct SetupView: View {
             kickrSection
             clickSection
             drivetrainSection
-            physicalSetupSection
+            fixedChainSection
             circumferenceSection
             supportSection
         }
@@ -173,9 +173,7 @@ struct SetupView: View {
             .pickerStyle(.inline)
 
             Text(
-                "\(store.configuration.drivetrainPreset.drivetrain.gears.count) "
-                    + "sequential gears; duplicate ratios and extreme cross-chaining "
-                    + "are excluded."
+                store.configuration.drivetrainPreset.setupDescription
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
@@ -183,48 +181,21 @@ struct SetupView: View {
         }
     }
 
-    private var physicalSetupSection: some View {
+    private var fixedChainSection: some View {
         Section {
-            Picker("Trainer sprocket", selection: physicalRearSetup) {
-                Text("Choose…").tag(PhysicalRearSetup?.none)
-                ForEach(PhysicalRearSetup.allCases) { setup in
-                    Text(setup.name).tag(Optional(setup))
-                }
-            }
-
-            if store.configuration.physicalRearSetup != nil {
-                Picker("Front chainring", selection: physicalChainring) {
-                    Text("Choose…").tag(Int?.none)
-                    ForEach(Array(20...60), id: \.self) { chainring in
-                        Text("\(chainring) teeth").tag(Optional(chainring))
-                    }
-                }
-            }
-
-            if store.configuration.physicalRearSetup == .cassette {
-                Picker("Rear cog", selection: physicalCassetteCog) {
-                    Text("Choose…").tag(Int?.none)
-                    ForEach(Array(9...52), id: \.self) { cog in
-                        Text("\(cog) teeth").tag(Optional(cog))
-                    }
-                }
-            }
-
-            if let description = store.configuration.physicalGearDescription {
-                Label(
-                    "Leave the physical chain at \(description) for the whole ride.",
-                    systemImage: "link"
-                )
-                .font(.callout.weight(.semibold))
-            }
+            Label(
+                "Choose a quiet, straight chain line and leave the physical "
+                    + "chain there for the whole ride.",
+                systemImage: "link"
+            )
+            .font(.callout.weight(.semibold))
         } header: {
             Text("Physical bike setup")
         } footer: {
             Text(
-                "A Zwift Cog is a fixed 14-tooth sprocket. Choose the front "
-                    + "chainring that gives the straightest chain line; Wahoo recommends "
-                    + "a ratio near 3:1 when practical. This physical selection stays "
-                    + "fixed and does not change the virtual gear list."
+                "A Zwift Cog is already fixed. On a cassette, select one rear cog "
+                    + "with a straight chain line. Tooth counts are not needed because "
+                    + "this fixed position becomes the neutral reference."
             )
         }
     }
@@ -266,8 +237,9 @@ struct SetupView: View {
             Text("Neutral circumference")
         } footer: {
             Text(
-                "Default: 2070 mm. Confirm this once before continuing. "
-                    + "Changing it requires confirmation again."
+                "Default: 2070 mm. Every virtual gear must stay inside the "
+                    + "physically verified 646.9–4800 mm KICKR range. Changing the "
+                    + "drivetrain or this value requires confirmation again."
             )
         }
     }
@@ -306,7 +278,7 @@ struct SetupView: View {
         .accessibilityHint(
             canFinishSetup
                 ? "Saves setup and shows the ready screen"
-                : "Complete equipment, physical gearing, and circumference first"
+                : "Complete equipment, drivetrain, and circumference first"
         )
     }
 
@@ -331,22 +303,6 @@ struct SetupView: View {
         }
     }
 
-    private var physicalRearSetup: Binding<PhysicalRearSetup?> {
-        Binding {
-            store.configuration.physicalRearSetup
-        } set: {
-            store.setPhysicalRearSetup($0)
-        }
-    }
-
-    private var physicalChainring: Binding<Int?> {
-        persistedBinding(\.physicalChainring)
-    }
-
-    private var physicalCassetteCog: Binding<Int?> {
-        persistedBinding(\.physicalCassetteCog)
-    }
-
     private var circumference: Binding<Int> {
         Binding {
             store.configuration.neutralCircumferenceMillimeters
@@ -363,16 +319,6 @@ struct SetupView: View {
                 || (click.isReady
                     && click.selectedID?.uuidString
                         == store.configuration.clickUUID))
-    }
-
-    private func persistedBinding<Value>(
-        _ keyPath: WritableKeyPath<AppConfiguration, Value>
-    ) -> Binding<Value> {
-        Binding {
-            store.configuration[keyPath: keyPath]
-        } set: {
-            store.configuration[keyPath: keyPath] = $0
-        }
     }
 
     private func candidateButton(

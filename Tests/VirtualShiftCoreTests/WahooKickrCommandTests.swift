@@ -83,38 +83,6 @@ final class WahooKickrCommandTests: XCTestCase {
         XCTAssertEqual(Array(command), [0x48, 0xDC, 0x50])
     }
 
-    func testDefaultProofValuesHaveExpectedEncoding() throws {
-        let values = try WahooKickrProofValues(
-            baseline: WahooKickrProofValues.defaultBaseline
-        )
-        let expected: [WahooKickrProofSelection: [UInt8]] = [
-            .easier: [0x48, 0x54, 0x3D],
-            .baseline: [0x48, 0xDC, 0x50],
-            .harder: [0x48, 0x64, 0x64],
-        ]
-
-        for selection in WahooKickrProofSelection.allCases {
-            let command = try WahooKickrCommand.setWheelCircumference(
-                millimeters: values[selection]
-            )
-            XCTAssertEqual(Array(command), expected[selection])
-        }
-    }
-
-    func testProofValuesAreDerivedFromConfirmedBaseline() throws {
-        let values = try WahooKickrProofValues(baseline: 2000)
-
-        XCTAssertEqual(values.easier, 1500)
-        XCTAssertEqual(values.baseline, 2000)
-        XCTAssertEqual(values.harder, 2500)
-    }
-
-    func testProofValuesRejectUnsafeBaseline() {
-        XCTAssertThrowsError(try WahooKickrProofValues(baseline: 500))
-        XCTAssertThrowsError(try WahooKickrProofValues(baseline: 6100))
-        XCTAssertThrowsError(try WahooKickrProofValues(baseline: .nan))
-    }
-
     func testCircumferenceAcceptsEncoderBoundaries() throws {
         XCTAssertNoThrow(
             try WahooKickrCommand.setWheelCircumference(millimeters: 0)
