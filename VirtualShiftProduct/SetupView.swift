@@ -25,8 +25,14 @@ struct SetupView: View {
         .onChange(of: store.configuration.usesClick) { _, enabled in
             if enabled { click.autoConnectSavedDevice() }
         }
-        .safeAreaInset(edge: .bottom) {
-            finishButton
+        .toolbar {
+            // A sheet is dismissed from its own navigation bar, which is where
+            // iOS has trained everyone to look. Every change here saves the
+            // moment it is made, so this confirms nothing and only closes.
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done") { onFinish?() }
+                    .fontWeight(.semibold)
+            }
         }
     }
 
@@ -41,6 +47,15 @@ struct SetupView: View {
                         ? store.configuration.kickrName : "None yet",
                     status: .init(state: kickr.state, isRequired: true)
                 )
+            }
+
+            if !store.configuration.hasValidKickr || !kickr.isReady {
+                Label(
+                    "Your trainer is not connected, so a ride cannot start yet.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(.orange)
             }
 
             NavigationLink {
@@ -105,37 +120,6 @@ struct SetupView: View {
         } header: {
             Text("On the bike")
         }
-    }
-
-    private var finishButton: some View {
-        VStack(spacing: 8) {
-            if let blocker = remainingStep {
-                Text(blocker)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            Button {
-                onFinish?()
-            } label: {
-                Text("Done")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity, minHeight: 60)
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .padding()
-        .background(.bar)
-    }
-
-    /// Nothing here is a gate, so this says what is currently true rather than
-    /// what the rider must go and do. The gears row raises its own problem, so
-    /// only the trainer is mentioned here.
-    private var remainingStep: String? {
-        guard !store.configuration.hasValidKickr || !kickr.isReady else {
-            return nil
-        }
-        return "Your trainer is not connected, so a ride cannot start yet."
     }
 
     private func autoConnectSavedEquipment() {

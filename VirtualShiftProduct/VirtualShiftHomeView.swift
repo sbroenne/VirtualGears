@@ -391,6 +391,10 @@ private struct ActiveRideView: View {
                     }
                     .accessibilityHint("Change your gears, trainer, or Zwift Click")
                 }
+                // Ending a ride and opening settings are unrelated, and one of
+                // them cannot be undone. The spacer puts them in separate
+                // groups so a sweaty hand aiming for one cannot catch the other.
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(role: .destructive) {
                         confirmsStop = true
