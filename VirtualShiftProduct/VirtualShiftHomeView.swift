@@ -482,17 +482,18 @@ private struct ActiveRideView: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Every item carries its own tick. Sharing one tick across a group read as
+    /// though only the first piece of equipment was connected.
     private func equipmentGroup(items: [EquipmentItem]) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                if index > 0 {
-                    Text("·")
+        HStack(spacing: 10) {
+            ForEach(items) { item in
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text(item.title)
                 }
-                Text(item.title)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(item.title), connected")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(item.title), connected")
             }
         }
     }
