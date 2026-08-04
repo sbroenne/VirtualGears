@@ -330,7 +330,9 @@ private struct ShiftingSetupView: View {
 /// Gears are described the way a bike shop describes them: which chainrings are
 /// on the front, and which cassette is on the back. A rider can copy the numbers
 /// stamped on their own bike, or invent a bike they would rather be riding.
-private struct GearChoiceView: View {
+/// Reached from Settings, and directly from the ride screen's title menu when
+/// the rider only wants their gears.
+struct GearChoiceView: View {
     @Bindable var store: ConfigurationStore
 
     var body: some View {

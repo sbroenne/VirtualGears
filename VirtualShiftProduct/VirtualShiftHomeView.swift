@@ -341,11 +341,21 @@ private struct ActiveRideView: View {
     @State private var lastInteraction = Date()
     @State private var isDimmed = false
     @State private var showsSettings = false
+    @State private var showsGears = false
     /// Remembers the gears the ride started with, so the session is only rebuilt
     /// when the rider actually changed them.
     @State private var gearsWhenOpened: Drivetrain?
 
     private var configuration: AppConfiguration { store.configuration }
+
+    private func rememberOrRestartGears(isOpen: Bool) {
+        if isOpen {
+            gearsWhenOpened = configuration.drivetrain
+        } else {
+            restartIfGearsChanged(from: gearsWhenOpened)
+            gearsWhenOpened = nil
+        }
+    }
 
     /// Changing gears mid-ride rebuilds the session rather than swapping the
     /// ladder underneath the trainer, so the wheel size the trainer is holding
@@ -430,13 +440,24 @@ private struct ActiveRideView: View {
                 )
             }
         }
-        .onChange(of: showsSettings) { _, isOpen in
-            if isOpen {
-                gearsWhenOpened = configuration.drivetrain
-            } else {
-                restartIfGearsChanged(from: gearsWhenOpened)
-                gearsWhenOpened = nil
+        // Asking for gears lands on the gears, not on a screen the rider then
+        // has to navigate. Anything else would be a longer way round mid-ride.
+        .sheet(isPresented: $showsGears) {
+            NavigationStack {
+                GearChoiceView(store: store)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showsGears = false }
+                                .fontWeight(.semibold)
+                        }
+                    }
             }
+        }
+        .onChange(of: showsSettings) { _, isOpen in
+            rememberOrRestartGears(isOpen: isOpen)
+        }
+        .onChange(of: showsGears) { _, isOpen in
+            rememberOrRestartGears(isOpen: isOpen)
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
         .onChange(of: coordinator.shiftConfirmation) {
@@ -500,8 +521,8 @@ private struct ActiveRideView: View {
                     Text("Copy a real bike").tag(false)
                 }
             }
-            Button("Gear Settings…", systemImage: "slider.horizontal.3") {
-                showsSettings = true
+            Button("All Gear Settings…", systemImage: "slider.horizontal.3") {
+                showsGears = true
             }
         } label: {
             HStack(spacing: 4) {
