@@ -86,9 +86,9 @@ private struct ReadyView: View {
                 }
             }
             .task {
-                kickr.resumeSavedConnection()
+                kickr.autoConnectSavedDevice()
                 if store.configuration.usesClick {
-                    click.resumeSavedConnection()
+                    click.autoConnectSavedDevice()
                 }
             }
         }

@@ -100,6 +100,20 @@ final class ClickCentralService: NSObject {
     func stopScanning() {
         central.stopScan()
         if state == .scanning { state = .disconnected }
+        autoConnectSavedDevice()
+    }
+
+    var hasSavedDevice: Bool { selectedID != nil }
+
+    var isAutoConnecting: Bool {
+        hasSavedDevice && state.isConnectionInProgress
+    }
+
+    func autoConnectSavedDevice() {
+        guard hasSavedDevice, !isScanning else { return }
+        guard peripheral?.state != .connected,
+              peripheral?.state != .connecting else { return }
+        resumeSavedConnection()
     }
 
     func selectAndConnect(_ id: UUID) {
@@ -124,6 +138,9 @@ final class ClickCentralService: NSObject {
             || peripheral?.state == .connecting {
             return
         }
+        // A pending backoff retry would otherwise reconnect underneath this
+        // attempt and reset an in-progress discovery.
+        reconnectTask?.cancel()
         reconnectAttempt = 0
         guard central.state == .poweredOn else { return }
         retrieveAndConnect(selectedID)
@@ -190,6 +207,8 @@ final class ClickCentralService: NSObject {
             guard let self, self.desiredConnection, let id = self.selectedID else {
                 return
             }
+            guard self.peripheral?.state != .connected,
+                  self.peripheral?.state != .connecting else { return }
             self.retrieveAndConnect(id)
         }
     }

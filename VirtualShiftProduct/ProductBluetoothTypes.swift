@@ -20,8 +20,15 @@ enum ProductConnectionState: Equatable {
     case disconnecting
     case failed(String)
 
-    var label: String {
+    /// True while a connection attempt is actively in progress.
+    var isConnectionInProgress: Bool {
         switch self {
+        case .connecting, .reconnecting, .discovering, .preparing: true
+        default: false
+        }
+    }
+
+    var label: String {        switch self {
         case let .unavailable(reason): reason
         case .disconnected: "Not connected"
         case .scanning: "Scanning…"

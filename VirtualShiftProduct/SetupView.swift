@@ -19,6 +19,12 @@ struct SetupView: View {
         }
         .navigationTitle(isEditing ? "Settings" : "Set Up VirtualShift")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            autoConnectSavedEquipment()
+        }
+        .onChange(of: store.configuration.usesClick) { _, enabled in
+            if enabled { click.autoConnectSavedDevice() }
+        }
         .safeAreaInset(edge: .bottom) {
             finishButton
         }
@@ -63,11 +69,16 @@ struct SetupView: View {
                     symbol: "bicycle",
                     connected: kickr.isReady
                 )
-                if !kickr.isReady, !kickr.isScanning {
-                    Button("Connect saved KICKR") {
-                        kickr.resumeSavedConnection()
-                    }
-                }
+                savedConnectionStatus(
+                    hasSavedDevice: kickr.hasSavedDevice,
+                    isReady: kickr.isReady,
+                    isScanning: kickr.isScanning,
+                    isAutoConnecting: kickr.isAutoConnecting,
+                    waitingMessage: "Connecting to your saved KICKR…",
+                    idleMessage: "Turn on the trainer and give the pedals a "
+                        + "half turn to wake it.",
+                    retry: { kickr.autoConnectSavedDevice() }
+                )
             }
 
             Button {
@@ -109,7 +120,7 @@ struct SetupView: View {
         } footer: {
             Text(
                 "Select the KICKR physically attached to your bike. VirtualShift "
-                    + "remembers it for future rides."
+                    + "remembers it and reconnects automatically next time."
             )
         }
     }
@@ -127,11 +138,15 @@ struct SetupView: View {
                         symbol: "button.programmable",
                         connected: click.isReady
                     )
-                    if !click.isReady, !click.isScanning {
-                        Button("Connect saved Click") {
-                            click.resumeSavedConnection()
-                        }
-                    }
+                    savedConnectionStatus(
+                        hasSavedDevice: click.hasSavedDevice,
+                        isReady: click.isReady,
+                        isScanning: click.isScanning,
+                        isAutoConnecting: click.isAutoConnecting,
+                        waitingMessage: "Connecting to your saved Click…",
+                        idleMessage: "Press either Click button once to wake it.",
+                        retry: { click.autoConnectSavedDevice() }
+                    )
                 }
 
                 Button {
@@ -305,8 +320,42 @@ struct SetupView: View {
         )
     }
 
-    private var usesClick: Binding<Bool> {
-        Binding {
+    @ViewBuilder
+    private func savedConnectionStatus(
+        hasSavedDevice: Bool,
+        isReady: Bool,
+        isScanning: Bool,
+        isAutoConnecting: Bool,
+        waitingMessage: String,
+        idleMessage: String,
+        retry: @escaping () -> Void
+    ) -> some View {
+        if hasSavedDevice, !isReady, !isScanning {
+            if isAutoConnecting {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text(waitingMessage)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(idleMessage, systemImage: "power")
+                        .foregroundStyle(.secondary)
+                    Button("Try again now", action: retry)
+                }
+            }
+        }
+    }
+
+    private func autoConnectSavedEquipment() {
+        kickr.autoConnectSavedDevice()
+        if store.configuration.usesClick {
+            click.autoConnectSavedDevice()
+        }
+    }
+
+    private var usesClick: Binding<Bool> {        Binding {
             store.configuration.usesClick
         } set: {
             store.configuration.usesClick = $0

@@ -118,6 +118,9 @@ final class KickrCentralService: NSObject {
         self.defaults = defaults
         super.init()
         loadIdentity()
+        // A remembered trainer should reconnect as soon as Bluetooth is ready,
+        // without waiting for the rider to tap anything.
+        desiredConnection = selectedID != nil
         central = CBCentralManager(
             delegate: self,
             queue: nil,
@@ -148,6 +151,20 @@ final class KickrCentralService: NSObject {
     func stopScanning() {
         central.stopScan()
         if state == .scanning { state = .disconnected }
+        autoConnectSavedDevice()
+    }
+
+    var hasSavedDevice: Bool { selectedID != nil }
+
+    var isAutoConnecting: Bool {
+        hasSavedDevice && state.isConnectionInProgress
+    }
+
+    func autoConnectSavedDevice() {
+        guard hasSavedDevice, !isScanning else { return }
+        guard peripheral?.state != .connected,
+              peripheral?.state != .connecting else { return }
+        resumeSavedConnection()
     }
 
     func selectAndConnect(_ id: UUID) {
@@ -172,6 +189,9 @@ final class KickrCentralService: NSObject {
             || peripheral?.state == .connecting {
             return
         }
+        // A pending backoff retry would otherwise reconnect underneath this
+        // attempt and reset an in-progress discovery.
+        reconnectTask?.cancel()
         reconnectAttempt = 0
         retrieveAndConnect(selectedID)
     }
@@ -322,6 +342,8 @@ final class KickrCentralService: NSObject {
             guard let self, self.desiredConnection, let id = self.selectedID else {
                 return
             }
+            guard self.peripheral?.state != .connected,
+                  self.peripheral?.state != .connecting else { return }
             self.retrieveAndConnect(id)
         }
     }

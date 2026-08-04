@@ -39,6 +39,12 @@ struct VirtualShiftApp: App {
                 }
             }
             .onChange(of: scenePhase) { _, phase in
+                if phase == .active, !coordinator.isRidePresented {
+                    kickr.autoConnectSavedDevice()
+                    if configurationStore.configuration.usesClick {
+                        click.autoConnectSavedDevice()
+                    }
+                }
                 guard phase == .background, coordinator.isRidePresented else { return }
                 let task = UIApplication.shared.beginBackgroundTask(
                     withName: "Restore KICKR"
