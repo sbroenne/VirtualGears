@@ -257,6 +257,12 @@ final class ProxyCoordinator {
         handleShiftRequest(.single(direction))
     }
 
+    /// A gear from a held control. It behaves like a single shift but is
+    /// reported as a sweep, so the feedback matches holding a Click button.
+    func shiftRepeatedly(_ direction: ShiftDirection) {
+        handleShiftRequest(.multiple(direction))
+    }
+
     private var isFailed: Bool {
         if case .failed = state { return true }
         return false

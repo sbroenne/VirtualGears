@@ -241,26 +241,46 @@ private struct ActiveRideView: View {
     @Bindable var click: ClickCentralService
     @Bindable var coordinator: ProxyCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var confirmsStop = false
     @State private var lastInteraction = Date()
     @State private var isDimmed = false
 
     var body: some View {
-        GeometryReader { geometry in
-            let landscape = geometry.size.width > geometry.size.height
-            ZStack {
-                Color(.systemBackground).ignoresSafeArea()
-                VStack(spacing: 8) {
-                    rideHeader
-                        .opacity(showsChrome ? 1 : 0.45)
-                    connectionChips
-                        .opacity(showsChrome ? 1 : 0)
-                    shiftSurface(geometry, landscape: landscape)
+        NavigationStack {
+            GeometryReader { geometry in
+                let landscape = geometry.size.width > geometry.size.height
+                VStack(spacing: landscape ? 10 : 14) {
+                    gearHero(geometry, landscape: landscape)
+                    shiftButtons(geometry, landscape: landscape)
+                    equipmentFooter
+                        .opacity(showsChrome ? 1 : 0.3)
+                }
+                .padding(.horizontal, landscape ? 18 : 14)
+                .padding(.bottom, 4)
+            }
+            .navigationTitle(configuration.drivetrainPreset.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if coordinator.state != .active {
+                        Label(statusText, systemImage: statusSymbol)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(statusColor)
+                            .lineLimit(1)
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive) {
+                        confirmsStop = true
+                    } label: {
+                        Text(coordinator.state == .stopping ? "Stopping" : "Stop")
+                            .font(.body.weight(.semibold))
+                    }
+                    .tint(.red)
+                    .disabled(coordinator.state == .stopping)
+                    .accessibilityLabel("Stop ride")
                 }
             }
-            .safeAreaPadding(.horizontal, landscape ? 18 : 12)
-            .safeAreaPadding(.vertical, 8)
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
         .onChange(of: coordinator.shiftConfirmation) {
@@ -307,30 +327,35 @@ private struct ActiveRideView: View {
         }
     }
 
-    /// The whole area below the header is one shifting surface: the left half
-    /// always shifts easier and the right half always shifts harder, so the
-    /// rider never has to aim. The gear readout floats on top and passes taps
-    /// through, which keeps the centre of the screen usable while riding.
-    private func shiftSurface(
+    /// The gear is the one thing the rider looks at, so it owns the screen and
+    /// carries the visual weight on its own. It is a read-out, never a control:
+    /// anything tappable has to look tappable, so all shifting lives in the two
+    /// buttons below and nothing else on this screen reacts to a tap.
+    private func gearHero(
         _ geometry: GeometryProxy,
         landscape: Bool
     ) -> some View {
-        ZStack {
-            HStack(spacing: 10) {
-                shiftPad(easier: true, landscape: landscape)
-                shiftPad(easier: false, landscape: landscape)
-            }
-            .accessibilityElement(children: .contain)
-
-            gearReadout(
-                fontSize: landscape
-                    ? min(geometry.size.width * 0.2, geometry.size.height * 0.34)
-                    : min(geometry.size.width * 0.46, geometry.size.height * 0.26)
-            )
-            .frame(maxWidth: landscape ? geometry.size.width * 0.52 : .infinity)
-            .allowsHitTesting(false)
-        }
+        gearReadout(
+            fontSize: landscape
+                ? min(geometry.size.width * 0.18, geometry.size.height * 0.28)
+                : min(geometry.size.width * 0.5, geometry.size.height * 0.26)
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Two plainly bordered, filled buttons. They are far larger than the 44 pt
+    /// minimum so they still work with sweaty hands, but they are ordinary
+    /// buttons: obvious edges, a real pressed state and standard VoiceOver.
+    private func shiftButtons(
+        _ geometry: GeometryProxy,
+        landscape: Bool
+    ) -> some View {
+        HStack(spacing: 12) {
+            shiftButton(easier: true)
+            shiftButton(easier: false)
+        }
+        .frame(height: max(96, geometry.size.height * (landscape ? 0.36 : 0.44)))
+        .accessibilityElement(children: .contain)
     }
 
     /// Equipment trouble always wins over the ambient state, so a problem can
@@ -344,89 +369,58 @@ private struct ActiveRideView: View {
         equipmentItems.contains { $0.state != .ok }
     }
 
-    private var rideHeader: some View {
-        HStack(spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: statusSymbol)
-                    .font(.subheadline.weight(.bold))
-                Text(statusText)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .foregroundStyle(statusColor)
-            .padding(.horizontal, 14)
-            .frame(height: 52)
-            .background(statusColor.opacity(0.14), in: .capsule)
-            .accessibilityElement(children: .combine)
-
-            Spacer(minLength: 4)
-
-            Button(role: .destructive) {
-                confirmsStop = true
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "stop.fill")
-                        .font(.subheadline.weight(.bold))
-                    Text(coordinator.state == .stopping ? "Stopping" : "Stop")
-                        .font(.headline)
+    /// Supporting detail, so it sits at the bottom in the quietest type on the
+    /// screen and never takes more than one line. When something is wrong that
+    /// single line becomes the plain-English problem instead, so the rider only
+    /// ever reads one thing down here.
+    private var equipmentFooter: some View {
+        Group {
+            if let problem = equipmentItems.first(where: { $0.state != .ok }) {
+                Label(
+                    "\(problem.title) · \(problem.detail)",
+                    systemImage: problem.state.symbol
+                )
+                .foregroundStyle(problem.state.tint)
+            } else {
+                // The KICKR and the Click are grouped because VirtualShift is
+                // the one connecting to them. The riding app is set apart
+                // because it connects to VirtualShift instead.
+                HStack(spacing: 26) {
+                    equipmentGroup(items: ownedEquipment)
+                    equipmentGroup(items: [ridingAppEquipment])
                 }
-                .foregroundStyle(.white)
-                .padding(.horizontal, 18)
-                .frame(height: 52)
-                .background(Color.red, in: .capsule)
-                .opacity(coordinator.state == .stopping ? 0.5 : 1)
-                .contentShape(.capsule)
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            .disabled(coordinator.state == .stopping)
-            .accessibilityLabel("Stop ride")
         }
+        .font(.caption)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
 
-    private var connectionChips: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 0) {
-                ForEach(Array(equipmentItems.enumerated()), id: \.element.id) { index, item in
-                    if index > 0 {
-                        Rectangle()
-                            .fill(Color.secondary.opacity(0.22))
-                            .frame(width: 1, height: 20)
-                    }
-                    HStack(spacing: 6) {
-                        Image(systemName: item.state.symbol)
-                            .font(.footnote.weight(.bold))
-                            .foregroundStyle(item.state.tint)
-                        Text(item.title)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(item.title), \(item.detail)")
+    private func equipmentGroup(items: [EquipmentItem]) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                if index > 0 {
+                    Text("·")
                 }
-            }
-            .frame(height: 40)
-            .frame(maxWidth: .infinity)
-            .background(Color.secondary.opacity(0.10), in: .rect(cornerRadius: 14))
-
-            if let problem = equipmentItems.first(where: { $0.state != .ok }) {
-                Text("\(problem.title) · \(problem.detail)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityHidden(true)
+                Text(item.title)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(item.title), connected")
             }
         }
     }
 
     private var equipmentItems: [EquipmentItem] {
-        var items: [EquipmentItem] = [
+        ownedEquipment + [ridingAppEquipment]
+    }
+
+    /// Everything VirtualShift connects out to.
+    private var ownedEquipment: [EquipmentItem] {
+        var items = [
             EquipmentItem(
                 id: "kickr",
                 title: "KICKR",
@@ -435,18 +429,6 @@ private struct ActiveRideView: View {
                 detail: kickr.state.label
             )
         ]
-        let isSubscribed = coordinator.peripheral.activeCentralID != nil
-        let isAdvertising = coordinator.peripheral.isAdvertising
-        items.append(
-            EquipmentItem(
-                id: "realvelo",
-                title: "Riding App",
-                state: isSubscribed ? .ok : (isAdvertising ? .pending : .warn),
-                detail: isSubscribed
-                    ? "Connected"
-                    : (isAdvertising ? "Waiting to be found" : "Not advertising")
-            )
-        )
         if configuration.usesClick {
             items.append(
                 EquipmentItem(
@@ -459,6 +441,20 @@ private struct ActiveRideView: View {
             )
         }
         return items
+    }
+
+    /// The riding app connects in to VirtualShift, so it is reported apart.
+    private var ridingAppEquipment: EquipmentItem {
+        let isSubscribed = coordinator.peripheral.activeCentralID != nil
+        let isAdvertising = coordinator.peripheral.isAdvertising
+        return EquipmentItem(
+            id: "ridingapp",
+            title: "Riding app",
+            state: isSubscribed ? .ok : (isAdvertising ? .pending : .warn),
+            detail: isSubscribed
+                ? "Connected"
+                : (isAdvertising ? "Waiting to be found" : "Not advertising")
+        )
     }
 
     private func gearReadout(fontSize: CGFloat) -> some View {
@@ -490,25 +486,25 @@ private struct ActiveRideView: View {
             .padding(.top, 10)
             .padding(.horizontal, 18)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity)
     }
 
-    private func shiftPad(easier: Bool, landscape: Bool) -> some View {
-        ShiftPad(
+    private func shiftButton(easier: Bool) -> some View {
+        ShiftButton(
             title: easier ? "Easier" : "Harder",
             symbol: easier ? "minus" : "plus",
-            alignment: landscape
-                ? (easier ? .bottomLeading : .bottomTrailing)
-                : .bottom,
             hint: easier
-                ? "Requests the next easier gear"
-                : "Requests the next harder gear",
-            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder,
-            quiet: !showsChrome
+                ? "Requests the next easier gear. Hold to keep shifting easier."
+                : "Requests the next harder gear. Hold to keep shifting harder.",
+            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder
         ) {
             wake()
             coordinator.shift(easier ? .easier : .harder)
+        } repeatAction: {
+            wake()
+            coordinator.shiftRepeatedly(easier ? .easier : .harder)
         }
     }
 
@@ -635,101 +631,86 @@ private struct EquipmentItem: Identifiable {
     let detail: String
 }
 
-private struct ShiftPad: View {
+/// An ordinary SwiftUI button, deliberately so: a filled, clearly bounded
+/// shape with a label, the system pressed state and standard accessibility.
+/// It is simply sized far above the 44 pt minimum for use on a bike. Holding it
+/// keeps shifting, matching how holding a Click button sweeps the cassette.
+private struct ShiftButton: View {
     let title: String
     let symbol: String
-    /// In landscape the label moves to the outer corner so the gear readout
-    /// keeps the middle of the screen to itself.
-    let alignment: Alignment
     let hint: String
     let disabled: Bool
-    /// Ambient state: the pad recedes so the gear stays readable without
-    /// covering the screen in a dark overlay.
-    let quiet: Bool
     let action: () -> Void
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
+    let repeatAction: () -> Void
+    @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
+    @State private var repeatTask: Task<Void, Never>?
+    @State private var isHeld = false
+    /// When the hold last shifted a gear. Letting go must not add a further
+    /// gear on top of the ones the rider already watched go by. This is a
+    /// timestamp rather than a flag so it can never get stuck and swallow a
+    /// later, genuine tap.
+    @State private var lastRepeatAt: Date?
 
     var body: some View {
-        Button(action: action) {
-            VStack(spacing: 2) {
-                Spacer(minLength: 0)
+        Button(action: tapped) {
+            VStack(spacing: 6) {
                 Image(systemName: symbol)
                     .font(.system(size: symbolSize, weight: .black, design: .rounded))
                     .frame(height: symbolSize)
                 Text(title)
-                    .font(.title3.weight(.bold))
+                    .font(.title2.weight(.bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
-            .padding(.bottom, 26)
-            .padding(.horizontal, 26)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .contentShape(.rect)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(
-            ShiftPadStyle(disabled: disabled, outlined: differentiate, quiet: quiet)
-        )
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.roundedRectangle(radius: 24))
         .disabled(disabled)
+        // The button keeps its normal tap behaviour; this only adds the hold.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in startRepeat() }
+                .onEnded { _ in stopRepeat() }
+        )
+        .onDisappear(perform: stopRepeat)
+        // A cancelled touch never reports an end, so leaving the foreground has
+        // to stop the repeat too or it would keep shifting with no finger down.
+        .onChange(of: scenePhase) {
+            if scenePhase != .active { stopRepeat() }
+        }
         .accessibilityLabel("Shift \(title.lowercased())")
         .accessibilityHint(
             disabled ? "Unavailable at the drivetrain boundary" : hint
         )
     }
-}
 
-private struct ShiftPadStyle: ButtonStyle {
-    let disabled: Bool
-    let outlined: Bool
-    let quiet: Bool
+    private func tapped() {
+        if let lastRepeatAt, Date().timeIntervalSince(lastRepeatAt) < 0.4 {
+            return
+        }
+        action()
+    }
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .foregroundStyle(foreground(pressed: configuration.isPressed))
-            .background {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        tint(
-                            peak: fill(pressed: configuration.isPressed),
-                            uniform: configuration.isPressed
-                        )
-                    )
+    private func startRepeat() {
+        guard !disabled, repeatTask == nil else { return }
+        isHeld = true
+        lastRepeatAt = nil
+        repeatTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            while !Task.isCancelled, isHeld {
+                lastRepeatAt = Date()
+                repeatAction()
+                try? await Task.sleep(for: .milliseconds(300))
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(tint(peak: border, uniform: false), lineWidth: outlined ? 3 : 2)
-            }
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
-            .animation(.easeOut(duration: 0.8), value: quiet)
+        }
     }
 
-    /// The pad fades out towards the top so the gear readout sits on clean
-    /// space, while the thumb end stays an obvious, solid target.
-    private func tint(peak: Double, uniform: Bool) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                Color.accentColor.opacity(peak * (uniform ? 0.75 : 0.12)),
-                Color.accentColor.opacity(peak)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private func fill(pressed: Bool) -> Double {
-        if disabled { return 0.05 }
-        if pressed { return 0.34 }
-        return quiet ? 0.06 : 0.18
-    }
-
-    private var border: Double {
-        if disabled { return 0.12 }
-        return quiet ? 0.16 : 0.45
-    }
-
-    private func foreground(pressed: Bool) -> Color {
-        if disabled { return .secondary.opacity(0.45) }
-        return .accentColor.opacity(quiet && !pressed ? 0.3 : 1)
+    private func stopRepeat() {
+        isHeld = false
+        repeatTask?.cancel()
+        repeatTask = nil
     }
 }
 
