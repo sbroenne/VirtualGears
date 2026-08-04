@@ -34,4 +34,33 @@ final class VirtualGearTests: XCTestCase {
     func testInvalidGearIsRejected() {
         XCTAssertThrowsError(try VirtualGear(chainring: 0, cog: 17))
     }
+
+    func testGearRatioComesFromTheToothCounts() throws {
+        let drivetrain = try Drivetrain.build(
+            chainrings: [40],
+            cassetteCogs: [10, 20, 40]
+        )
+
+        XCTAssertEqual(drivetrain.gears[0].ratio, 1.00, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.gears[1].ratio, 2.00, accuracy: 0.000_001)
+        XCTAssertEqual(drivetrain.gears[2].ratio, 4.00, accuracy: 0.000_001)
+    }
+
+    func testScalerRejectsCircumferenceOutsideWahooBounds() {
+        XCTAssertThrowsError(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference:
+                    WahooKickrCommand.maximumCircumferenceMillimeters,
+                referenceRatio: 1,
+                selectedRatio: 2
+            )
+        )
+        XCTAssertThrowsError(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference: .leastNonzeroMagnitude,
+                referenceRatio: .greatestFiniteMagnitude,
+                selectedRatio: .leastNonzeroMagnitude
+            )
+        )
+    }
 }
