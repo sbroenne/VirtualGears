@@ -83,6 +83,21 @@ idea of the bike and leaves the road alone.
 
 There is no setup screen to complete first and no start button to press.
 
+### What name to look for
+
+VirtualShift tells your riding app it is called **VirtualShift**, and most apps
+show that. Some show your iPhone's own name instead — "iPhone Anna", say —
+and a few add a short code after it.
+
+Either name is the right one to pick. There is only ever one of them in the
+list, because your trainer itself is already busy talking to VirtualShift and
+so does not appear.
+
+This is not something the app can fix. iPhones report their own name over
+Bluetooth, and Apple does not let an app change it. If seeing "VirtualShift"
+in the list matters to you, rename the phone itself in Settings → General →
+About → Name — but that changes its name everywhere else too.
+
 ## Adding a Zwift Click
 
 Open Settings in the app and add the Click there. It shifts the same gears as

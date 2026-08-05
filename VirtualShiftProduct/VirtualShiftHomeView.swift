@@ -733,7 +733,11 @@ private struct ActiveRideView: View {
         } else if isConnected {
             detail = "Connected"
         } else if isAdvertising {
-            detail = "Waiting to be found"
+            // VirtualShift broadcasts its own name, but iOS also reports the
+            // phone's name and will not let an app change it, so some riding
+            // apps list the phone instead. A rider hunting a name that is not
+            // there assumes it is broken, so name both before they look.
+            detail = "Pick VirtualShift or your iPhone's name"
         } else {
             detail = "Not advertising"
         }

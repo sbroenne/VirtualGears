@@ -209,3 +209,34 @@ Both probes passed before the proxy was built, and the proxy is now the product.
 Keep them as the way to isolate a fault: if a riding app stops seeing
 VirtualShift, prove the FTMS shape here first rather than changing the proxy on
 a hunch.
+
+## What name a riding app shows for VirtualShift
+
+A rider reported that MyWhoosh listed VirtualShift as "iPhone sbroenne 17 D345"
+rather than "VirtualShift". A name can reach a riding app by two routes, so
+`Tools/NameScan` reads both and tells them apart:
+
+```
+./Tools/NameScan/run.sh
+```
+
+Start a ride on the phone while it runs. Measured on 2026-08-05:
+
+```
+Found a fitness machine at -55 dBm.
+  In the advertisement: local name "VirtualShift"; services 1826
+  CBPeripheral.name reads: iPhone sbroenne 17
+```
+
+So the advertisement is correct and this is not an app bug. The second name is
+the GAP Device Name (0x2A00), which iOS fixes to the name of the phone; an app
+cannot publish its own 0x1800 service to override it. A riding app that reads
+that instead of the advertised local name will always show the phone.
+
+There is no code fix. The ride screen now names both possibilities while
+waiting to be found, and `docs/requirements.md` explains it. A rider who
+minds can rename the phone in Settings.
+
+Note that macOS keeps 0x1800 to itself, so the tool cannot read 0x2A00
+directly; `CBPeripheral.name` showing the phone's name is the evidence that
+the device name is what reaches a central.
