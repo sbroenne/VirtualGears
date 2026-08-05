@@ -3,58 +3,12 @@ import Observation
 import UIKit
 import VirtualShiftCore
 
-/// Why a ride ended badly. A failure to start and a failure to stop need
-/// different words: one is worth retrying, the other means the trainer may
-/// still be carrying a gear's wheel size and needs putting right.
-enum RideFailure: Equatable {
-    case starting(trainerNeedsRestoring: Bool)
-    case stopping(trainerNeedsRestoring: Bool)
-
-    var trainerNeedsRestoring: Bool {
-        switch self {
-        case let .starting(needs), let .stopping(needs): needs
-        }
-    }
-
-    var happenedWhileStopping: Bool {
-        if case .stopping = self { return true }
-        return false
-    }
-}
-
-enum ProxySessionState: Equatable {
-    case idle
-    case connecting
-    case active
-    case reconnecting
-    case stopping
-    case failed(String)
-
-    var label: String {
-        switch self {
-        case .idle: "Ready to ride"
-        case .connecting: "Connecting equipment…"
-        case .active: "Ride active"
-        case .reconnecting: "KICKR reconnecting · control lost"
-        case .stopping: "Stopping ride…"
-        case let .failed(message): "Ride error: \(message)"
-        }
-    }
-}
-
-enum ShiftFeedbackKind: Equatable {
-    case single
-    case multiple
-}
-
 @MainActor
 @Observable
 final class ProxyCoordinator {
-    private(set) var state: ProxySessionState = .idle
-
-    /// Only meaningful alongside a failed state, and always set before it, so
-    /// the screen never has to guess which kind of failure it is describing.
-    private(set) var failure: RideFailure?
+    /// Where the ride has got to, and every rule that follows from it. Kept in
+    /// the package so those rules can be checked without a trainer.
+    private(set) var lifecycle = RideLifecycle()
     private(set) var displayedGear: VirtualGear?
     private(set) var confirmedGearIndex: Int?
     /// The gear the rider asked for. It differs from `confirmedGearIndex` only
@@ -64,7 +18,6 @@ final class ProxyCoordinator {
     private(set) var gearSequence: [VirtualGear] = []
     private(set) var shiftConfirmation = 0
     private(set) var shiftInteraction = 0
-    private(set) var lastShiftFeedback: ShiftFeedbackKind = .single
     private(set) var sessionBaselineMillimeters: Double?
     /// True once a riding app has set its own wheel size, so the ride screen can
     /// say whose number the gears are built around.
@@ -77,37 +30,28 @@ final class ProxyCoordinator {
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
     private var recoveryTask: Task<Void, Never>?
-    private var sessionID: UUID?
     private var usesClick = false
-    private var pendingFeedback: [ShiftFeedbackKind] = []
+    private var feedback = ShiftFeedbackLedger()
     private var baselineUpdateInProgress = false
     private var restoreTask: Task<Void, Never>?
 
-    /// Cancelling `restoreTask` is not enough on its own. The restore spends
-    /// most of its life waiting on a Bluetooth round trip, and those waits do
-    /// not observe cancellation, so a cancelled restore still runs to the end.
-    /// Starting a ride changes this token instead, and the restore checks it
-    /// after every wait, so it can neither fight the new ride for the wheel
-    /// size nor delete the record that ride depends on.
-    private var restoreToken = UUID()
     /// The wheel size a ride borrowed, written down before the ride starts.
     /// A ride normally puts it back on Stop and clears this, so a value still
     /// here at launch means the last ride never got to finish.
     private let unfinishedRideKey = "VirtualShift.unfinishedRideBaselineMillimeters"
 
-    var isRidePresented: Bool {
-        switch state {
-        case .connecting, .active, .reconnecting, .stopping: true
-        case .idle, .failed: false
-        }
-    }
+    var state: ProxySessionState { lifecycle.state }
+    var failure: RideFailure? { lifecycle.failure }
+    var lastShiftFeedback: ShiftFeedbackKind { feedback.latest }
+
+    var isRidePresented: Bool { lifecycle.isRidePresented }
 
     var canShiftEasier: Bool {
-        state == .active && (confirmedGearIndex ?? 0) > 0
+        lifecycle.isRiding && (confirmedGearIndex ?? 0) > 0
     }
 
     var canShiftHarder: Bool {
-        state == .active
+        lifecycle.isRiding
             && (confirmedGearIndex ?? Int.max) < gearSequence.count - 1
     }
 
@@ -150,7 +94,7 @@ final class ProxyCoordinator {
     /// they did not cause and cannot act on, and the ride they are about to start
     /// sets its own gear regardless.
     func restoreInterruptedRideIfNeeded() {
-        guard restoreTask == nil, state == .idle || isFailed else { return }
+        guard restoreTask == nil, lifecycle.isBetweenRides else { return }
         restoreTask = Task { [weak self] in
             await self?.restoreInterruptedRide()
             self?.restoreTask = nil
@@ -158,8 +102,8 @@ final class ProxyCoordinator {
     }
 
     private func restoreInterruptedRide() async {
-        guard state == .idle || isFailed else { return }
-        let token = restoreToken
+        guard lifecycle.isBetweenRides else { return }
+        let token = lifecycle.restoreToken
         let defaults = UserDefaults.standard
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
         let baseline = defaults.double(forKey: unfinishedRideKey)
@@ -201,35 +145,30 @@ final class ProxyCoordinator {
     }
 
     private func isStillWanted(_ token: UUID) -> Bool {
-        !Task.isCancelled && token == restoreToken
-            && (state == .idle || isFailed)
+        !Task.isCancelled && lifecycle.isRestoreWanted(token)
     }
 
     /// Starts a ride immediately so the UI can switch to the ride screen in the
     /// same update. The state transition is synchronous, so a second tap is
     /// rejected by the same guard that protected the previous async entry point.
     func startRide(configuration: AppConfiguration) {
-        guard state == .idle || isFailed else { return }
+        guard lifecycle.canStart else { return }
         // A ride sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
         // gear they did not choose.
         restoreTask?.cancel()
         restoreTask = nil
-        restoreToken = UUID()
+        lifecycle.abandonRestore()
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
               configuration.canFinishSetup,
               kickr.selectedID?.uuidString == configuration.kickrUUID else {
-            failure = .starting(trainerNeedsRestoring: false)
-            state = .failed("Setup is incomplete")
+            lifecycle.refuseStart("Setup is incomplete")
             return
         }
-        let id = UUID()
-        sessionID = id
         usesClick = configuration.usesClick
-        failure = nil
-        state = .connecting
+        let id = lifecycle.beginConnecting()
         Task { await runRide(configuration: configuration, sessionID: id) }
     }
 
@@ -278,21 +217,20 @@ final class ProxyCoordinator {
                     "KICKR did not confirm the initial virtual gear"
                 )
             }
-            guard sessionID == id else { return }
+            guard lifecycle.owns(id) else { return }
             peripheral.startAdvertising()
             try await waitUntilPeripheralReady(sessionID: id)
             UIApplication.shared.isIdleTimerDisabled = true
-            state = .active
+            lifecycle.markActive()
             log("Ride session started")
         } catch {
-            guard sessionID == id else { return }
+            guard lifecycle.owns(id) else { return }
             await abortStart(error)
         }
     }
 
     func stopRide() async {
-        guard let id = sessionID, state != .stopping else { return }
-        state = .stopping
+        guard let id = lifecycle.beginStopping() else { return }
         peripheral.stopAcceptingCommands()
         shiftTask?.cancel()
         recoveryTask?.cancel()
@@ -361,29 +299,29 @@ final class ProxyCoordinator {
         click.disconnect()
         kickr.disconnect()
         UIApplication.shared.isIdleTimerDisabled = false
-        sessionID = nil
+        clearRideData()
+        // The record is only removed once the trainer confirms the original
+        // wheel size is back, so its presence is the honest answer to whether
+        // the trainer still needs putting right.
+        let stillSet = UserDefaults.standard
+            .object(forKey: unfinishedRideKey) != nil
+        failures.forEach { log($0, .error) }
+        lifecycle.finishStop(
+            failures: failures,
+            trainerNeedsRestoring: stillSet
+        )
+        if failures.isEmpty { log("Ride session stopped") }
+    }
+
+    private func clearRideData() {
         gearEngine = nil
         displayedGear = nil
         confirmedGearIndex = nil
         requestedGearIndex = nil
         gearSequence = []
-        pendingFeedback = []
+        feedback.clear()
         sessionBaselineMillimeters = nil
         ridingAppSetWheelSize = false
-        if failures.isEmpty {
-            failure = nil
-            state = .idle
-            log("Ride session stopped")
-        } else {
-            failures.forEach { log($0, .error) }
-            // The record is only removed once the trainer confirms the
-            // original wheel size is back, so its presence is the honest
-            // answer to whether the trainer still needs putting right.
-            let stillSet = UserDefaults.standard
-                .object(forKey: unfinishedRideKey) != nil
-            failure = .stopping(trainerNeedsRestoring: stillSet)
-            state = .failed(failures.joined(separator: ". "))
-        }
     }
 
     func shift(_ direction: ShiftDirection) {
@@ -396,18 +334,13 @@ final class ProxyCoordinator {
         handleShiftRequest(.multiple(direction))
     }
 
-    private var isFailed: Bool {
-        if case .failed = state { return true }
-        return false
-    }
-
     private func waitUntilReady(
         _ service: KickrCentralService,
         named name: String,
         sessionID: UUID
     ) async throws {
         for _ in 0..<300 {
-            guard self.sessionID == sessionID else { throw CancellationError() }
+            guard lifecycle.owns(sessionID) else { throw CancellationError() }
             if service.isReady { return }
             if case let .failed(message) = service.state {
                 throw ProductBluetoothError.unavailable("\(name): \(message)")
@@ -419,7 +352,7 @@ final class ProxyCoordinator {
 
     private func waitUntilPeripheralReady(sessionID: UUID) async throws {
         for _ in 0..<100 {
-            guard self.sessionID == sessionID else { throw CancellationError() }
+            guard lifecycle.owns(sessionID) else { throw CancellationError() }
             if peripheral.isAdvertising { return }
             if case let .failed(message) = peripheral.latestEvent {
                 throw ProductBluetoothError.unavailable("Riding app link: \(message)")
@@ -433,7 +366,7 @@ final class ProxyCoordinator {
 
     private func waitUntilKickrReadyForStop(sessionID: UUID) async throws {
         for _ in 0..<100 {
-            guard self.sessionID == sessionID else { throw CancellationError() }
+            guard lifecycle.owns(sessionID) else { throw CancellationError() }
             if kickr.isReady { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
@@ -448,7 +381,7 @@ final class ProxyCoordinator {
         sessionID: UUID
     ) async throws {
         for _ in 0..<300 {
-            guard self.sessionID == sessionID else { throw CancellationError() }
+            guard lifecycle.owns(sessionID) else { throw CancellationError() }
             if service.isReady { return }
             if case let .failed(message) = service.state {
                 throw ProductBluetoothError.unavailable("\(name): \(message)")
@@ -462,7 +395,7 @@ final class ProxyCoordinator {
         _ request: FitnessMachineControlPointRequest,
         from centralID: UUID
     ) async -> FTMSPeripheralCommandResult {
-        guard state == .active, kickr.isReady else {
+        guard lifecycle.isRiding, kickr.isReady else {
             return .init(result: .operationFailed, status: nil)
         }
         guard VirtualTrainerFTMSProfile.supports(request) else {
@@ -546,7 +479,7 @@ final class ProxyCoordinator {
     }
 
     private func handleKickrEvent(_ event: KickrEvent) {
-        guard sessionID != nil else { return }
+        guard lifecycle.sessionID != nil else { return }
         if case let .rawBikeData(data) = event {
             peripheral.relayIndoorBikeData(data)
         } else if event == .status(.controlPermissionLost) {
@@ -555,20 +488,19 @@ final class ProxyCoordinator {
     }
 
     private func handleKickrState(_ connectionState: ProductConnectionState) {
-        guard sessionID != nil else { return }
-        guard state == .active || state == .reconnecting else { return }
+        guard lifecycle.canRecover else { return }
         if connectionState != .ready {
             beginRecovery(startImmediately: false)
             return
         }
-        guard state == .reconnecting, recoveryTask == nil else { return }
-        let id = sessionID
+        guard lifecycle.isReconnecting, recoveryTask == nil else { return }
+        let id = lifecycle.sessionID
         recoveryTask = Task { [weak self] in
             guard let self else { return }
             do {
                 let response = try await self.kickr.execute(.requestControl)
                 guard !Task.isCancelled,
-                      self.state == .reconnecting,
+                      self.lifecycle.isReconnecting,
                       response.result == .success,
                       let command = self.gearEngine?.confirmedSetting.command else {
                     throw ProductBluetoothError.commandFailed(
@@ -577,21 +509,21 @@ final class ProxyCoordinator {
                 }
                 let wahoo = try await self.kickr.executeWahoo(command)
                 guard !Task.isCancelled,
-                      self.state == .reconnecting,
+                      self.lifecycle.isReconnecting,
                       wahoo.confirmsSuccess(for: command),
-                      self.sessionID == id else {
+                      id.map(self.lifecycle.owns) == true else {
                     throw ProductBluetoothError.commandFailed(
                         "Could not restore current virtual gear"
                     )
                 }
-                self.state = .active
+                self.lifecycle.markActive()
                 self.recoveryTask = nil
             } catch {
-                guard self.sessionID == id, self.state == .reconnecting else {
+                guard id.map(self.lifecycle.owns) == true,
+                      self.lifecycle.isReconnecting else {
                     self.recoveryTask = nil
                     return
                 }
-                self.state = .reconnecting
                 self.log("KICKR recovery failed: \(error.localizedDescription)", .error)
                 self.recoveryTask = nil
                 do {
@@ -599,8 +531,8 @@ final class ProxyCoordinator {
                 } catch {
                     return
                 }
-                guard self.sessionID == id,
-                      self.state == .reconnecting,
+                guard id.map(self.lifecycle.owns) == true,
+                      self.lifecycle.isReconnecting,
                       self.kickr.isReady else { return }
                 self.handleKickrState(.ready)
             }
@@ -612,13 +544,12 @@ final class ProxyCoordinator {
         // commonly drops the control grant while it stops. Recovering here
         // would re-apply the gear's wheel size behind the stop's back and
         // leave the trainer holding it. Only a live ride is worth recovering.
-        guard sessionID != nil,
-              state == .active || state == .reconnecting else { return }
-        state = .reconnecting
+        guard lifecycle.canRecover else { return }
+        lifecycle.markReconnecting()
         peripheral.notifyControlLost()
         shiftTask?.cancel()
         gearEngine?.cancelPendingChanges()
-        pendingFeedback.removeAll()
+        feedback.clear()
         updateDisplayedGear()
         if startImmediately, kickr.isReady {
             handleKickrState(.ready)
@@ -626,7 +557,7 @@ final class ProxyCoordinator {
     }
 
     private func handleShiftRequest(_ request: ShiftRequest) {
-        guard state == .active, !baselineUpdateInProgress else { return }
+        guard lifecycle.isRiding, !baselineUpdateInProgress else { return }
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
         switch request {
@@ -639,10 +570,7 @@ final class ProxyCoordinator {
             // which is faster than the trainer can confirm a shift, so a hold
             // queued up gears that carried on arriving after the rider had let
             // go. Asking at the trainer's pace means letting go stops it.
-            if let engine = gearEngine,
-               engine.requestedIndex != engine.confirmedIndex {
-                return
-            }
+            if let engine = gearEngine, !engine.isSettled { return }
             direction = value
             feedback = .multiple
         }
@@ -657,7 +585,7 @@ final class ProxyCoordinator {
             return
         }
         updateDisplayedGear()
-        pendingFeedback.append(feedback)
+        self.feedback.record(feedback)
         if let change {
             guard shiftTask == nil else { return }
             startShift(change)
@@ -687,7 +615,7 @@ final class ProxyCoordinator {
                     self.confirmShift(from: oldIndex, to: engine.confirmedIndex)
                 } catch {
                     self.gearEngine?.cancelPendingChanges()
-                    self.pendingFeedback.removeAll()
+                    self.feedback.clear()
                     self.updateDisplayedGear()
                     self.log("Virtual shift failed: \(error.localizedDescription)", .error)
                     break
@@ -722,11 +650,7 @@ final class ProxyCoordinator {
     }
 
     private func confirmShift(from oldIndex: Int, to newIndex: Int) {
-        let count = max(1, abs(newIndex - oldIndex))
-        let confirmed = Array(pendingFeedback.prefix(count))
-        pendingFeedback.removeFirst(min(count, pendingFeedback.count))
-        lastShiftFeedback =
-            confirmed.contains(.multiple) || count > 1 ? .multiple : .single
+        feedback.confirm(from: oldIndex, to: newIndex)
         shiftConfirmation &+= 1
     }
 
@@ -763,17 +687,11 @@ final class ProxyCoordinator {
         click.disconnect()
         kickr.disconnect()
         UIApplication.shared.isIdleTimerDisabled = false
-        sessionID = nil
-        gearEngine = nil
-        displayedGear = nil
-        confirmedGearIndex = nil
-        requestedGearIndex = nil
-        gearSequence = []
-        pendingFeedback = []
-        sessionBaselineMillimeters = nil
-        ridingAppSetWheelSize = false
-        failure = .starting(trainerNeedsRestoring: !trainerRestored)
-        state = .failed(error.localizedDescription)
+        clearRideData()
+        lifecycle.failStart(
+            error.localizedDescription,
+            trainerNeedsRestoring: !trainerRestored
+        )
         log("Ride start failed: \(error.localizedDescription)", .error)
     }
 
