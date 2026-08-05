@@ -499,7 +499,6 @@ final class ProxyCoordinator {
 
     private func handleShiftRequest(_ request: ShiftRequest) {
         guard state == .active, !baselineUpdateInProgress else { return }
-        shiftInteraction &+= 1
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
         switch request {
@@ -507,9 +506,19 @@ final class ProxyCoordinator {
             direction = value
             feedback = .single
         case let .multiple(value):
+            // Holding a button asks for one more gear only once the trainer has
+            // finished the last one. Repeats used to arrive on a fixed timer,
+            // which is faster than the trainer can confirm a shift, so a hold
+            // queued up gears that carried on arriving after the rider had let
+            // go. Asking at the trainer's pace means letting go stops it.
+            if let engine = gearEngine,
+               engine.requestedIndex != engine.confirmedIndex {
+                return
+            }
             direction = value
             feedback = .multiple
         }
+        shiftInteraction &+= 1
         guard var engine = gearEngine else { return }
         let oldRequested = engine.requestedIndex
         let oldConfirmed = engine.confirmedIndex

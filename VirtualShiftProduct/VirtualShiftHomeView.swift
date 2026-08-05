@@ -1,4 +1,3 @@
-import AudioToolbox
 import SwiftUI
 import UIKit
 import VirtualShiftCore
@@ -612,6 +611,19 @@ private struct ActiveRideView: View {
                 HStack(spacing: 26) {
                     equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
                     equipmentGroup(items: [ridingAppEquipment])
+                    // Deliberately separate from the Click's tick, which means
+                    // connected. Tinting that tick would read, at a glance on
+                    // a moving bike, as the Click having dropped out.
+                    if configuration.usesClick, click.isReady, click.batteryIsLow,
+                        let battery = click.batteryLevel {
+                        HStack(spacing: 4) {
+                            Image(systemName: "battery.25percent")
+                                .foregroundStyle(.orange)
+                            Text("Click \(battery)%")
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Click battery low, \(battery) percent")
+                    }
                     if coordinator.ridingAppSetWheelSize {
                         Text("Wheel size from your app")
                             .accessibilityLabel(
@@ -829,14 +841,15 @@ private struct ActiveRideView: View {
         }
     }
 
+    /// Haptics only. A shift has to be felt through the bars rather than heard:
+    /// a rider is usually wearing headphones or running the riding app's sound,
+    /// and a phone chirping into that is noise, not information.
     private func performFeedback(_ kind: ShiftFeedbackKind) {
         switch kind {
         case .single:
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            AudioServicesPlaySystemSound(1104)
         case .multiple:
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 1)
-            AudioServicesPlaySystemSound(1157)
         }
     }
 }
