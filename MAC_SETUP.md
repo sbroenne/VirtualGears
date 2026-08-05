@@ -102,8 +102,41 @@ Output therefore goes to `/tmp/click-trace.log`, which the script tails.
 
 That recording is why holding a button now asks for the next gear only once the
 trainer has confirmed the last one. Repeats used to be sent on a fixed 300 ms
-timer, which is quicker than the trainer can confirm a shift, so a hold queued
-gears that kept arriving after the rider let go.
+timer that never waited for the trainer, so a hold could queue gears that kept
+arriving after the rider let go.
+
+## Measuring how the trainer itself responds
+
+`Tools/KickrProbe` is a small Mac tool that connects straight to the trainer and
+measures two things the app's own logs cannot show:
+
+- how long the trainer takes to confirm a gear change, and
+- whether the trainer takes control away when it is told to stop.
+
+It shifts through real gears using the same gear engine the app uses, and it
+always puts the wheel size back to 2070 mm before it exits, including after a
+failure.
+
+```bash
+./Tools/KickrProbe/run.sh
+```
+
+Close the iPhone app first and wake the trainer by turning the pedals. A KICKR
+accepts only one controlling connection, and the iPhone advertises itself as a
+fitness machine too, so the tool picks the trainer by name.
+
+### What a Wahoo KICKR 2A93 measured
+
+Idle, with no riding app connected and nobody pedalling, eight consecutive gear
+changes were confirmed in 59 to 238 ms, averaging 138 ms. So on an otherwise
+quiet connection the old 300 ms repeat was *not* outrunning the trainer, and the
+overshoot a rider sees must also owe something to a busier connection during a
+real ride. Waiting for confirmation removes the question entirely: it cannot ask
+for a gear the trainer has not yet applied, whatever the connection is doing.
+
+The trainer also kept control through an FTMS Stop: a Wahoo write immediately
+afterwards was still accepted. Refusing to re-take control during a stop is
+therefore precautionary on this trainer rather than a fix for something it does.
 
 ## Independent riding app FTMS probe
 
