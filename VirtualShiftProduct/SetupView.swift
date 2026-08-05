@@ -186,8 +186,10 @@ private struct TrainerSetupView: View {
                         selected: candidate.id.uuidString
                             == store.configuration.kickrUUID
                     ) {
-                        store.configuration.kickrName = candidate.name
-                        store.configuration.kickrUUID = candidate.id.uuidString
+                        store.configuration.rememberKickr(
+                            named: candidate.name,
+                            id: candidate.id
+                        )
                         kickr.selectAndConnect(candidate.id)
                     }
                 }
@@ -252,8 +254,7 @@ private struct ShiftingSetupView: View {
                     )
                     Button(role: .destructive) {
                         click.forgetSelection()
-                        store.configuration.clickName = ""
-                        store.configuration.clickUUID = ""
+                        store.configuration.forgetClick()
                     } label: {
                         Text("Stop using this Click")
                     }
@@ -293,8 +294,10 @@ private struct ShiftingSetupView: View {
                         selected: candidate.id.uuidString
                             == store.configuration.clickUUID
                     ) {
-                        store.configuration.clickName = candidate.name
-                        store.configuration.clickUUID = candidate.id.uuidString
+                        store.configuration.rememberClick(
+                            named: candidate.name,
+                            id: candidate.id
+                        )
                         click.selectAndConnect(candidate.id)
                     }
                 }

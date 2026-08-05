@@ -133,10 +133,9 @@ private struct StartupView: View {
     /// Without this a new rider watches their trainer connect and then waits
     /// forever, because nothing ever agreed which trainer it was.
     private func adopt(_ id: UUID) {
-        if let candidate = kickr.candidates.first(where: { $0.id == id }) {
-            store.configuration.kickrName = candidate.name
-        }
-        store.configuration.kickrUUID = id.uuidString
+        let name = kickr.candidates.first { $0.id == id }?.name
+            ?? store.configuration.kickrName
+        store.configuration.rememberKickr(named: name, id: id)
         kickr.selectAndConnect(id)
     }
 
