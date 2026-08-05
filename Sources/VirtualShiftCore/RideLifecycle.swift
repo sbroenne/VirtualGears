@@ -97,6 +97,15 @@ public struct RideLifecycle: Sendable {
         sessionID == id
     }
 
+    /// A stop has been claimed and is running. The session identity is kept
+    /// until the stop finishes so the stop itself can check it, which means
+    /// `owns` alone still answers yes to a ride that is only just starting.
+    /// Anything on the starting side has to ask this too, or it would carry on
+    /// writing wheel sizes to the trainer while the stop is putting them back.
+    public var isStopping: Bool {
+        state == .stopping
+    }
+
     // MARK: - Tidying up after an interrupted ride
 
     /// Whether the restore holding `token` may still act.

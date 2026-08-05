@@ -306,7 +306,8 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// A ride that cannot start must still put the trainer back, because the
-    /// initial gear may already have been set by then.
+    /// initial gear may already have been set by then. This is the third of the
+    /// three ways a ride can end, and the one most easily forgotten.
     func testAFailedStartStillPutsTheTrainerBack() async throws {
         trainer.failNextWahooCommand = true
         coordinator.startRide(configuration: makeConfiguration())
@@ -315,7 +316,77 @@ final class ProxyCoordinatorTests: XCTestCase {
             return false
         }
 
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, neutral)
+        XCTAssertNil(
+            defaults.object(forKey: "VirtualShift.unfinishedRideBaselineMillimeters"),
+            "A trainer that has been put right should leave nothing to recover"
+        )
+        XCTAssertEqual(coordinator.failure?.trainerNeedsRestoring, false)
         XCTAssertFalse(screen.keepAwake)
         XCTAssertTrue(trainer.didDisconnect)
+    }
+
+    /// Stop is reachable while the ride is still connecting, which is exactly
+    /// when a rider uses it: the trainer is asleep, they give up and tap Stop,
+    /// and the trainer wakes a moment later. If the start carries on it writes
+    /// the first gear's wheel size after the stop has put the trainer back, and
+    /// the record that would have fixed it at the next launch is already gone.
+    func testStoppingWhileStillConnectingDoesNotLeaveAGearOnTheTrainer() async throws {
+        trainer.isReady = false
+        trainer.wahooConfirmationDelay = .milliseconds(50)
+        coordinator.startRide(configuration: makeConfiguration())
+        try await settle { self.coordinator.state == .connecting }
+
+        // The trainer wakes at the same moment the rider gives up.
+        trainer.isReady = true
+        await coordinator.stopRide()
+        try await Task.sleep(for: .milliseconds(300))
+
+        XCTAssertEqual(
+            trainer.currentWheelSizeMillimeters,
+            neutral,
+            "A stop must win: the trainer cannot be left carrying a gear"
+        )
+        XCTAssertNil(
+            defaults.object(forKey: "VirtualShift.unfinishedRideBaselineMillimeters")
+        )
+    }
+
+    /// Letting go of the button has to be obeyed unconditionally. It used to be
+    /// turned away whenever the gears were being rebuilt, which is precisely
+    /// when a riding app resets the wheel size mid-sweep, leaving the sweep
+    /// running to the end of the cassette with nobody touching the button.
+    func testLettingGoIsObeyedEvenWhileTheGearsAreBeingRebuilt() async throws {
+        trainer.wahooConfirmationDelay = .milliseconds(30)
+        try await startRide(virtualGears: false)
+
+        coordinator.beginHold(.harder)
+        try await settle { (self.coordinator.confirmedGearIndex ?? 0) >= 1 }
+
+        // A riding app resets the wheel size while the sweep is running. The
+        // rebuild waits for the sweep, so it is still in flight when the rider
+        // lets go, which is the situation being tested.
+        let rebuild = Task { [ridingApp] in
+            await ridingApp?.send(
+                .setWheelCircumference(tenthsOfMillimeter: 21_050)
+            )
+        }
+        try await Task.sleep(for: .milliseconds(10))
+        coordinator.endHold()
+        _ = await rebuild.value
+
+        let settledIndex = coordinator.confirmedGearIndex
+        try await Task.sleep(for: .milliseconds(400))
+
+        XCTAssertEqual(
+            coordinator.confirmedGearIndex,
+            settledIndex,
+            "The sweep must stop when the rider lets go, whatever else is happening"
+        )
+        XCTAssertNotEqual(
+            coordinator.confirmedGearIndex,
+            coordinator.gearSequence.count - 1,
+            "A released button should not have swept to the hardest gear"
+        )
     }
 }

@@ -37,12 +37,21 @@ public final class ProxyCoordinator {
     private let diagnostics: ProductDiagnosticsStore
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
+    /// The run of a ride that is still getting going. A stop waits for this to
+    /// finish before it puts the trainer back, so the two can never be writing
+    /// wheel sizes to the trainer at the same time.
+    private var startTask: Task<Void, Never>?
     /// Set while a shift button is held. The sweep continues off each confirmed
     /// gear rather than a timer, so it never runs ahead of the trainer.
     private var heldDirection: ShiftDirection?
     private var recoveryTask: Task<Void, Never>?
     private var usesClick = false
     private var feedback = ShiftFeedbackLedger()
+    /// Set while the gears are being rebuilt, either because a riding app
+    /// moved the wheel size or because the rider chose different gears.
+    /// Shifting stands aside for it, and only one rebuild runs at a time: two
+    /// would each be working from a picture of the gears the other had already
+    /// changed, leaving the rider shown a gear the trainer is not on.
     private var baselineUpdateInProgress = false
     private var restoreTask: Task<Void, Never>?
 
@@ -184,7 +193,10 @@ public final class ProxyCoordinator {
         }
         usesClick = configuration.usesClick
         let id = lifecycle.beginConnecting()
-        Task { await runRide(configuration: configuration, sessionID: id) }
+        startTask = Task { [weak self] in
+            await self?.runRide(configuration: configuration, sessionID: id)
+            self?.startTask = nil
+        }
     }
 
     private func runRide(
@@ -222,7 +234,9 @@ public final class ProxyCoordinator {
             // path below hands control of this back.
             screen.keepAwake = true
             try await waitUntilReady(kickr, named: "KICKR", sessionID: id)
+            guard startMayProceed(id) else { throw CancellationError() }
             let response = try await kickr.execute(.requestControl)
+            guard startMayProceed(id) else { throw CancellationError() }
             guard response.result == .success else {
                 throw ProductBluetoothError.commandFailed(
                     "KICKR denied FTMS control"
@@ -233,19 +247,21 @@ public final class ProxyCoordinator {
                     "Initial virtual gear is unavailable"
                 )
             }
+            guard startMayProceed(id) else { throw CancellationError() }
             let initialResponse = try await kickr.executeWahoo(initialCommand)
+            guard startMayProceed(id) else { throw CancellationError() }
             guard initialResponse.confirmsSuccess(for: initialCommand) else {
                 throw ProductBluetoothError.commandFailed(
                     "KICKR did not confirm the initial virtual gear"
                 )
             }
-            guard lifecycle.owns(id) else { return }
+            guard startMayProceed(id) else { throw CancellationError() }
             peripheral.startAdvertising()
             try await waitUntilPeripheralReady(sessionID: id)
             lifecycle.markActive()
             log("Ride session started")
         } catch {
-            guard lifecycle.owns(id) else { return }
+            guard lifecycle.owns(id), !lifecycle.isStopping else { return }
             await abortStart(error)
         }
     }
@@ -255,6 +271,12 @@ public final class ProxyCoordinator {
         peripheral.stopAcceptingCommands()
         shiftTask?.cancel()
         recoveryTask?.cancel()
+        // A ride that is still connecting has its own trainer writes to make.
+        // Letting them run alongside the restore below is how a trainer ends up
+        // left on a gear's wheel size with the recovery record already deleted,
+        // so the stop waits for the start to notice it has been called off.
+        startTask?.cancel()
+        await startTask?.value
         var failures: [String] = []
 
         if !kickr.isReady {
@@ -374,23 +396,27 @@ public final class ProxyCoordinator {
     /// are when a riding app sets its own wheel size, so the riding app never
     /// notices anything happened.
     public func changeDrivetrain(_ configuration: AppConfiguration) async {
-        guard lifecycle.isRiding, let drivetrain = configuration.drivetrain,
+        guard lifecycle.isRiding, let id = lifecycle.sessionID,
+              let drivetrain = configuration.drivetrain,
               AppConfiguration.isSafe(drivetrain) else { return }
+        guard await waitForGearsToSettle(id) else { return }
         baselineUpdateInProgress = true
         defer { baselineUpdateInProgress = false }
         heldDirection = nil
-        while shiftTask != nil {
-            try? await Task.sleep(for: .milliseconds(20))
-        }
-        let baseline = sessionBaselineMillimeters
-            ?? Double(configuration.neutralCircumferenceMillimeters)
+        guard let baseline = sessionBaselineMillimeters else { return }
         do {
             let rebuilt = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
                 baselineCircumferenceMillimeters: baseline
             )
             let command = rebuilt.confirmedSetting.command
+            // The ride can be stopped while the trainer is answering. Writing
+            // a gear's wheel size after the stop has put the trainer back is
+            // exactly what leaves it carrying one, with nothing recorded to put
+            // it right at the next launch.
+            guard stillRiding(id) else { return }
             let response = try await kickr.executeWahoo(command)
+            guard stillRiding(id) else { return }
             guard response.confirmsSuccess(for: command) else {
                 throw ProductBluetoothError.commandFailed(
                     "KICKR did not confirm the new gears"
@@ -411,13 +437,39 @@ public final class ProxyCoordinator {
         }
     }
 
+    /// Whether the ride this work belongs to is still the one running. Every
+    /// step that suspends has to ask again afterwards: a stop can be claimed
+    /// while the trainer is mid-answer, and it owns putting the trainer back.
+    private func stillRiding(_ id: UUID) -> Bool {
+        lifecycle.owns(id) && lifecycle.isRiding && !lifecycle.isStopping
+    }
+
+    /// Waits for shifting to finish and for any other gear rebuild to let go.
+    /// Bounded, because a wait that cannot end would leave a riding app's
+    /// command unanswered for the rest of the ride.
+    private func waitForGearsToSettle(_ id: UUID) async -> Bool {
+        for _ in 0..<250 {
+            guard stillRiding(id) else { return false }
+            if shiftTask == nil, !baselineUpdateInProgress { return true }
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        return false
+    }
+
+    /// Whether a ride that is still getting going may carry on. A claimed stop
+    /// always wins: the alternative is two different wheel sizes racing to the
+    /// trainer, with whichever lands last deciding what it is left on.
+    private func startMayProceed(_ id: UUID) -> Bool {
+        lifecycle.owns(id) && !lifecycle.isStopping && !Task.isCancelled
+    }
+
     private func waitUntilReady(
         _ service: any ConnectableLink,
         named name: String,
         sessionID: UUID
     ) async throws {
         for _ in 0..<300 {
-            guard lifecycle.owns(sessionID) else { throw CancellationError() }
+            guard startMayProceed(sessionID) else { throw CancellationError() }
             if service.isReady { return }
             if case let .failed(message) = service.state {
                 throw ProductBluetoothError.unavailable("\(name): \(message)")
@@ -429,7 +481,7 @@ public final class ProxyCoordinator {
 
     private func waitUntilPeripheralReady(sessionID: UUID) async throws {
         for _ in 0..<100 {
-            guard lifecycle.owns(sessionID) else { throw CancellationError() }
+            guard startMayProceed(sessionID) else { throw CancellationError() }
             if peripheral.isAdvertising { return }
             if case let .failed(message) = peripheral.latestEvent {
                 throw ProductBluetoothError.unavailable("Riding app link: \(message)")
@@ -497,12 +549,16 @@ public final class ProxyCoordinator {
     private func setBaseline(
         millimeters: Double
     ) async throws -> FTMSPeripheralCommandResult {
+        guard let id = lifecycle.sessionID else {
+            return .init(result: .operationFailed, status: nil)
+        }
+        // Waits for shifting to finish, and for the rider's own gear change to
+        // let go if they happen to be choosing new gears at this moment.
+        guard await waitForGearsToSettle(id) else {
+            return .init(result: .operationFailed, status: nil)
+        }
         baselineUpdateInProgress = true
         defer { baselineUpdateInProgress = false }
-        while shiftTask != nil {
-            try Task.checkCancellation()
-            try await Task.sleep(for: .milliseconds(20))
-        }
         guard let engine = gearEngine else {
             throw ProductBluetoothError.commandFailed(
                 "Gear engine is unavailable"
@@ -524,7 +580,16 @@ public final class ProxyCoordinator {
             return .init(result: .invalidParameter, status: nil)
         }
         let effectiveCommand = rebased.confirmedSetting.command
+        // Stopping only turns away commands still queued; this one is already
+        // in the handler. Without these checks a wheel size can reach the
+        // trainer after the stop has put it back.
+        guard stillRiding(id) else {
+            return .init(result: .operationFailed, status: nil)
+        }
         let effectiveResponse = try await kickr.executeWahoo(effectiveCommand)
+        guard stillRiding(id) else {
+            return .init(result: .operationFailed, status: nil)
+        }
         guard effectiveResponse.confirmsSuccess(for: effectiveCommand) else {
             throw ProductBluetoothError.commandFailed(
                 "KICKR did not confirm rescaled gear"
@@ -609,6 +674,8 @@ public final class ProxyCoordinator {
         lifecycle.markReconnecting()
         peripheral.notifyControlLost()
         shiftTask?.cancel()
+        // A sweep cannot outlive the connection it was riding on.
+        heldDirection = nil
         gearEngine?.cancelPendingChanges()
         feedback.clear()
         updateDisplayedGear()
@@ -618,6 +685,21 @@ public final class ProxyCoordinator {
     }
 
     private func handleShiftRequest(_ request: ShiftRequest) {
+        // Letting go is obeyed before anything else. Every other request can be
+        // turned down, but a sweep that ignores the rider taking their finger
+        // off carries on to the end of the cassette on its own.
+        //
+        // Nothing known reaches this line with the sweep still running: a gear
+        // rebuild now claims its flag only once shifting has finished. That is
+        // the reason there is no test that fails without these three lines, and
+        // it is also why they stay. Clearing what stops a runaway sweep must
+        // not depend on a second piece of code continuing to behave.
+        if case .holdEnded = request {
+            // The gear already asked for is left to finish. Cancelling it would
+            // leave the trainer on a wheel size the rider was never shown.
+            heldDirection = nil
+            return
+        }
         guard lifecycle.isRiding, !baselineUpdateInProgress else { return }
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
@@ -630,9 +712,6 @@ public final class ProxyCoordinator {
             direction = value
             feedback = .multiple
         case .holdEnded:
-            // The gear already asked for is left to finish. Cancelling it would
-            // leave the trainer on a wheel size the rider was never shown.
-            heldDirection = nil
             return
         }
         shiftInteraction &+= 1
@@ -664,6 +743,12 @@ public final class ProxyCoordinator {
             while let current = change, !Task.isCancelled {
                 do {
                     let response = try await self.kickr.executeWahoo(current.command)
+                    // A lost connection cancels this task and clears the gear
+                    // engine's pending change while this line is suspended.
+                    // Carrying on would put that change straight back into an
+                    // engine no task is driving any more, and every later shift
+                    // would then be refused for the rest of the ride.
+                    guard !Task.isCancelled else { break }
                     guard response.confirmsSuccess(for: current.command),
                           var engine = self.gearEngine else {
                         throw ProductBluetoothError.commandFailed(

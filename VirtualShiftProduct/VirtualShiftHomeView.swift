@@ -348,19 +348,16 @@ private struct ActiveRideView: View {
         if isOpen {
             gearsWhenOpened = configuration.drivetrain
         } else {
-            restartIfGearsChanged(from: gearsWhenOpened)
+            applyGearChange(from: gearsWhenOpened)
             gearsWhenOpened = nil
         }
     }
 
-    /// Changing gears mid-ride rebuilds the session rather than swapping the
-    /// ladder underneath the trainer, so the wheel size the trainer is holding
-    /// is always put back before the new gears are applied.
     /// Changing gears mid-ride rebuilds the gear ladder in place. It deliberately
     /// does not stop and restart the ride: that removes the fitness machine
     /// service and disconnects the riding app, which is a long walk back to the
     /// PC in the middle of a session.
-    private func restartIfGearsChanged(from previous: Drivetrain?) {
+    private func applyGearChange(from previous: Drivetrain?) {
         guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
@@ -574,7 +571,7 @@ private struct ActiveRideView: View {
             set: { newValue in
                 let previous = configuration.drivetrain
                 store.configuration.usesVirtualGears = newValue
-                restartIfGearsChanged(from: previous)
+                applyGearChange(from: previous)
             }
         )
     }

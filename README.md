@@ -58,8 +58,8 @@ connecting to a neighbour's trainer would change their wheel size, so anything
 ambiguous is asked rather than guessed.
 
 **Everything changeable mid-ride.** Trainer, gears and Click can all be changed
-from the ride screen. Changing gears quietly restarts the session, so the
-trainer is always put back before the new gears are applied.
+from the ride screen. Changing gears rebuilds them in place, without
+interrupting the ride, so the riding app on your PC never notices.
 
 **A ride survives an interruption.** Taking a call, tapping a notification or
 switching to another app does not end your ride. The trainer stays connected and
