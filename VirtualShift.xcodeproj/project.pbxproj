@@ -7,19 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		100000000000000000000001 /* VirtualShiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* VirtualShiftApp.swift */; };
-		100000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* ContentView.swift */; };
-		100000000000000000000003 /* KickrBluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* KickrBluetoothManager.swift */; };
-		100000000000000000000004 /* VirtualShiftCore in Frameworks */ = {isa = PBXBuildFile; productRef = 900000000000000000000001 /* VirtualShiftCore */; };
-		100000000000000000000005 /* ClickBluetoothManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* ClickBluetoothManager.swift */; };
-		100000000000000000000006 /* ClickProofView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* ClickProofView.swift */; };
-		100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* ShiftSoundPlayer.swift */; };
 		100000000000000000000008 /* VirtualShiftApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VirtualShiftApp.swift */; };
 		100000000000000000000009 /* VirtualShiftHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* VirtualShiftHomeView.swift */; };
-		10000000000000000000000A /* RideAppProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* RideAppProbeManager.swift */; };
-		10000000000000000000000B /* RideAppProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* RideAppProbeView.swift */; };
-		10000000000000000000000C /* KickrFTMSProbeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* KickrFTMSProbeManager.swift */; };
-		10000000000000000000000D /* KickrFTMSProbeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* KickrFTMSProbeView.swift */; };
 		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
 		A00000000000000000000002 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* SetupView.swift */; };
 		A00000000000000000000003 /* VirtualShiftCore in Frameworks */ = {isa = PBXBuildFile; productRef = 900000000000000000000001 /* VirtualShiftCore */; };
@@ -29,26 +18,13 @@
 		A00000000000000000000007 /* FTMSPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FTMSPeripheral.swift */; };
 		A00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* Assets.xcassets */; };
 		A0000000000000000000000B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* PrivacyInfo.xcprivacy */; };
-		10000000000000000000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		200000000000000000000001 /* VirtualShiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftApp.swift; sourceTree = "<group>"; };
-		200000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		200000000000000000000003 /* KickrBluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrBluetoothManager.swift; sourceTree = "<group>"; };
-		200000000000000000000004 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		200000000000000000000005 /* VirtualShift.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VirtualShift.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		200000000000000000000006 /* ClickBluetoothManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickBluetoothManager.swift; sourceTree = "<group>"; };
-		200000000000000000000007 /* ClickProofView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickProofView.swift; sourceTree = "<group>"; };
-		200000000000000000000008 /* ShiftSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShiftSoundPlayer.swift; sourceTree = "<group>"; };
 		200000000000000000000009 /* VirtualShiftApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftApp.swift; sourceTree = "<group>"; };
 		20000000000000000000000A /* VirtualShiftHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualShiftHomeView.swift; sourceTree = "<group>"; };
 		20000000000000000000000B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		20000000000000000000000C /* VirtualShift Hardware Lab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "VirtualShift Hardware Lab.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		20000000000000000000000D /* RideAppProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideAppProbeManager.swift; sourceTree = "<group>"; };
-		20000000000000000000000E /* RideAppProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideAppProbeView.swift; sourceTree = "<group>"; };
-		20000000000000000000000F /* KickrFTMSProbeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeManager.swift; sourceTree = "<group>"; };
-		200000000000000000000010 /* KickrFTMSProbeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrFTMSProbeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		A1000000000000000000000B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -57,18 +33,9 @@
 		A10000000000000000000006 /* ClickCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		200000000000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		300000000000000000000001 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				100000000000000000000004 /* VirtualShiftCore in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		300000000000000000000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -84,28 +51,8 @@
 			isa = PBXGroup;
 			children = (
 				400000000000000000000004 /* VirtualShift */,
-				400000000000000000000002 /* VirtualShift Hardware Lab */,
 				400000000000000000000003 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		400000000000000000000002 /* VirtualShift Hardware Lab */ = {
-			isa = PBXGroup;
-			children = (
-				200000000000000000000001 /* VirtualShiftApp.swift */,
-				200000000000000000000002 /* ContentView.swift */,
-				200000000000000000000003 /* KickrBluetoothManager.swift */,
-				200000000000000000000006 /* ClickBluetoothManager.swift */,
-				200000000000000000000007 /* ClickProofView.swift */,
-				200000000000000000000008 /* ShiftSoundPlayer.swift */,
-				20000000000000000000000D /* RideAppProbeManager.swift */,
-				20000000000000000000000E /* RideAppProbeView.swift */,
-				20000000000000000000000F /* KickrFTMSProbeManager.swift */,
-				200000000000000000000010 /* KickrFTMSProbeView.swift */,
-				200000000000000000000011 /* Assets.xcassets */,
-				200000000000000000000004 /* Info.plist */,
-			);
-			path = VirtualShift;
 			sourceTree = "<group>";
 		};
 		400000000000000000000004 /* VirtualShift */ = {
@@ -130,7 +77,6 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000005 /* VirtualShift.app */,
-				20000000000000000000000C /* VirtualShift Hardware Lab.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -158,26 +104,6 @@
 			productReference = 200000000000000000000005 /* VirtualShift.app */;
 			productType = "com.apple.product-type.application";
 		};
-		500000000000000000000002 /* VirtualShift Hardware Lab */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 800000000000000000000003 /* Build configuration list for PBXNativeTarget "VirtualShift Hardware Lab" */;
-			buildPhases = (
-				300000000000000000000002 /* Sources */,
-				300000000000000000000001 /* Frameworks */,
-				300000000000000000000003 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = "VirtualShift Hardware Lab";
-			packageProductDependencies = (
-				900000000000000000000001 /* VirtualShiftCore */,
-			);
-			productName = "VirtualShift Hardware Lab";
-			productReference = 20000000000000000000000C /* VirtualShift Hardware Lab.app */;
-			productType = "com.apple.product-type.application";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -189,9 +115,6 @@
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					500000000000000000000001 = {
-						CreatedOnToolsVersion = 26.4;
-					};
-					500000000000000000000002 = {
 						CreatedOnToolsVersion = 26.4;
 					};
 				};
@@ -213,20 +136,11 @@
 			projectRoot = "";
 			targets = (
 				500000000000000000000001 /* VirtualShift */,
-				500000000000000000000002 /* VirtualShift Hardware Lab */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		300000000000000000000003 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				10000000000000000000000E /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		300000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -239,23 +153,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		300000000000000000000002 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				100000000000000000000001 /* VirtualShiftApp.swift in Sources */,
-				100000000000000000000002 /* ContentView.swift in Sources */,
-				100000000000000000000003 /* KickrBluetoothManager.swift in Sources */,
-				100000000000000000000005 /* ClickBluetoothManager.swift in Sources */,
-				100000000000000000000006 /* ClickProofView.swift in Sources */,
-				100000000000000000000007 /* ShiftSoundPlayer.swift in Sources */,
-				10000000000000000000000A /* RideAppProbeManager.swift in Sources */,
-				10000000000000000000000B /* RideAppProbeView.swift in Sources */,
-				10000000000000000000000C /* KickrFTMSProbeManager.swift in Sources */,
-				10000000000000000000000D /* KickrFTMSProbeView.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		300000000000000000000005 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -358,56 +255,6 @@
 			};
 			name = Release;
 		};
-		700000000000000000000005 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MNW6SJT4V7;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = VirtualShift/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualShift.HardwareLab;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
-		700000000000000000000006 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = MNW6SJT4V7;
-				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = VirtualShift/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualShift.HardwareLab;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -425,15 +272,6 @@
 			buildConfigurations = (
 				700000000000000000000003 /* Debug */,
 				700000000000000000000004 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		800000000000000000000003 /* Build configuration list for PBXNativeTarget "VirtualShift Hardware Lab" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				700000000000000000000005 /* Debug */,
-				700000000000000000000006 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

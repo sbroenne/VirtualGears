@@ -31,10 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The Hardware Lab is not shipped, but it is how every trainer fact in
-        # the docs was measured. It was left broken for weeks because nothing
-        # built it, so it is built here too.
-        scheme: [VirtualShift, VirtualShift Hardware Lab]
+        scheme: [VirtualShift]
     steps:
       - uses: actions/checkout@v7
 

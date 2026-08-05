@@ -2,13 +2,14 @@
 
 The iPhone app and the hardware proofs must be built and run on macOS.
 
-Riding needs only the `VirtualShift` scheme. The `VirtualShift Hardware Lab`
-scheme is a separate app used to prove trainer and controller behaviour, and is
-not needed to ride.
+Riding needs only the `VirtualShift` scheme.
 
-The proofs below were run before the proxy existed and are kept as the way to
-isolate a fault. Riding itself needs none of them: install the app on the phone
-and open it.
+Some of what follows is a record rather than a procedure. Before the proxy
+existed, the trainer and the controller were proven with a scratch diagnostic
+app that was installed on the phone alongside nothing else. That app has been
+removed, because the shipping app now does the same conversations for real and
+keeps its own diagnostic log. Those findings are written down below as history,
+and the Mac tools under `Tools/` are what is still runnable today.
 
 1. Install the current stable Xcode release.
 2. Sign in to Xcode with the Apple ID used for device development.
@@ -20,49 +21,38 @@ and open it.
    ```
 
 5. Open `VirtualShift.xcodeproj`.
-6. Select the target you want, `VirtualShift` to ride or
-   `VirtualShift Hardware Lab` to run the proofs below, open Signing &
-   Capabilities, and choose the development team for the connected iPhone.
+6. Select the `VirtualShift` target, open Signing & Capabilities, and choose the
+   development team for the connected iPhone.
 7. Select the physical iPhone as the run destination and run the app. The
    simulator cannot perform the required hardware proof.
 
-## KICKR V5 range validation
+## What the KICKR V5 range validation found
 
-1. Make sure no other phone, watch, computer, or cycling app is connected to
-   the KICKR.
-2. Open **VirtualShift Hardware Lab**, choose the **KICKR** tab, tap
-   **Find my KICKR**, and select the intended trainer.
-3. Wait until the app prepares the trainer. It automatically unlocks the KICKR
-   and confirms the fixed 2070 mm neutral value.
-4. Do not pedal. Tap **Run next check** and wait for the automatic 2070 mm
-   restore before continuing.
-5. Repeat until all ten values are confirmed. The sequence covers the previously
-   tested range, the 646.9–4735.1 mm range the 24 virtual gears need at a
-   2070 mm baseline, and a 4800 mm upper safety margin.
-6. Tap **Copy test report** and save the complete list and diagnostic log.
+This was run once with the diagnostic app, on a quiet trainer that nothing else
+was connected to. The app unlocked the KICKR, confirmed the fixed 2070 mm
+neutral value, and then worked through ten wheel sizes one at a time, restoring
+2070 mm between each one and never sending another command when the Bluetooth
+write state was uncertain.
 
-Stop immediately if the red neutral-restore warning appears. The app disconnects
-instead of issuing another command when the Bluetooth write state is uncertain.
-Reconnect before riding so the starting circumference is restored first.
+All ten were confirmed by the trainer. The sequence covered the previously
+tested range, the 646.9–4735.1 mm range the 24 virtual gears need at a 2070 mm
+baseline, and a 4800 mm upper safety margin.
 
-## Original Zwift Click proof
+The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
+also restores 2070 mm before it exits, including after a failure. Whatever is
+used, reconnect before riding so the starting circumference is restored first.
 
-This proof is independent of the KICKR and does not send trainer commands.
+## What the original Zwift Click proof found
 
-1. Open the **Click** tab and press either physical Click button once to wake
-   the controller.
-2. Tap **Scan for Click**, select the original Zwift Click, and wait for
-   **Click ready**.
-3. Starting from displayed gear 6, tap `+` and `-`. Each tap must move exactly
-   one gear and play the single-shift sound.
-4. Hold either button. The display must keep moving while held and stop when
-   released, without adding gears afterwards. The sweep runs at the trainer's
-   pace, not a fixed rate, so a slow trainer simply sweeps more slowly.
-5. Confirm that duplicate packets do not cause extra shifts and pressing both
-   buttons does nothing.
-6. Disconnect, reconnect, and repeat one tap in each direction.
-7. Copy the Click diagnostic log and record the controller firmware and iOS
-   version with the result.
+This proof was independent of the KICKR and sent no trainer commands. Starting
+from displayed gear 6, each tap of `+` and `-` moved exactly one gear and played
+the single-shift sound. Holding a button kept the display moving while held and
+stopped on release without adding gears afterwards, at the trainer's pace rather
+than a fixed rate. Duplicate packets caused no extra shifts, pressing both
+buttons did nothing, and a disconnect and reconnect changed none of it.
+
+`Tools/ClickTrace` below is the Mac equivalent, and it sees more than the app
+ever could.
 
 ## Recording what a Zwift Click really sends
 
@@ -179,36 +169,25 @@ before reporting the gear as changed. Two further reasons to prefer it:
 
 This mode changes nothing and leaves the trainer on 2070 mm.
 
-## Independent riding app FTMS probe
+## What the riding app FTMS probe found
 
-This probe makes the iPhone pretend to be a simple indoor bike. Do not connect
-the Hardware Lab to the KICKR during this test. Run it with whichever riding app
-you are validating; RealVelo is the reference app, and Zwift, FulGaz, and other
-FTMS apps use the same interface.
+Before the proxy was built, the diagnostic app was made to pretend to be a
+simple indoor bike, with nothing connected to the KICKR at the time. RealVelo
+was the reference app; Zwift, FulGaz, and other FTMS apps use the same
+interface.
 
-1. Open the **Riding App** tab and enter the riding app and Windows versions.
-2. Tap **Start Probe** and keep the Hardware Lab open in the foreground.
-3. In the riding app, search for a Bluetooth FTMS trainer named
-   **VirtualShift Lab** and connect to it.
-4. Confirm that the app shows the fixed speed, cadence, and power values. Move
-   each slider in the Hardware Lab and confirm that the app follows it.
-5. Exercise the app's normal start, pause, stop, ERG, resistance, simulation,
-   and wheel-circumference controls.
-6. In the trace, confirm that the app subscribed to the Control Point before
-   requesting control. Record the exact order and raw bytes for every write.
-7. Disconnect and reconnect the app once. Confirm that it can find the probe
-   again and repeats the required subscriptions and control request.
-8. Tap **Export JSON Trace** and save the complete trace with the test result.
-9. Tap **Stop Probe** when finished.
+Riding apps found the foreground iPhone as a Bluetooth FTMS trainer, showed the
+fixed speed, cadence, and power it published, and followed those values as they
+were moved. They drove their normal start, pause, stop, ERG, resistance,
+simulation, and wheel-circumference controls through it. Every app subscribed to
+the Control Point before requesting control, and after a disconnect and
+reconnect each one found the probe again and repeated the same subscriptions and
+control request.
 
-If the riding app cannot discover the foreground iPhone, do not guess at a proxy
-workaround. Save the trace and record the failure before changing the FTMS
-service shape.
-
-Both probes passed before the proxy was built, and the proxy is now the product.
-Keep them as the way to isolate a fault: if a riding app stops seeing
-VirtualShift, prove the FTMS shape here first rather than changing the proxy on
-a hunch.
+That is the shape the shipping app presents today, and it is why the proxy works
+at all. If a riding app stops seeing VirtualShift, the app's own diagnostic log
+records the same writes in the same order, so read that before changing the FTMS
+service shape on a hunch.
 
 ## What name a riding app shows for VirtualShift
 
