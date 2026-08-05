@@ -84,6 +84,11 @@ power target and holding a gear are two different ideas of what the trainer
 should feel like. VirtualShift still tells riding apps it is a trainer they can
 steer, so it appears in their trainer list rather than as a bare power sensor.
 
+**Trainers other than a Wahoo KICKR.** The way VirtualShift makes gears is not
+something every trainer can do, and the KICKR Snap and KICKR Bike cannot do it
+either. [Which trainers work](requirements.md#which-trainers-work) has the
+detail.
+
 !!! note "Not affiliated with Wahoo or Zwift"
 
     VirtualShift is an independent app. Wahoo, KICKR, Zwift and Zwift Click are

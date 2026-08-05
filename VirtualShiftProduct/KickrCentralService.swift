@@ -198,6 +198,13 @@ final class KickrCentralService: NSObject {
             fail("Selected trainer is no longer available")
             return
         }
+        // Guarded here as well as in the list, so an unsuitable trainer cannot
+        // be reached by a saved choice or a future caller either.
+        if case let .unsupported(model, reason) = candidates
+            .first(where: { $0.id == id })?.compatibility {
+            fail("\(model): \(reason)")
+            return
+        }
         persistIdentity(
             id: id,
             name: candidates.first(where: { $0.id == id })?.name
@@ -692,12 +699,14 @@ extension KickrCentralService: CBCentralManagerDelegate {
                 CBAdvertisementDataLocalNameKey
             ] as? String
             let name = advertised ?? peripheral.name ?? "Unnamed trainer"
-            guard name.localizedCaseInsensitiveContains("KICKR") else { return }
+            guard TrainerModel.isKickr(advertisedName: name) else { return }
             discovered[peripheral.identifier] = peripheral
             let item = BluetoothCandidate(
                 id: peripheral.identifier,
                 name: name,
-                rssi: RSSI.intValue
+                rssi: RSSI.intValue,
+                compatibility: TrainerModel
+                    .compatibility(forAdvertisedName: name)
             )
             if let index = candidates.firstIndex(where: { $0.id == item.id }) {
                 candidates[index] = item

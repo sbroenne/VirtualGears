@@ -3,9 +3,47 @@
 | | |
 |---|---|
 | **iPhone** | Running iOS 26 or later |
-| **Trainer** | Wahoo KICKR V5 |
+| **Trainer** | Wahoo KICKR V5. Other KICKRs, [see below](#which-trainers-work) |
 | **Riding app** | Anything that supports FTMS trainers. Development is validated against RealVelo; Zwift, FulGaz and others use the same interface. |
 | **Shift buttons** | Optional. An original Zwift Click. |
+
+## Which trainers work
+
+VirtualShift shifts gears by changing the wheel size the trainer is set up for.
+That is not how every trainer with KICKR written on it works, so the model
+matters.
+
+| Trainer | Works? |
+|---|---|
+| **KICKR V5** | **Yes** — the trainer the app was built and measured against |
+| Other **Wahoo KICKR** models, including the Core | Should work. Not tested, and the app will say so |
+| **KICKR Snap** | No. It changes gear a different way |
+| **KICKR Bike** | No. It has its own gear levers already |
+| Tacx, Elite, Saris, Zwift Hub, anything else | No |
+
+The app lists every KICKR it can see and tells you plainly if yours is one it
+cannot work with, rather than leaving you to wonder why nothing happens.
+
+### If your KICKR is not the V5
+
+Try it. Nothing bad happens if it turns out not to work: every gear change has
+to be confirmed by the trainer before the app accepts it, so a trainer that
+ignores the instruction will fail visibly rather than quietly give you the wrong
+gear. If it does work, it would be good to hear about it.
+
+### Why not other brands
+
+Tacx trainers do not speak this part of the Bluetooth standard at all — they use
+a different protocol inherited from ANT+. Elite, Saris and most others do speak
+it, but no trainer is known to actually act on the wheel-size instruction, and a
+KICKR will answer "yes" to instructions it has no intention of carrying out, so
+asking politely proves nothing.
+
+Other apps get around this by lying about the hill instead: you ask for a harder
+gear and they tell the trainer the road is steeper than it is. That works
+anywhere, but your riding app then has the wrong gradient, so your speed and the
+course profile drift away from the truth. VirtualShift changes the trainer's own
+idea of the bike and leaves the road alone.
 
 ## Your first ride
 

@@ -1,11 +1,13 @@
 import CoreBluetooth
 import Foundation
 import Observation
+import VirtualShiftCore
 
 struct BluetoothCandidate: Identifiable, Equatable {
     let id: UUID
     let name: String
     let rssi: Int
+    var compatibility: TrainerCompatibility = .untested
 }
 
 enum ProductConnectionState: Equatable {
