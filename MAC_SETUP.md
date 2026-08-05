@@ -47,9 +47,16 @@ used, reconnect before riding so the starting circumference is restored first.
 This proof was independent of the KICKR and sent no trainer commands. Starting
 from displayed gear 6, each tap of `+` and `-` moved exactly one gear and played
 the single-shift sound. Holding a button kept the display moving while held and
-stopped on release without adding gears afterwards, at the trainer's pace rather
-than a fixed rate. Duplicate packets caused no extra shifts, pressing both
-buttons did nothing, and a disconnect and reconnect changed none of it.
+stopped on release without adding gears afterwards. The repeat ran on a fixed
+timer: half a second of hold before it started, then a gear every 300 ms,
+whatever anything else was doing. Duplicate packets caused no extra shifts,
+pressing both buttons did nothing, and a disconnect and reconnect changed none
+of it.
+
+The shipping app no longer repeats on a timer: holding a button asks for the
+next gear only once the trainer has confirmed the last one, so a slow trainer
+simply sweeps more slowly. That is a recent change and has not yet been
+confirmed on a real ride.
 
 `Tools/ClickTrace` below is the Mac equivalent, and it sees more than the app
 ever could.
@@ -172,17 +179,17 @@ This mode changes nothing and leaves the trainer on 2070 mm.
 ## What the riding app FTMS probe found
 
 Before the proxy was built, the diagnostic app was made to pretend to be a
-simple indoor bike, with nothing connected to the KICKR at the time. RealVelo
-was the reference app; Zwift, FulGaz, and other FTMS apps use the same
-interface.
+simple indoor bike, with nothing connected to the KICKR at the time. It was run
+against RealVelo, which is the reference app here. Zwift, FulGaz, and MyWhoosh
+speak the same standard FTMS interface, but the probe was not run against them
+and they are not covered by what follows.
 
-Riding apps found the foreground iPhone as a Bluetooth FTMS trainer, showed the
+RealVelo found the foreground iPhone as a Bluetooth FTMS trainer, showed the
 fixed speed, cadence, and power it published, and followed those values as they
-were moved. They drove their normal start, pause, stop, ERG, resistance,
-simulation, and wheel-circumference controls through it. Every app subscribed to
-the Control Point before requesting control, and after a disconnect and
-reconnect each one found the probe again and repeated the same subscriptions and
-control request.
+were moved. It drove its normal start, pause, stop, ERG, resistance, simulation,
+and wheel-circumference controls through it. It subscribed to the Control Point
+before requesting control, and after a disconnect and reconnect it found the
+probe again and repeated the same subscriptions and control request.
 
 That is the shape the shipping app presents today, and it is why the proxy works
 at all. If a riding app stops seeing VirtualShift, the app's own diagnostic log
