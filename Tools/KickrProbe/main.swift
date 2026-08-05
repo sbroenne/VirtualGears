@@ -40,6 +40,32 @@ func milliseconds(_ interval: TimeInterval) -> String {
     String(format: "%.0f ms", interval * 1000)
 }
 
+/// What this run is for. The wheel size cannot be read back from the trainer,
+/// so proving whether it survives a power cut takes two runs with the plug
+/// pulled in between.
+enum ProbeMode {
+    /// Time gear changes and check whether control survives a stop.
+    case measure
+    /// Leave a distinctive wheel size behind, on purpose.
+    case set(millimeters: Double)
+    /// Work out the wheel size the trainer is currently using.
+    case read
+}
+
+let mode: ProbeMode = {
+    let arguments = CommandLine.arguments.dropFirst()
+        .filter { !$0.hasPrefix("-") }
+    switch arguments.first {
+    case "set":
+        let value = arguments.dropFirst().first.flatMap(Double.init) ?? 3105
+        return .set(millimeters: value)
+    case "read":
+        return .read
+    default:
+        return .measure
+    }
+}()
+
 enum ProbeError: Error {
     case notReady
     case timedOut
@@ -62,6 +88,7 @@ final class KickrProbe: NSObject {
     )
     private let controlUUID = CBUUID(string: FTMSUUID.fitnessMachineControlPoint)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
+    private let bikeDataUUID = CBUUID(string: FTMSUUID.indoorBikeData)
     private let wahooUUID = CBUUID(
         string: WahooKickrProtocol.controlCharacteristicUUID
     )
@@ -72,6 +99,10 @@ final class KickrProbe: NSObject {
     private var wahooWaiter: CheckedContinuation<Data, Error>?
 
     private var statusMessages: [Data] = []
+    /// Speed as the trainer reports it, which is the only visible consequence
+    /// of the wheel size and so the only way to work out what it is.
+    private var speedSamples: [(at: Date, kilometersPerHour: Double)] = []
+    private var warnedAboutSpeed = false
     private let neutral = TrainerSafety.referenceCircumferenceMillimeters
 
     func start() {
@@ -84,15 +115,175 @@ final class KickrProbe: NSObject {
         do {
             _ = try await sendFTMS(.requestControl)
             say("Trainer handed over control.")
-            let times = try await measureGearConfirmations()
-            let heldControl = try await measureControlAfterStop()
-            report(times: times, heldControl: heldControl)
+            switch mode {
+            case .measure:
+                let times = try await measureGearConfirmations()
+                let heldControl = try await measureControlAfterStop()
+                report(times: times, heldControl: heldControl)
+                await restoreNeutral()
+            case let .set(millimeters):
+                try await leaveWheelSize(millimeters)
+            case .read:
+                try await readWheelSize()
+            }
         } catch {
             say("\nThe probe stopped early: \(error)")
+            if case .read = mode {} else if case .set = mode {} else {
+                await restoreNeutral()
+            }
         }
-        await restoreNeutral()
         say("\nDone. Full log in \(logPath)")
         exit(0)
+    }
+
+    /// Deliberately leaves the trainer on an unusual wheel size, so that after
+    /// the plug is pulled it is obvious whether it kept it or went back to its
+    /// own default.
+    private func leaveWheelSize(_ millimeters: Double) async throws {
+        let command = try WahooKickrCommand.setWheelCircumference(
+            millimeters: millimeters
+        )
+        let raw = try await sendWahoo(command)
+        guard try WahooKickrResponse.decode(raw).confirmsSuccess(for: command)
+        else {
+            say("The trainer refused that wheel size. Nothing was changed.")
+            return
+        }
+        if millimeters == TrainerSafety.referenceCircumferenceMillimeters {
+            say("\nWheel size set back to \(Int(millimeters)) mm, where it belongs.")
+            return
+        }
+        say(
+            """
+
+            Wheel size set to \(Int(millimeters)) mm and left there on purpose.
+            The trainer will report the wrong speed and distance until it is put
+            back, so do not ride until the next step is done.
+
+            Now unplug the trainer, wait about ten seconds, and plug it back in.
+            Then run: ./Tools/KickrProbe/run.sh read
+            """
+        )
+    }
+
+    /// The trainer will not say what wheel size it is using, so this changes it
+    /// to a known value mid-spin and reads the jump in speed. Speed is
+    /// proportional to wheel size, so the size before the change is the known
+    /// size multiplied by how much the speed fell.
+    private func readWheelSize() async throws {
+        guard let kickr, let data = characteristics[bikeDataUUID] else {
+            throw ProbeError.notReady
+        }
+        kickr.setNotifyValue(true, for: data)
+        // A direct-drive trainer is geared up hard, so turning the pedals by
+        // hand against normal resistance is a real effort. Asking for none
+        // first makes the flywheel light enough to spin with one hand.
+        do {
+            _ = try await sendFTMS(.setTargetResistanceLevel(tenths: 0))
+            say("Asked the trainer for no resistance, so it turns easily.")
+        } catch {
+            say("The trainer would not drop its resistance: \(error)")
+        }
+        say(
+            """
+
+            Now turn the pedals by hand and keep them going. It should be light.
+            Stop straight away if it is not. Waiting for movement.
+            """
+        )
+        try await waitForMovement()
+        let before = try await collectSpeed(forSeconds: 4)
+        let known = TrainerSafety.referenceCircumferenceMillimeters
+        let command = try WahooKickrCommand.setWheelCircumference(
+            millimeters: known
+        )
+        let changedAt = Date()
+        _ = try await sendWahoo(command)
+        say("Wheel size set to the known \(Int(known)) mm. Keep spinning.")
+        let after = try await collectSpeed(forSeconds: 4)
+        interpretWheelSize(
+            before: before,
+            after: after,
+            changedAt: changedAt,
+            known: known
+        )
+    }
+
+    private func waitForMovement() async throws {
+        var reported = 0
+        for tick in 0..<240 {
+            if let latest = speedSamples.last?.kilometersPerHour, latest > 1 {
+                say("Movement detected at \(String(format: "%.1f", latest)) km/h.")
+                return
+            }
+            if tick % 10 == 9, speedSamples.count != reported {
+                reported = speedSamples.count
+                let latest = speedSamples.last?.kilometersPerHour ?? 0
+                say(
+                    "Still waiting. \(reported) speed readings so far, "
+                        + "latest \(String(format: "%.1f", latest)) km/h."
+                )
+            } else if tick % 10 == 9 {
+                say("Still waiting. The trainer has not reported any speed yet.")
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
+        throw ProbeError.timedOut
+    }
+
+    @discardableResult
+    private func collectSpeed(
+        forSeconds seconds: Double
+    ) async throws -> [(at: Date, kilometersPerHour: Double)] {
+        let from = Date()
+        try? await Task.sleep(
+            nanoseconds: UInt64(seconds * 1_000_000_000)
+        )
+        return speedSamples.filter { $0.at >= from }
+    }
+
+    private func interpretWheelSize(
+        before: [(at: Date, kilometersPerHour: Double)],
+        after: [(at: Date, kilometersPerHour: Double)],
+        changedAt: Date,
+        known: Double
+    ) {
+        say("\n== What wheel size was the trainer using? ==")
+        // A hand spin slows down all the while, so only the samples either side
+        // of the change are comparable; anything further out is mostly coasting.
+        guard let last = before.last,
+              let first = after.first(where: { $0.at > changedAt }),
+              last.kilometersPerHour > 1,
+              first.kilometersPerHour > 0.1 else {
+            say("The spin stopped too soon to tell. Try again, spinning longer.")
+            return
+        }
+        let ratio = last.kilometersPerHour / first.kilometersPerHour
+        let estimate = known * ratio
+        say(
+            "Speed went from \(String(format: "%.1f", last.kilometersPerHour)) "
+                + "to \(String(format: "%.1f", first.kilometersPerHour)) km/h "
+                + "the moment the wheel size changed."
+        )
+        say("So it had been using roughly \(Int(estimate.rounded())) mm.")
+        if abs(estimate - known) < 150 {
+            say(
+                "That is about the same as the known size, so the trainer did "
+                    + "not keep the odd size across the power cut. Putting the "
+                    + "wheel size right after a crash matters less than feared, "
+                    + "though it still matters while the trainer stays on."
+            )
+        } else {
+            say(
+                "That is clearly not the default, so the trainer kept the odd "
+                    + "size across the power cut. Putting the wheel size right "
+                    + "after a crash genuinely matters: nothing else will."
+            )
+        }
+        say(
+            "The trainer is now on \(Int(known)) mm, which is where it should be."
+        )
+        say("You can stop turning the pedals.")
     }
 
     /// Shifts up one gear at a time, exactly as holding the button does, and
@@ -338,7 +529,8 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
     ) {
         for characteristic in service.characteristics ?? [] {
             characteristics[characteristic.uuid] = characteristic
-            if [controlUUID, statusUUID, wahooUUID].contains(characteristic.uuid) {
+            if [controlUUID, statusUUID, wahooUUID, bikeDataUUID]
+                .contains(characteristic.uuid) {
                 say("Found the \(label(characteristic.uuid)) channel.")
                 peripheral.setNotifyValue(true, for: characteristic)
             }
@@ -351,6 +543,7 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
         case controlUUID: return "standard control"
         case statusUUID: return "status"
         case wahooUUID: return "Wahoo gear"
+        case bikeDataUUID: return "speed"
         default: return uuid.uuidString
         }
     }
@@ -398,6 +591,23 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
             wahooWaiter = nil
         case statusUUID:
             statusMessages.append(data)
+        case bikeDataUUID:
+            do {
+                let decoded = try IndoorBikeData.decode(data)
+                if let speed = decoded.instantaneousSpeedKilometersPerHour {
+                    speedSamples.append((at: Date(), kilometersPerHour: speed))
+                } else if !warnedAboutSpeed {
+                    warnedAboutSpeed = true
+                    say("The trainer reports data but leaves speed out of it.")
+                }
+            } catch {
+                if !warnedAboutSpeed {
+                    warnedAboutSpeed = true
+                    let hex = data.map { String(format: "%02X", $0) }
+                        .joined(separator: " ")
+                    say("Could not read the speed message [\(hex)]: \(error)")
+                }
+            }
         default:
             break
         }

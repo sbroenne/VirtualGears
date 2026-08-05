@@ -42,7 +42,7 @@ LOG="${KICKR_PROBE_LOG:-/tmp/kickr-probe.log}"
 # Launched with `open` so the tool answers to macOS for itself. Started from a
 # terminal instead, macOS judges the terminal, which never declared that it
 # wants Bluetooth, and kills the tool the moment it asks for it.
-open -n "$APP"
+open -n "$APP" --args "$@"
 
 echo "Probing. Output also in $LOG. Press Control-C to stop."
 tail -f "$LOG"
