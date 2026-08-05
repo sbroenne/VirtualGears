@@ -277,6 +277,13 @@ public final class ProxyCoordinator {
         // so the stop waits for the start to notice it has been called off.
         startTask?.cancel()
         await startTask?.value
+        // The start may have been failing rather than connecting, in which case
+        // it has already put the trainer back, said so honestly, and torn the
+        // session down while this waited. Carrying on would walk the whole stop
+        // through a ride that no longer exists and end by telling the rider the
+        // trainer could not be restored when it just was - on the one message
+        // in this app that has to be believable.
+        guard lifecycle.owns(id) else { return }
         var failures: [String] = []
 
         if !kickr.isReady {
@@ -395,15 +402,28 @@ public final class ProxyCoordinator {
     /// changed a gear. The gears are rebuilt in place instead, exactly as they
     /// are when a riding app sets its own wheel size, so the riding app never
     /// notices anything happened.
-    public func changeDrivetrain(_ configuration: AppConfiguration) async {
+    ///
+    /// Returns whether the new gears are the ones now in use, so the rider's
+    /// settings can be put back if they are not. Settings quietly claiming
+    /// gears the ride is not using is its own kind of wrong answer.
+    @discardableResult
+    public func changeDrivetrain(_ configuration: AppConfiguration) async -> Bool {
         guard lifecycle.isRiding, let id = lifecycle.sessionID,
               let drivetrain = configuration.drivetrain,
-              AppConfiguration.isSafe(drivetrain) else { return }
-        guard await waitForGearsToSettle(id) else { return }
+              AppConfiguration.isSafe(drivetrain) else { return false }
+        // Nothing may suspend between the wait and the claim below. Two
+        // rebuilds would otherwise both see the flag clear and interleave.
+        guard await waitForGearsToSettle(id) else {
+            log("Gears did not settle in time; keeping the gears in use", .warning)
+            return false
+        }
         baselineUpdateInProgress = true
         defer { baselineUpdateInProgress = false }
         heldDirection = nil
-        guard let baseline = sessionBaselineMillimeters else { return }
+        guard let baseline = sessionBaselineMillimeters else {
+            log("New gears were not applied: the ride had already ended", .warning)
+            return false
+        }
         do {
             let rebuilt = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
@@ -414,9 +434,12 @@ public final class ProxyCoordinator {
             // a gear's wheel size after the stop has put the trainer back is
             // exactly what leaves it carrying one, with nothing recorded to put
             // it right at the next launch.
-            guard stillRiding(id) else { return }
+            guard stillRiding(id) else { return false }
             let response = try await kickr.executeWahoo(command)
-            guard stillRiding(id) else { return }
+            guard stillRiding(id) else {
+                log("New gears were dropped: the ride ended first", .warning)
+                return false
+            }
             guard response.confirmsSuccess(for: command) else {
                 throw ProductBluetoothError.commandFailed(
                     "KICKR did not confirm the new gears"
@@ -427,6 +450,7 @@ public final class ProxyCoordinator {
             feedback.clear()
             updateDisplayedGear()
             log("Applied new gears without interrupting the ride")
+            return true
         } catch {
             // The ride carries on with the gears it already had. Ending it
             // would cost the rider their session over a settings change.
@@ -434,6 +458,7 @@ public final class ProxyCoordinator {
                 "Could not apply the new gears: \(error.localizedDescription)",
                 .error
             )
+            return false
         }
     }
 
@@ -554,6 +579,7 @@ public final class ProxyCoordinator {
         }
         // Waits for shifting to finish, and for the rider's own gear change to
         // let go if they happen to be choosing new gears at this moment.
+        // Nothing may suspend between the wait and the claim below.
         guard await waitForGearsToSettle(id) else {
             return .init(result: .operationFailed, status: nil)
         }

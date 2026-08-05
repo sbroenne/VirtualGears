@@ -337,9 +337,10 @@ private struct ActiveRideView: View {
     /// Remembers the gears the ride started with, so the session is only rebuilt
     /// when the rider actually changed them.
     @State private var gearsWhenOpened: Drivetrain?
-    /// True while new gears are being applied. The ride is torn down and rebuilt
-    /// to do it safely, so without this the rider would be told their ride was
-    /// stopping moments after they picked a gear set.
+    /// The whole setup as it was before the rider changed gears, so it can be
+    /// put back if the change does not take.
+    @State private var setupWhenOpened: AppConfiguration?
+    /// True while new gears are being applied.
     @State private var isChangingGears = false
 
     private var configuration: AppConfiguration { store.configuration }
@@ -347,9 +348,11 @@ private struct ActiveRideView: View {
     private func rememberOrRestartGears(isOpen: Bool) {
         if isOpen {
             gearsWhenOpened = configuration.drivetrain
+            setupWhenOpened = configuration
         } else {
-            applyGearChange(from: gearsWhenOpened)
+            applyGearChange(from: gearsWhenOpened, revertingTo: setupWhenOpened)
             gearsWhenOpened = nil
+            setupWhenOpened = nil
         }
     }
 
@@ -357,12 +360,21 @@ private struct ActiveRideView: View {
     /// does not stop and restart the ride: that removes the fitness machine
     /// service and disconnects the riding app, which is a long walk back to the
     /// PC in the middle of a session.
-    private func applyGearChange(from previous: Drivetrain?) {
+    private func applyGearChange(
+        from previous: Drivetrain?,
+        revertingTo original: AppConfiguration?
+    ) {
         guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
             isChangingGears = true
-            await coordinator.changeDrivetrain(updated)
+            let applied = await coordinator.changeDrivetrain(updated)
+            // Settings left showing gears the ride is not using is a quiet lie
+            // the rider has no way to spot, and nothing tries again. The choice
+            // goes back to the gears they are actually riding.
+            if !applied, let original {
+                store.configuration = original
+            }
             isChangingGears = false
         }
     }
@@ -570,8 +582,9 @@ private struct ActiveRideView: View {
             get: { configuration.usesVirtualGears },
             set: { newValue in
                 let previous = configuration.drivetrain
+                let original = configuration
                 store.configuration.usesVirtualGears = newValue
-                applyGearChange(from: previous)
+                applyGearChange(from: previous, revertingTo: original)
             }
         )
     }

@@ -331,6 +331,74 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// and the trainer wakes a moment later. If the start carries on it writes
     /// the first gear's wheel size after the stop has put the trainer back, and
     /// the record that would have fixed it at the next launch is already gone.
+    /// Stopping while the start is already failing must not invent a problem.
+    ///
+    /// The failing start puts the trainer back itself. If the stop then runs its
+    /// whole body against the dead session it ends by telling the rider the
+    /// trainer could not be restored, when it just was. That message is the one
+    /// thing in this app that has to be believable: it is the difference between
+    /// "ride normally" and "reconnect and fix your trainer".
+    func testStoppingWhileTheStartIsFailingDoesNotInventARestoreProblem() async throws {
+        trainer.deniesFTMSControl = true
+        trainer.wahooConfirmationDelay = .milliseconds(200)
+        coordinator.startRide(configuration: makeConfiguration())
+
+        // The window is narrow and exact. Stop has to land after the failing
+        // start has committed to putting the trainer back - its restore write
+        // is the one Wahoo command a denied start makes - but before it has
+        // finished and torn the session down. Tapping any earlier and the
+        // start's own catch stands down instead.
+        try await settle { self.trainer.wahooCommandCount == 1 }
+        await coordinator.stopRide()
+        try await Task.sleep(for: .milliseconds(400))
+
+        XCTAssertEqual(
+            trainer.wheelSizeHistory.last,
+            neutral,
+            "The failing start put the trainer back, so it really is neutral"
+        )
+        guard case let .failed(message) = coordinator.state else {
+            return XCTFail("The start was denied control, so it must say so")
+        }
+        XCTAssertFalse(
+            message.contains("could not be restored"),
+            "The trainer was restored. Telling the rider otherwise sends them "
+                + "chasing a fault that is not there: \(message)"
+        )
+        XCTAssertTrue(
+            message.contains("denied FTMS control"),
+            "The real reason the ride did not start must survive the stop, "
+                + "not be overwritten by the stop's own noise: \(message)"
+        )
+    }
+
+    /// A stop landing while the first gear is already on its way to the trainer.
+    ///
+    /// Worth knowing what this does and does not prove: it still passes if the
+    /// stop's cancel-and-await is deleted, because the `startMayProceed` gates
+    /// catch this case on their own. It is kept as a statement of the invariant,
+    /// not as the guard on that line. The test below is the one that fails when
+    /// the wait is removed.
+    func testStoppingWhileTheFirstGearIsInFlightLeavesTheTrainerNeutral() async throws {
+        trainer.wahooConfirmationDelay = .milliseconds(200)
+        coordinator.startRide(configuration: makeConfiguration())
+        // Stop the instant the first gear is on the wire, not before it.
+        try await settle { self.trainer.wahooCommandCount == 1 }
+
+        await coordinator.stopRide()
+
+        XCTAssertEqual(
+            trainer.wheelSizeHistory.last,
+            neutral,
+            "The last thing written to the trainer must be the neutral wheel "
+                + "size, whatever was already in flight when the rider stopped"
+        )
+        XCTAssertEqual(coordinator.state, .idle)
+        XCTAssertNil(
+            defaults.object(forKey: "VirtualShift.unfinishedRideBaselineMillimeters")
+        )
+    }
+
     func testStoppingWhileStillConnectingDoesNotLeaveAGearOnTheTrainer() async throws {
         trainer.isReady = false
         trainer.wahooConfirmationDelay = .milliseconds(50)

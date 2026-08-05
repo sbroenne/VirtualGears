@@ -33,11 +33,25 @@ final class FakeTrainer: TrainerLink {
     /// and the hold sweep is paced by exactly this.
     var wahooConfirmationDelay: Duration = .zero
     private(set) var wahooCommandCount = 0
+    private var queueHead = 0
+    private var queueTail = 0
+
+    /// Set to make the trainer refuse FTMS control, which is how a start fails
+    /// after the trainer is connected but before any gear is written.
+    var deniesFTMSControl = false
 
     func execute(
         _ request: FitnessMachineControlPointRequest
     ) async throws -> FitnessMachineControlPointResponse {
-        if case .requestControl = request { hasFTMSControl = true }
+        if case .requestControl = request {
+            if deniesFTMSControl {
+                return FitnessMachineControlPointResponse(
+                    requestOpcode: request.opcode,
+                    result: .controlNotPermitted
+                )
+            }
+            hasFTMSControl = true
+        }
         return FitnessMachineControlPointResponse(
             requestOpcode: request.opcode,
             result: .success
@@ -46,9 +60,19 @@ final class FakeTrainer: TrainerLink {
 
     func executeWahoo(_ data: Data) async throws -> WahooKickrResponse {
         wahooCommandCount += 1
+        // A real KICKR takes one command at a time, and the app's queue holds
+        // the rest. What the trainer is left carrying is decided by which write
+        // reaches it last, so a double that ran commands concurrently could not
+        // model the thing most worth testing.
+        let place = queueTail
+        queueTail = place + 1
+        while queueHead < place {
+            await Task.yield()
+        }
         if wahooConfirmationDelay > .zero {
             try? await Task.sleep(for: wahooConfirmationDelay)
         }
+        defer { queueHead += 1 }
         let bytes = Array(data)
         guard bytes.count == 3, bytes[0] == 0x48 else {
             return .unlock(result: 2)
@@ -72,6 +96,12 @@ final class FakeTrainer: TrainerLink {
         if let restore = restoringCircumferenceMillimeters {
             wheelSizeHistory.append(restore)
         }
+        // A disconnected trainer cannot be written to. Leaving this double
+        // "ready" after a disconnect let code that writes to a trainer it has
+        // already dropped look like it worked.
+        isReady = false
+        state = .disconnected
+        stateHandler?(.disconnected)
     }
 }
 
