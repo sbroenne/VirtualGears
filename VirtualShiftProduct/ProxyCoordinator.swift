@@ -3,6 +3,25 @@ import Observation
 import UIKit
 import VirtualShiftCore
 
+/// Why a ride ended badly. A failure to start and a failure to stop need
+/// different words: one is worth retrying, the other means the trainer may
+/// still be carrying a gear's wheel size and needs putting right.
+enum RideFailure: Equatable {
+    case starting(trainerNeedsRestoring: Bool)
+    case stopping(trainerNeedsRestoring: Bool)
+
+    var trainerNeedsRestoring: Bool {
+        switch self {
+        case let .starting(needs), let .stopping(needs): needs
+        }
+    }
+
+    var happenedWhileStopping: Bool {
+        if case .stopping = self { return true }
+        return false
+    }
+}
+
 enum ProxySessionState: Equatable {
     case idle
     case connecting
@@ -32,6 +51,10 @@ enum ShiftFeedbackKind: Equatable {
 @Observable
 final class ProxyCoordinator {
     private(set) var state: ProxySessionState = .idle
+
+    /// Only meaningful alongside a failed state, and always set before it, so
+    /// the screen never has to guess which kind of failure it is describing.
+    private(set) var failure: RideFailure?
     private(set) var displayedGear: VirtualGear?
     private(set) var confirmedGearIndex: Int?
     /// The gear the rider asked for. It differs from `confirmedGearIndex` only
@@ -198,12 +221,14 @@ final class ProxyCoordinator {
         guard configuration.setupComplete,
               configuration.canFinishSetup,
               kickr.selectedID?.uuidString == configuration.kickrUUID else {
+            failure = .starting(trainerNeedsRestoring: false)
             state = .failed("Setup is incomplete")
             return
         }
         let id = UUID()
         sessionID = id
         usesClick = configuration.usesClick
+        failure = nil
         state = .connecting
         Task { await runRide(configuration: configuration, sessionID: id) }
     }
@@ -346,10 +371,17 @@ final class ProxyCoordinator {
         sessionBaselineMillimeters = nil
         ridingAppSetWheelSize = false
         if failures.isEmpty {
+            failure = nil
             state = .idle
             log("Ride session stopped")
         } else {
             failures.forEach { log($0, .error) }
+            // The record is only removed once the trainer confirms the
+            // original wheel size is back, so its presence is the honest
+            // answer to whether the trainer still needs putting right.
+            let stillSet = UserDefaults.standard
+                .object(forKey: unfinishedRideKey) != nil
+            failure = .stopping(trainerNeedsRestoring: stillSet)
             state = .failed(failures.joined(separator: ". "))
         }
     }
@@ -576,7 +608,12 @@ final class ProxyCoordinator {
     }
 
     private func beginRecovery(startImmediately: Bool = true) {
-        guard sessionID != nil else { return }
+        // A stop in progress is already putting the trainer back, and a KICKR
+        // commonly drops the control grant while it stops. Recovering here
+        // would re-apply the gear's wheel size behind the stop's back and
+        // leave the trainer holding it. Only a live ride is worth recovering.
+        guard sessionID != nil,
+              state == .active || state == .reconnecting else { return }
         state = .reconnecting
         peripheral.notifyControlLost()
         shiftTask?.cancel()
@@ -694,6 +731,34 @@ final class ProxyCoordinator {
     }
 
     private func abortStart(_ error: Error) async {
+        // The first gear's wheel size may already be on the trainer, and the
+        // trainer works out speed and distance from it. Leaving it there would
+        // quietly distort any ride done without VirtualShift, so it goes back
+        // before the connection is dropped, while there is still one to use.
+        var trainerRestored = true
+        if let baseline = sessionBaselineMillimeters, kickr.isReady {
+            do {
+                let command = try WahooKickrCommand.setWheelCircumference(
+                    millimeters: baseline
+                )
+                let response = try await kickr.executeWahoo(command)
+                guard response.confirmsSuccess(for: command) else {
+                    throw ProductBluetoothError.commandFailed(
+                        "KICKR did not confirm baseline restoration"
+                    )
+                }
+                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
+            } catch {
+                trainerRestored = false
+                log(
+                    "Could not put the wheel size back after a failed start: "
+                        + error.localizedDescription,
+                    .error
+                )
+            }
+        } else if sessionBaselineMillimeters != nil {
+            trainerRestored = false
+        }
         peripheral.stopAdvertising()
         click.disconnect()
         kickr.disconnect()
@@ -707,6 +772,7 @@ final class ProxyCoordinator {
         pendingFeedback = []
         sessionBaselineMillimeters = nil
         ridingAppSetWheelSize = false
+        failure = .starting(trainerNeedsRestoring: !trainerRestored)
         state = .failed(error.localizedDescription)
         log("Ride start failed: \(error.localizedDescription)", .error)
     }

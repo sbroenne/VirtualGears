@@ -231,11 +231,25 @@ private struct StartupView: View {
     }
 
     private func failureCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Ride could not start", systemImage: "exclamationmark.triangle.fill")
+        let failure = coordinator.failure ?? .starting(trainerNeedsRestoring: false)
+        let heading = failure.happenedWhileStopping
+            ? "Ride could not be ended cleanly"
+            : "Ride could not start"
+        // Being told to check Bluetooth is useless when the problem is that
+        // the trainer is still carrying a gear's wheel size. That distorts the
+        // speed and distance it reports to anything else, so the rider is told
+        // what actually puts it right.
+        let advice = failure.trainerNeedsRestoring
+            ? "Your trainer is still set to a gear's wheel size, so it will "
+                + "report the wrong speed and distance to other apps. Bring "
+                + "your phone near the trainer and open VirtualShift again, "
+                + "and it will put the setting back on its own."
+            : "Check that Bluetooth is on and your trainer is awake."
+        return VStack(alignment: .leading, spacing: 10) {
+            Label(heading, systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
             Text(message)
-            Text("Check that Bluetooth is on and your trainer is awake.")
+            Text(advice)
                 .foregroundStyle(.secondary)
         }
         .padding()
