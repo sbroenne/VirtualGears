@@ -55,13 +55,55 @@ This proof is independent of the KICKR and does not send trainer commands.
    **Click ready**.
 3. Starting from displayed gear 6, tap `+` and `-`. Each tap must move exactly
    one gear and play the single-shift sound.
-4. Hold either button. After 500 ms, the display must continue moving one gear
-   every 300 ms and play the multi-shift sound until released or gear 1/12.
+4. Hold either button. The display must keep moving while held and stop when
+   released, without adding gears afterwards. The sweep runs at the trainer's
+   pace, not a fixed rate, so a slow trainer simply sweeps more slowly.
 5. Confirm that duplicate packets do not cause extra shifts and pressing both
    buttons does nothing.
 6. Disconnect, reconnect, and repeat one tap in each direction.
 7. Copy the Click diagnostic log and record the controller firmware and iOS
    version with the result.
+
+## Recording what a Zwift Click really sends
+
+`Tools/ClickTrace` connects a Mac straight to a Click and prints every packet
+with the gap since the previous one. Nothing is interpreted, so it answers
+questions the app's own logs cannot: by the time the app logs a shift, the press
+has already been turned into one.
+
+```bash
+./Tools/ClickTrace/run.sh
+```
+
+Close VirtualShift on the iPhone first. The Click accepts one connection at a
+time, so the phone and the Mac cannot both hold it. Wake the Click by pressing a
+button, then allow the Bluetooth prompt the first time.
+
+The tool is wrapped in a small signed app bundle and launched with `open`,
+because macOS judges Bluetooth permission by the program that started the
+process. Run straight from a terminal, the terminal is judged, and it never
+declared that it wants Bluetooth, so the tool is killed the moment it asks.
+Output therefore goes to `/tmp/click-trace.log`, which the script tails.
+
+`docs/zwift-click-button-trace.log` is a recording made this way. What it shows:
+
+- The Click streams its button state every 90-120 ms for about 1.3 seconds after
+  anything changes, then goes quiet. It does not send an event per press.
+- A button reads `0` when pressed and `1` when released.
+- A firm press, of the kind used on the bike, lasts about 210 ms. Presses are
+  clean: one press and one release each, with no bounce.
+- A packet of `19 10 64` arrives every five seconds regardless of the buttons.
+  It is the Click reporting its battery: the last byte is a percentage, so
+  `64` in hex is 100%. Two independent projects that reverse-engineered these
+  controllers, qdomyos-zwift and ajchellew/zwiftplay, both name message type 25
+  the battery level message, which matched what the trace showed. The app uses
+  this to keep the battery reading current while riding, because the standard
+  Bluetooth battery reading is only reliable once, when the Click connects.
+
+That recording is why holding a button now asks for the next gear only once the
+trainer has confirmed the last one. Repeats used to be sent on a fixed 300 ms
+timer, which is quicker than the trainer can confirm a shift, so a hold queued
+gears that kept arriving after the rider let go.
 
 ## Independent riding app FTMS probe
 

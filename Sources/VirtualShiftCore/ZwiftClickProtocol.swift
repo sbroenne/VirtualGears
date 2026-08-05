@@ -24,6 +24,7 @@ public enum ZwiftClickButtonEvent: Equatable, Sendable {
 
 public enum ZwiftClickMessage: Equatable, Sendable {
     case buttons(plusPressed: Bool, minusPressed: Bool)
+    case batteryLevel(percent: Int)
     case keepAlive
     case other(type: UInt8)
 }
@@ -40,8 +41,35 @@ public enum ZwiftClickMessageDecoder {
         }
 
         switch type {
+        // Sent when the controller has nothing to report. Never seen from an
+        // original Click, which uses the battery message below as its
+        // heartbeat, but Zwift's other controllers do send it.
         case 0x15:
             return .keepAlive
+        // The Click reports its battery here, roughly every five seconds, as
+        // `19 10 64`: a percentage in field 2, so `0x64` is 100%. Two
+        // independent projects that reverse-engineered these controllers,
+        // qdomyos-zwift and ajchellew/zwiftplay, both name type 25 the battery
+        // level message, which is why this is decoded rather than guessed at.
+        // Recognising it also keeps a ride's diagnostics free of an unknown
+        // message every five seconds, which would bury anything that matters.
+        case 0x19:
+            var index = 1
+            var percent: UInt64?
+            while index < bytes.count {
+                let tag = try readVarint(bytes, index: &index)
+                guard tag & 0x07 == 0 else {
+                    throw ZwiftClickMessageError.malformedData
+                }
+                let value = try readVarint(bytes, index: &index)
+                if tag >> 3 == 2 {
+                    percent = value
+                }
+            }
+            guard let percent, percent <= 100 else {
+                throw ZwiftClickMessageError.malformedData
+            }
+            return .batteryLevel(percent: Int(percent))
         case 0x37:
             var index = 1
             var plusValue: UInt64?

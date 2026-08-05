@@ -23,6 +23,17 @@ final class ClickCentralService: NSObject {
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var batteryLevel: Int?
+
+    /// A Click runs on a coin cell that cannot be recharged, only replaced, so
+    /// the useful moment to say anything is while the rider is still near a
+    /// drawer rather than clipped in. Below this the ride screen speaks up;
+    /// above it the level stays in Settings, where it informs without nagging.
+    static let lowBatteryPercent = 20
+
+    var batteryIsLow: Bool {
+        guard let batteryLevel else { return false }
+        return batteryLevel <= Self.lowBatteryPercent
+    }
     private(set) var latestButtonEvent: ZwiftClickButtonEvent?
     private(set) var latestShiftRequest: ShiftRequest?
     private(set) var shiftRequests: [ShiftRequest] = []
@@ -313,6 +324,16 @@ final class ClickCentralService: NSObject {
                 for event in edgeTracker.update(plus: plus, minus: minus) {
                     latestButtonEvent = event
                     process(event)
+                }
+            case let .batteryLevel(percent):
+                // The Click repeats this every few seconds, so it keeps the
+                // reading current during a ride. The standard Bluetooth
+                // characteristic is only guaranteed to be readable once on
+                // connect, and this device does not always announce changes to
+                // it, so without this the level would be frozen at whatever it
+                // was when the Click connected.
+                if batteryLevel != percent {
+                    batteryLevel = percent
                 }
             case .keepAlive:
                 break
