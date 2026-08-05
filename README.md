@@ -112,7 +112,9 @@ anything about it.
 ## Requirements
 
 - iPhone running iOS 26
-- Wahoo KICKR V5
+- Wahoo KICKR V5. Other Wahoo KICKR models should work but are untested; the
+  KICKR Snap and KICKR Bike do not, because they change gear other ways. See
+  [Which trainers work](https://sbroenne.github.io/VirtualShift/requirements/#which-trainers-work).
 - A riding app that supports FTMS trainers. Development is validated against
   RealVelo; Zwift, FulGaz and others use the same interface.
 - Optionally, an original Zwift Click

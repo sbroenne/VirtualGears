@@ -186,6 +186,7 @@ private struct TrainerSetupView: View {
                         selected: candidate.id.uuidString
                             == store.configuration.kickrUUID
                     ) {
+                        guard candidate.compatibility.isUsable else { return }
                         store.configuration.rememberKickr(
                             named: candidate.name,
                             id: candidate.id
@@ -770,24 +771,50 @@ private struct CandidateRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack {
+            HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(candidate.name)
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(usable ? .primary : .secondary)
                     Text(signalDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if case let .unsupported(_, reason) = candidate.compatibility {
+                        Text(reason)
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer()
-                Image(systemName: selected ? "checkmark.circle.fill" : "chevron.right")
-                    .foregroundStyle(selected ? Color.green : Color.secondary)
+                Image(systemName: trailingSymbol)
+                    .foregroundStyle(trailingColour)
             }
             .contentShape(.rect)
             .frame(minHeight: 52)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(candidate.name), \(signalDescription)")
+        .disabled(!usable)
+        .accessibilityLabel(accessibilityDescription)
+    }
+
+    private var usable: Bool { candidate.compatibility.isUsable }
+
+    private var trailingSymbol: String {
+        if !usable { return "exclamationmark.circle" }
+        return selected ? "checkmark.circle.fill" : "chevron.right"
+    }
+
+    private var trailingColour: Color {
+        if !usable { return .orange }
+        return selected ? .green : .secondary
+    }
+
+    private var accessibilityDescription: String {
+        if case let .unsupported(_, reason) = candidate.compatibility {
+            return "\(candidate.name), \(signalDescription). \(reason)"
+        }
+        return "\(candidate.name), \(signalDescription)"
     }
 
     /// Riders do not read dBm; they want to know whether it is the device in
