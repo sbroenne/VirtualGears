@@ -485,6 +485,15 @@ private struct ActiveRideView: View {
             rememberOrRestartGears(isOpen: isOpen)
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
+        .onChange(of: hasEquipmentProblem) { _, hasProblem in
+            // Trouble holds the chrome bright, so the instant it clears the
+            // footer would otherwise snap straight to faded — right as the
+            // rider plugged something back in, which reads as a fault rather
+            // than a fix. Count the repair as activity so the fade happens
+            // gently, and later.
+            guard !hasProblem else { return }
+            wake()
+        }
         .onChange(of: coordinator.shiftConfirmation) {
             wake()
             performFeedback(coordinator.lastShiftFeedback)

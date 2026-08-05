@@ -21,6 +21,10 @@ let package = Package(
             name: "kickr-probe",
             targets: ["KickrProbe"]
         ),
+        .executable(
+            name: "name-scan",
+            targets: ["NameScan"]
+        ),
     ],
     targets: [
         .target(
@@ -60,6 +64,23 @@ let package = Package(
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
                     "-Xlinker", "Tools/KickrProbe/Info.plist",
+                ])
+            ]
+        ),
+        // A macOS command-line tool that reads the name a fitness machine
+        // broadcasts, so what a riding app displays can be checked rather than
+        // guessed at.
+        .executableTarget(
+            name: "NameScan",
+            dependencies: ["VirtualShiftCore"],
+            path: "Tools/NameScan",
+            exclude: ["Info.plist", "run.sh"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Tools/NameScan/Info.plist",
                 ])
             ]
         ),
