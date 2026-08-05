@@ -109,6 +109,23 @@ VirtualShift. If iOS ends the app before a ride can stop, the size the ride
 borrowed is still written down, and the next launch puts it back without saying
 anything about it.
 
+## Why it exists
+
+Zwift added virtual shifting in 2024 and Wahoo brought it to their newer
+trainers. The KICKR V5 was left out, and Wahoo's
+[support page](https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers)
+says so permanently:
+
+> We have reviewed the hardware and firmware capabilities of KICKR v5 (2020) and
+> preceding KICKR versions. Unfortunately, these older models are unable to
+> support the required protocols for virtual shifting using the Zwift protocol
+> and will not be receiving a future update for this functionality.
+
+VirtualShift gives a KICKR V5 gears anyway, and does it in every riding app
+rather than only Zwift and Rouvy. The riding app will not display the gear —
+there is no message in the Bluetooth standard for reporting one — so the phone
+shows it instead.
+
 ## Requirements
 
 - iPhone running iOS 26

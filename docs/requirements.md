@@ -31,6 +31,32 @@ to be confirmed by the trainer before the app accepts it, so a trainer that
 ignores the instruction will fail visibly rather than quietly give you the wrong
 gear. If it does work, it would be good to hear about it.
 
+### What about Zwift's own virtual shifting?
+
+Zwift has virtual shifting of its own, and where it is available it is the
+better option: Zwift shows the gear on screen, because Zwift is the one choosing
+it. Rouvy supports it too.
+
+It is not available on a KICKR V5, and never will be. Wahoo's own
+[support page][wahoo] lists the trainers that can do it — KICKR MOVE, KICKR V6,
+KICKR CORE 1 and 2 — and then answers the obvious question directly:
+
+> "We have reviewed the hardware and firmware capabilities of KICKR v5 (2020)
+> and preceding KICKR versions. Unfortunately, these older models are unable to
+> support the required protocols for virtual shifting using the Zwift protocol
+> and will not be receiving a future update for this functionality."
+
+That is the gap VirtualShift fills. Two differences worth knowing:
+
+- **Your riding app will not display the gear.** Zwift can show it because Zwift
+  decides it. VirtualShift decides it, and there is no way to tell a riding app
+  what gear you are in — the Bluetooth standard has no such message. The gear is
+  shown large on the phone instead.
+- **VirtualShift works in every riding app.** Zwift's virtual shifting works in
+  Zwift and Rouvy only, by Wahoo's own account.
+
+  [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
+
 ### Why not other brands
 
 Tacx trainers do not speak this part of the Bluetooth standard at all — they use
