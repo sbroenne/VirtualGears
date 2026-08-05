@@ -138,6 +138,47 @@ The trainer also kept control through an FTMS Stop: a Wahoo write immediately
 afterwards was still accepted. Refusing to re-take control during a stop is
 therefore precautionary on this trainer rather than a fix for something it does.
 
+### Why VirtualShift uses Wahoo's command and not the standard one
+
+The Bluetooth fitness-machine standard has a wheel-size command of its own
+(opcode `0x12`, in tenths of a millimetre). VirtualShift does not use it on the
+trainer. This mode asks the trainer directly:
+
+```bash
+./Tools/KickrProbe/run.sh features
+```
+
+It reads what the trainer advertises, sends the standard wheel-size command at
+the neutral value, and then sends a command the trainer never advertised, to see
+whether a "yes" from this trainer means anything at all.
+
+On a Wahoo KICKR 2A93 the answer was that it does not:
+
+| Question | Answer |
+| --- | --- |
+| Feature bits | `03 40 00 00 0C 60 00 00` |
+| Advertises wheel size? | Yes |
+| Standard wheel-size command | Accepted (`80 12 01`) |
+| Announced the change afterwards? | No |
+| A command it never advertised | **Also accepted** (`80 14 01`) |
+
+The last row is the important one. The trainer answered "success" to a target
+cadence it does not claim to support, so its acceptance of the wheel-size
+command proves nothing. It may work, it may be discarded; the reply cannot tell
+them apart, and there is no way to read the wheel size back to check.
+
+Wahoo's own command does not have this problem. It replies with the wheel size
+it actually applied, which VirtualShift compares against what it asked for
+before reporting the gear as changed. Two further reasons to prefer it:
+
+- It is a **separate channel**. The riding app's terrain commands occupy the
+  standard control point, which carries one request at a time. Gear changes on
+  their own characteristic never queue behind them.
+- It is the route that has been **proven on hardware**, across ten wheel sizes
+  from 647 mm to 4800 mm and timed at 59 to 238 ms per change.
+
+This mode changes nothing and leaves the trainer on 2070 mm.
+
 ## Independent riding app FTMS probe
 
 This probe makes the iPhone pretend to be a simple indoor bike. Do not connect

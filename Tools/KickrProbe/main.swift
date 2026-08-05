@@ -50,6 +50,9 @@ enum ProbeMode {
     case set(millimeters: Double)
     /// Work out the wheel size the trainer is currently using.
     case read
+    /// Ask the trainer what it claims to support, and find out whether it
+    /// accepts the *standard* wheel-size command as well as Wahoo's own.
+    case features
 }
 
 let mode: ProbeMode = {
@@ -61,6 +64,8 @@ let mode: ProbeMode = {
         return .set(millimeters: value)
     case "read":
         return .read
+    case "features":
+        return .features
     default:
         return .measure
     }
@@ -92,10 +97,12 @@ final class KickrProbe: NSObject {
     private let wahooUUID = CBUUID(
         string: WahooKickrProtocol.controlCharacteristicUUID
     )
+    private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
 
     /// One waiter per characteristic, which is all the protocol allows: a
     /// control point carries one outstanding request at a time.
     private var ftmsWaiter: CheckedContinuation<Data, Error>?
+    private var readWaiter: CheckedContinuation<Data, Error>?
     private var wahooWaiter: CheckedContinuation<Data, Error>?
 
     private var statusMessages: [Data] = []
@@ -125,10 +132,13 @@ final class KickrProbe: NSObject {
                 try await leaveWheelSize(millimeters)
             case .read:
                 try await readWheelSize()
+            case .features:
+                try await surveyFeatures()
             }
         } catch {
             say("\nThe probe stopped early: \(error)")
-            if case .read = mode {} else if case .set = mode {} else {
+            if case .read = mode {} else if case .set = mode {}
+            else if case .features = mode {} else {
                 await restoreNeutral()
             }
         }
@@ -410,6 +420,164 @@ final class KickrProbe: NSObject {
 
     // MARK: - Talking to the trainer
 
+
+    /// Asks the trainer two separate questions. First, what does it *claim* to
+    /// support? Second, what does it actually do when sent the standard
+    /// wheel-size command rather than Wahoo's own? The two answers often
+    /// differ, which is the whole reason for asking both.
+    private func surveyFeatures() async throws {
+        say("\n== What the trainer says it can do ==")
+        let raw = try await readCharacteristic(featureUUID)
+        let hex = raw.map { String(format: "%02X", $0) }.joined(separator: " ")
+        say("Raw feature bits: \(hex)")
+
+        let feature = try FitnessMachineFeature.decode(raw)
+        let claimsWheelSize = feature.targetSettingFeatures
+            .contains(.wheelCircumference)
+        say("Things it can measure: \(describe(feature.machineFeatures))")
+        say("Things it accepts being set: "
+            + describe(feature.targetSettingFeatures))
+        say(
+            claimsWheelSize
+                ? "It CLAIMS to accept the standard wheel-size command."
+                : "It does NOT claim to accept the standard wheel-size command."
+        )
+
+        say("\n== What happens when it is actually sent ==")
+        // Sent at the value the trainer should be on anyway, so the answer
+        // costs nothing whichever way it goes.
+        statusMessages.removeAll()
+        let tenths = UInt16(neutral * 10)
+        let reply = try await sendFTMS(
+            .setWheelCircumference(tenthsOfMillimeter: tenths)
+        )
+        let rereadHex = reply.map { String(format: "%02X", $0) }
+            .joined(separator: " ")
+        say("Reply: \(rereadHex)")
+
+        let decoded = try FitnessMachineControlPointResponse.decode(reply)
+        let accepted = decoded.result == .success
+        say("Verdict: \(explain(decoded.result))")
+
+        try? await Task.sleep(nanoseconds: 800_000_000)
+        let announced = statusMessages.contains { $0.first == 0x13 }
+        if accepted {
+            say(
+                announced
+                    ? "It also announced the change, as the standard expects."
+                    : "It accepted it but announced nothing, so whether it "
+                        + "took effect is unproven."
+            )
+        }
+
+        // A trainer that simply says yes to everything would look identical to
+        // one that really supports the command, so this asks for something it
+        // does not advertise and checks that it says no.
+        say("\n== Is that yes worth anything? ==")
+        let unadvertised = Data([0x14, 0x3C, 0x00])  // set target cadence
+        let controlPoint = try await write(
+            unadvertised,
+            to: controlUUID,
+            isWahoo: false
+        )
+        let controlHex = controlPoint.map { String(format: "%02X", $0) }
+            .joined(separator: " ")
+        let unsupported = try FitnessMachineControlPointResponse
+            .decode(controlPoint)
+        say("Asked for something it never advertised. Reply: \(controlHex)")
+        let discriminates = unsupported.result != .success
+        say(
+            discriminates
+                ? "It refused that one, so it does read the command before "
+                    + "answering. The yes above means something."
+                : "It said yes to that too, so it may be agreeing to anything. "
+                    + "Treat the yes above with suspicion."
+        )
+
+        say("\n== Conclusion ==")
+        if !discriminates {
+            say("""
+                This trainer says yes to commands it does not advertise, so its
+                yes carries no information. Nothing can be concluded about the
+                standard wheel-size command from the fact that it was accepted.
+
+                Wahoo's own command is not affected: it answers with the wheel
+                size it actually applied, so a change can be checked rather than
+                assumed. That is why VirtualShift uses it.
+                """)
+        } else if accepted {
+            say("""
+                The trainer refuses commands it does not support and accepted
+                this one, so the standard command is genuinely handled. Whether
+                it really moves the gearing still needs a ride, since the
+                trainer cannot be asked what wheel size it is on.
+                """)
+        } else {
+            say("""
+                The trainer discriminates between commands and refused this one.
+                The standard wheel-size command is not supported here. Wahoo's
+                own command is the only way to shift this trainer, which is what
+                VirtualShift uses.
+                """)
+        }
+        if claimsWheelSize && !discriminates {
+            say("""
+
+                Note that it does advertise wheel-size support. That claim is
+                untested either way, not disproved.
+                """)
+        }
+        say("\nNothing was changed. The trainer is on \(Int(neutral)) mm.")
+    }
+
+    private func explain(_ result: FTMSControlPointResult) -> String {
+        switch result {
+        case .success: return "accepted"
+        case .opcodeNotSupported: return "refused, command not supported"
+        case .invalidParameter: return "refused, it disliked the value"
+        case .operationFailed: return "refused, the attempt failed"
+        case .controlNotPermitted: return "refused, control not permitted"
+        }
+    }
+
+    private func describe(_ features: FTMSMachineFeatures) -> String {
+        var names: [String] = []
+        if features.contains(.cadence) { names.append("cadence") }
+        if features.contains(.resistanceLevel) { names.append("resistance") }
+        if features.contains(.heartRateMeasurement) { names.append("heart rate") }
+        if features.contains(.elapsedTime) { names.append("elapsed time") }
+        if features.contains(.powerMeasurement) { names.append("power") }
+        return names.isEmpty ? "nothing recognised" : names.joined(separator: ", ")
+    }
+
+    private func describe(_ features: FTMSTargetSettingFeatures) -> String {
+        var names: [String] = []
+        if features.contains(.resistanceLevel) { names.append("resistance") }
+        if features.contains(.power) { names.append("power") }
+        if features.contains(.indoorBikeSimulationParameters) {
+            names.append("terrain")
+        }
+        if features.contains(.wheelCircumference) { names.append("wheel size") }
+        return names.isEmpty ? "nothing recognised" : names.joined(separator: ", ")
+    }
+
+    private func readCharacteristic(_ uuid: CBUUID) async throws -> Data {
+        guard let kickr, let characteristic = characteristics[uuid] else {
+            throw ProbeError.notReady
+        }
+        let timeout = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.readWaiter?.resume(throwing: ProbeError.timedOut)
+            self.readWaiter = nil
+        }
+        defer { timeout.cancel() }
+        return try await withCheckedThrowingContinuation { continuation in
+            readWaiter = continuation
+            kickr.readValue(for: characteristic)
+        }
+    }
+
     private func sendFTMS(
         _ request: FitnessMachineControlPointRequest
     ) async throws -> Data {
@@ -583,6 +751,9 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
     ) {
         guard let data = characteristic.value else { return }
         switch characteristic.uuid {
+        case featureUUID:
+            readWaiter?.resume(returning: data)
+            readWaiter = nil
         case controlUUID:
             ftmsWaiter?.resume(returning: data)
             ftmsWaiter = nil
