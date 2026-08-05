@@ -1,0 +1,42 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push makes an older run pointless, and these are slow macOS runners.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests
+    # The app targets iOS 26, so it needs a runner with that SDK.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run the tests
+        run: swift test
+
+  build:
+    name: App build
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      # Built for the simulator so it needs no signing certificate, which
+      # keeps the build honest without putting a private key on a runner.
+      - name: Build the app
+        run: |
+          xcodebuild build \
+            -project VirtualShift.xcodeproj \
+            -scheme VirtualShift \
+            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            CODE_SIGNING_ALLOWED=NO

@@ -59,6 +59,14 @@ final class ProxyCoordinator {
     private var pendingFeedback: [ShiftFeedbackKind] = []
     private var baselineUpdateInProgress = false
     private var restoreTask: Task<Void, Never>?
+
+    /// Cancelling `restoreTask` is not enough on its own. The restore spends
+    /// most of its life waiting on a Bluetooth round trip, and those waits do
+    /// not observe cancellation, so a cancelled restore still runs to the end.
+    /// Starting a ride changes this token instead, and the restore checks it
+    /// after every wait, so it can neither fight the new ride for the wheel
+    /// size nor delete the record that ride depends on.
+    private var restoreToken = UUID()
     /// The wheel size a ride borrowed, written down before the ride starts.
     /// A ride normally puts it back on Stop and clears this, so a value still
     /// here at launch means the last ride never got to finish.
@@ -128,6 +136,7 @@ final class ProxyCoordinator {
 
     private func restoreInterruptedRide() async {
         guard state == .idle || isFailed else { return }
+        let token = restoreToken
         let defaults = UserDefaults.standard
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
         let baseline = defaults.double(forKey: unfinishedRideKey)
@@ -137,21 +146,26 @@ final class ProxyCoordinator {
         }
         for _ in 0..<100 {
             if kickr.isReady { break }
-            guard !Task.isCancelled, state == .idle || isFailed else { return }
+            guard isStillWanted(token) else { return }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
-        guard !Task.isCancelled, kickr.isReady,
-              state == .idle || isFailed else { return }
+        guard isStillWanted(token), kickr.isReady else { return }
         do {
             if !kickr.hasFTMSControl {
                 let control = try await kickr.execute(.requestControl)
                 guard control.result == .success else { return }
             }
+            // A ride can have started while control was being asked for. Its
+            // own gear is the wheel size that should win, and it owns the
+            // record below, so the restore stands down rather than overwrite
+            // either.
+            guard isStillWanted(token) else { return }
             let command = try WahooKickrCommand.setWheelCircumference(
                 millimeters: baseline
             )
             let response = try await kickr.executeWahoo(command)
             guard response.confirmsSuccess(for: command) else { return }
+            guard isStillWanted(token) else { return }
             defaults.removeObject(forKey: unfinishedRideKey)
             log("Restored the wheel size left behind by an interrupted ride")
         } catch {
@@ -161,6 +175,11 @@ final class ProxyCoordinator {
                 .warning
             )
         }
+    }
+
+    private func isStillWanted(_ token: UUID) -> Bool {
+        !Task.isCancelled && token == restoreToken
+            && (state == .idle || isFailed)
     }
 
     /// Starts a ride immediately so the UI can switch to the ride screen in the
@@ -173,6 +192,7 @@ final class ProxyCoordinator {
         // gear they did not choose.
         restoreTask?.cancel()
         restoreTask = nil
+        restoreToken = UUID()
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,

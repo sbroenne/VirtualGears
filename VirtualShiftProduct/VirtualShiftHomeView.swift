@@ -122,9 +122,22 @@ private struct StartupView: View {
         }
         guard !seen.isEmpty else { return }
         switch TrainerPicker.choice(from: seen) {
-        case let .connect(id): kickr.selectAndConnect(id)
+        case let .connect(id): adopt(id)
         case .ask: mustChoose = true
         }
+    }
+
+    /// Connecting is not enough on its own. Everything that lets a ride start
+    /// asks whether a trainer has been *chosen*, so a trainer found
+    /// automatically has to be recorded exactly as one picked in Settings is.
+    /// Without this a new rider watches their trainer connect and then waits
+    /// forever, because nothing ever agreed which trainer it was.
+    private func adopt(_ id: UUID) {
+        if let candidate = kickr.candidates.first(where: { $0.id == id }) {
+            store.configuration.kickrName = candidate.name
+        }
+        store.configuration.kickrUUID = id.uuidString
+        kickr.selectAndConnect(id)
     }
 
     private var searching: some View {
@@ -165,7 +178,7 @@ private struct StartupView: View {
             ForEach(kickr.candidates) { candidate in
                 Button {
                     mustChoose = false
-                    kickr.selectAndConnect(candidate.id)
+                    adopt(candidate.id)
                 } label: {
                     HStack {
                         Text(candidate.name)
