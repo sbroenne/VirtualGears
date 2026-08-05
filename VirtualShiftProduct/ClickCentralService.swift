@@ -10,7 +10,13 @@ enum ShiftDirection: Equatable, Sendable {
 
 enum ShiftRequest: Equatable, Sendable {
     case single(ShiftDirection)
-    case multiple(ShiftDirection)
+    /// A button has been held long enough to mean "keep going". The sweep is
+    /// then paced by the trainer rather than by a timer, so it runs as fast as
+    /// the trainer can really confirm gears instead of dropping the beats that
+    /// land while it is still working.
+    case holdBegan(ShiftDirection)
+    /// The button was let go. The sweep stops after the gear already in flight.
+    case holdEnded
 }
 
 @MainActor
@@ -99,6 +105,7 @@ final class ClickCentralService: NSObject {
     private var repeatTask: Task<Void, Never>?
     private var edgeTracker = ZwiftClickEdgeTracker()
     private var heldButton: ZwiftClickButton?
+    private var isHolding = false
 
     init(
         diagnostics: ProductDiagnosticsStore,
@@ -369,15 +376,14 @@ final class ClickCentralService: NSObject {
             } catch {
                 return
             }
-            guard let self else { return }
-            while !Task.isCancelled, self.heldButton == button {
-                self.emit(.multiple(self.direction(for: button)))
-                do {
-                    try await Task.sleep(nanoseconds: 300_000_000)
-                } catch {
-                    return
-                }
-            }
+            guard let self, self.heldButton == button else { return }
+            // Said once, not on a timer. The trainer confirms one gear at a
+            // time, and a timer that fires faster than that either queues up
+            // gears that arrive after the rider lets go, or has its beats
+            // dropped and sweeps in fits and starts. Handing over to the
+            // trainer's own pace avoids both.
+            self.isHolding = true
+            self.emit(.holdBegan(self.direction(for: button)))
         }
     }
 
@@ -385,6 +391,10 @@ final class ClickCentralService: NSObject {
         repeatTask?.cancel()
         repeatTask = nil
         heldButton = nil
+        if isHolding {
+            isHolding = false
+            emit(.holdEnded)
+        }
     }
 
     private func direction(for button: ZwiftClickButton) -> ShiftDirection {

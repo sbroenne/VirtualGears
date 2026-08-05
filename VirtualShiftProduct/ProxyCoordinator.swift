@@ -36,6 +36,9 @@ final class ProxyCoordinator {
     private let diagnostics: ProductDiagnosticsStore
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
+    /// Set while a shift button is held. The sweep continues off each confirmed
+    /// gear rather than a timer, so it never runs ahead of the trainer.
+    private var heldDirection: ShiftDirection?
     private var recoveryTask: Task<Void, Never>?
     private var usesClick = false
     private var feedback = ShiftFeedbackLedger()
@@ -332,6 +335,7 @@ final class ProxyCoordinator {
 
     private func clearRideData() {
         gearEngine = nil
+        heldDirection = nil
         displayedGear = nil
         confirmedGearIndex = nil
         requestedGearIndex = nil
@@ -346,10 +350,60 @@ final class ProxyCoordinator {
         handleShiftRequest(.single(direction))
     }
 
-    /// A gear from a held control. It behaves like a single shift but is
-    /// reported as a sweep, so the feedback matches holding a Click button.
-    func shiftRepeatedly(_ direction: ShiftDirection) {
-        handleShiftRequest(.multiple(direction))
+    /// An on-screen button has been held. The sweep runs until `endHold`, paced
+    /// by the trainer, exactly as a held Click button does.
+    func beginHold(_ direction: ShiftDirection) {
+        handleShiftRequest(.holdBegan(direction))
+    }
+
+    func endHold() {
+        handleShiftRequest(.holdEnded)
+    }
+
+    /// Applies a new set of gears without ending the ride.
+    ///
+    /// This used to stop the ride and start it again, which tears the fitness
+    /// machine service out from under the riding app and disconnects it. The
+    /// rider had to go back to their PC and reconnect, mid-ride, because they
+    /// changed a gear. The gears are rebuilt in place instead, exactly as they
+    /// are when a riding app sets its own wheel size, so the riding app never
+    /// notices anything happened.
+    func changeDrivetrain(_ configuration: AppConfiguration) async {
+        guard lifecycle.isRiding, let drivetrain = configuration.drivetrain,
+              AppConfiguration.isSafe(drivetrain) else { return }
+        baselineUpdateInProgress = true
+        defer { baselineUpdateInProgress = false }
+        heldDirection = nil
+        while shiftTask != nil {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        let baseline = sessionBaselineMillimeters
+            ?? Double(configuration.neutralCircumferenceMillimeters)
+        do {
+            let rebuilt = try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: baseline
+            )
+            let command = rebuilt.confirmedSetting.command
+            let response = try await kickr.executeWahoo(command)
+            guard response.confirmsSuccess(for: command) else {
+                throw ProductBluetoothError.commandFailed(
+                    "KICKR did not confirm the new gears"
+                )
+            }
+            gearEngine = rebuilt
+            gearSequence = drivetrain.gears
+            feedback.clear()
+            updateDisplayedGear()
+            log("Applied new gears without interrupting the ride")
+        } catch {
+            // The ride carries on with the gears it already had. Ending it
+            // would cost the rider their session over a settings change.
+            log(
+                "Could not apply the new gears: \(error.localizedDescription)",
+                .error
+            )
+        }
     }
 
     private func waitUntilReady(
@@ -582,15 +636,15 @@ final class ProxyCoordinator {
         case let .single(value):
             direction = value
             feedback = .single
-        case let .multiple(value):
-            // Holding a button asks for one more gear only once the trainer has
-            // finished the last one. Repeats used to arrive on a fixed timer,
-            // which is faster than the trainer can confirm a shift, so a hold
-            // queued up gears that carried on arriving after the rider had let
-            // go. Asking at the trainer's pace means letting go stops it.
-            if let engine = gearEngine, !engine.isSettled { return }
+        case let .holdBegan(value):
+            heldDirection = value
             direction = value
             feedback = .multiple
+        case .holdEnded:
+            // The gear already asked for is left to finish. Cancelling it would
+            // leave the trainer on a wheel size the rider was never shown.
+            heldDirection = nil
+            return
         }
         shiftInteraction &+= 1
         guard var engine = gearEngine else { return }
@@ -600,6 +654,7 @@ final class ProxyCoordinator {
         gearEngine = engine
         if engine.requestedIndex == oldRequested {
             log("Ignored shift at drivetrain boundary")
+            heldDirection = nil
             return
         }
         updateDisplayedGear()
@@ -631,7 +686,26 @@ final class ProxyCoordinator {
                     self.gearEngine = engine
                     self.updateDisplayedGear()
                     self.confirmShift(from: oldIndex, to: engine.confirmedIndex)
+                    // A held button asks for its next gear here rather than on a
+                    // timer, so the sweep runs at whatever pace the trainer can
+                    // actually manage and never asks for a gear it has not
+                    // finished the last one of.
+                    if change == nil, let held = self.heldDirection,
+                       var sweeping = self.gearEngine {
+                        change = sweeping.requestShift(
+                            by: held == .harder ? 1 : -1
+                        )
+                        self.gearEngine = sweeping
+                        if change != nil {
+                            self.feedback.record(.multiple)
+                            self.shiftInteraction &+= 1
+                            self.updateDisplayedGear()
+                        } else {
+                            self.heldDirection = nil
+                        }
+                    }
                 } catch {
+                    self.heldDirection = nil
                     self.gearEngine?.cancelPendingChanges()
                     self.feedback.clear()
                     self.updateDisplayedGear()

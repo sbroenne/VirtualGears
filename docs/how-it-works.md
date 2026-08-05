@@ -19,10 +19,12 @@ mid-ride.
 
 Some riding apps, FulGaz among them, set a wheel size of their own. VirtualShift
 honours it: that size becomes the new reference and every gear is rebuilt around
-it, so the gear you are in keeps feeling the way it did and the app's number is
-what the trainer is left sitting at. If the gears would no longer fit inside the
-proven range around that size, the request is declined and the ride carries on
-at the size it already had.
+it, so the gear you are in keeps feeling the way it did. If the gears would no
+longer fit inside the proven range around that size, the request is declined and
+the ride carries on at the size it already had.
+
+That number belongs to that app and that ride, so it is not what the trainer is
+left with at the end. Stopping always puts back the size the ride borrowed.
 
 ## Shifting waits for the trainer
 

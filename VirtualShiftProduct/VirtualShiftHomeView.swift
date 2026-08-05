@@ -356,17 +356,16 @@ private struct ActiveRideView: View {
     /// Changing gears mid-ride rebuilds the session rather than swapping the
     /// ladder underneath the trainer, so the wheel size the trainer is holding
     /// is always put back before the new gears are applied.
+    /// Changing gears mid-ride rebuilds the gear ladder in place. It deliberately
+    /// does not stop and restart the ride: that removes the fitness machine
+    /// service and disconnects the riding app, which is a long walk back to the
+    /// PC in the middle of a session.
     private func restartIfGearsChanged(from previous: Drivetrain?) {
         guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
-            // The rebuild runs through the normal stop, so without this the bar
-            // would read "Stopping safely" and then "Ride stopped" seconds after
-            // the rider chose new gears — which looks like their ride just
-            // ended, rather than their choice being applied.
             isChangingGears = true
-            await coordinator.stopRide()
-            coordinator.startRide(configuration: updated)
+            await coordinator.changeDrivetrain(updated)
             isChangingGears = false
         }
     }
@@ -804,7 +803,9 @@ private struct ActiveRideView: View {
             coordinator.shift(easier ? .easier : .harder)
         } repeatAction: {
             wake()
-            coordinator.shiftRepeatedly(easier ? .easier : .harder)
+            coordinator.beginHold(easier ? .easier : .harder)
+        } releaseAction: {
+            coordinator.endHold()
         }
     }
 
@@ -969,6 +970,7 @@ private struct ShiftButton: View {
     let disabled: Bool
     let action: () -> Void
     let repeatAction: () -> Void
+    let releaseAction: () -> Void
     @Environment(\.scenePhase) private var scenePhase
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
     @State private var repeatTask: Task<Void, Never>?
@@ -1026,18 +1028,24 @@ private struct ShiftButton: View {
         lastRepeatAt = nil
         repeatTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(500))
-            while !Task.isCancelled, isHeld {
-                lastRepeatAt = Date()
-                repeatAction()
-                try? await Task.sleep(for: .milliseconds(300))
-            }
+            guard !Task.isCancelled, isHeld else { return }
+            // Said once. From here the trainer sets the pace, so the sweep runs
+            // as fast as gears can really be confirmed instead of on a timer
+            // that either outruns the trainer or has its beats dropped.
+            lastRepeatAt = Date()
+            repeatAction()
         }
     }
 
     private func stopRepeat() {
+        let wasSweeping = isHeld && lastRepeatAt != nil
         isHeld = false
         repeatTask?.cancel()
         repeatTask = nil
+        if wasSweeping {
+            lastRepeatAt = Date()
+            releaseAction()
+        }
     }
 }
 
