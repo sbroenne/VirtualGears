@@ -53,11 +53,15 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Adds 24 virtual gears to a Wahoo KICKR V5. Open the app and ride — it finds your trainer, connects, and appears to your riding app on its own.
+    Adds 24 virtual gears to a Wahoo KICKR V5 — the trainer Wahoo confirmed will never get virtual shifting of its own. Open the app and ride.
 
 ### Description
 
     Your smart trainer has no gears. VirtualShift gives it some.
+
+    Newer trainers gained virtual shifting in 2024. The Wahoo KICKR V5 did not, and
+    Wahoo has confirmed it never will — the older hardware cannot support it. This app
+    gives a KICKR V5 gears anyway, in whichever app you ride with.
 
     Sit the app between your iPhone and the app you ride with on your computer, and
     you get a full set of gears you can shift through mid-ride — either the 24 evenly

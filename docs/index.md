@@ -10,6 +10,21 @@ Your chain stays in one quiet, straight gear all ride. Shifting happens on your
 iPhone instead, which changes how hard the trainer feels. Nothing on the bike
 moves, so there is no chain noise, no dropped chain, and no wear.
 
+!!! quote "Why this exists"
+
+    Zwift added virtual shifting in 2024, and Wahoo brought it to their newer
+    trainers. The KICKR V5 was left out, [permanently][wahoo]:
+
+    > "We have reviewed the hardware and firmware capabilities of KICKR v5
+    > (2020) and preceding KICKR versions. Unfortunately, these older models
+    > are unable to support the required protocols for virtual shifting using
+    > the Zwift protocol and will not be receiving a future update for this
+    > functionality."
+
+    VirtualShift gives a KICKR V5 gears anyway, in any riding app.
+
+  [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
+
 [See it working](demo.md){ .md-button .md-button--primary }
 [What you need](requirements.md){ .md-button }
 
