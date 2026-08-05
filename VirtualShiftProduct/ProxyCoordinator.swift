@@ -58,6 +58,11 @@ final class ProxyCoordinator {
     private var usesClick = false
     private var pendingFeedback: [ShiftFeedbackKind] = []
     private var baselineUpdateInProgress = false
+    private var restoreTask: Task<Void, Never>?
+    /// The wheel size a ride borrowed, written down before the ride starts.
+    /// A ride normally puts it back on Stop and clears this, so a value still
+    /// here at launch means the last ride never got to finish.
+    private let unfinishedRideKey = "VirtualShift.unfinishedRideBaselineMillimeters"
 
     var isRidePresented: Bool {
         switch state {
@@ -102,11 +107,72 @@ final class ProxyCoordinator {
         }
     }
 
+    /// Puts the trainer back after a ride that never got to stop.
+    ///
+    /// A ride normally restores the wheel size on Stop. If iOS ends the app
+    /// first, that never runs and the trainer keeps the last gear's wheel size,
+    /// which would quietly distort its speed and distance for anything else that
+    /// connects to it. The size a ride borrows is written down before the ride
+    /// starts, so the next launch can finish the job.
+    ///
+    /// Nothing is reported to the rider. This is tidying up after an interruption
+    /// they did not cause and cannot act on, and the ride they are about to start
+    /// sets its own gear regardless.
+    func restoreInterruptedRideIfNeeded() {
+        guard restoreTask == nil, state == .idle || isFailed else { return }
+        restoreTask = Task { [weak self] in
+            await self?.restoreInterruptedRide()
+            self?.restoreTask = nil
+        }
+    }
+
+    private func restoreInterruptedRide() async {
+        guard state == .idle || isFailed else { return }
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
+        let baseline = defaults.double(forKey: unfinishedRideKey)
+        guard baseline > 0 else {
+            defaults.removeObject(forKey: unfinishedRideKey)
+            return
+        }
+        for _ in 0..<100 {
+            if kickr.isReady { break }
+            guard !Task.isCancelled, state == .idle || isFailed else { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        guard !Task.isCancelled, kickr.isReady,
+              state == .idle || isFailed else { return }
+        do {
+            if !kickr.hasFTMSControl {
+                let control = try await kickr.execute(.requestControl)
+                guard control.result == .success else { return }
+            }
+            let command = try WahooKickrCommand.setWheelCircumference(
+                millimeters: baseline
+            )
+            let response = try await kickr.executeWahoo(command)
+            guard response.confirmsSuccess(for: command) else { return }
+            defaults.removeObject(forKey: unfinishedRideKey)
+            log("Restored the wheel size left behind by an interrupted ride")
+        } catch {
+            log(
+                "Could not yet restore the wheel size from an interrupted ride: "
+                    + error.localizedDescription,
+                .warning
+            )
+        }
+    }
+
     /// Starts a ride immediately so the UI can switch to the ride screen in the
     /// same update. The state transition is synchronous, so a second tap is
     /// rejected by the same guard that protected the previous async entry point.
     func startRide(configuration: AppConfiguration) {
         guard state == .idle || isFailed else { return }
+        // A ride sets its own wheel size and puts it back on Stop, so it does
+        // the tidying up itself. Letting both run could leave the rider in a
+        // gear they did not choose.
+        restoreTask?.cancel()
+        restoreTask = nil
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
@@ -142,6 +208,10 @@ final class ProxyCoordinator {
             updateDisplayedGear()
             sessionBaselineMillimeters =
                 Double(configuration.neutralCircumferenceMillimeters)
+            UserDefaults.standard.set(
+                Double(configuration.neutralCircumferenceMillimeters),
+                forKey: unfinishedRideKey
+            )
 
             kickr.resumeSavedConnection()
             if usesClick { click.resumeSavedConnection() }
@@ -232,6 +302,7 @@ final class ProxyCoordinator {
                         "KICKR did not confirm baseline restoration"
                     )
                 }
+                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
             } catch {
                 failures.append(
                     "Baseline restoration failed: \(error.localizedDescription)"

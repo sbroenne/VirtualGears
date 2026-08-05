@@ -23,9 +23,9 @@ top. The riding app still controls the road: hills feel like hills.
 
 <p align="center">
   <img src="docs/screenshots/starting.png" width="24%" alt="Looking for the trainer on launch">
-  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 9 of 16">
-  <img src="docs/screenshots/gears.png" width="24%" alt="The gear spread drawn as bars">
-  <img src="docs/screenshots/settings.png" width="24%" alt="Settings">
+  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24">
+  <img src="docs/screenshots/gears.png" width="24%" alt="The 24 virtual gears drawn as bars">
+  <img src="docs/screenshots/gears-real-bike.png" width="24%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
 </p>
 
 ## What you get
@@ -58,6 +58,10 @@ ambiguous is asked rather than guessed.
 **Everything changeable mid-ride.** Trainer, gears and Click can all be changed
 from the ride screen. Changing gears quietly restarts the session, so the
 trainer is always put back before the new gears are applied.
+
+**A ride survives an interruption.** Taking a call, tapping a notification or
+switching to another app does not end your ride. The trainer stays connected and
+your riding app stays paired, so you can come back to the same gear.
 
 ## What it does not do
 
@@ -96,6 +100,12 @@ set if it set one.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 what the safety check judges.
+
+The trainer works out its speed from that wheel size, so a value left behind
+would quietly distort the speed and distance of any ride that did not use
+VirtualShift. If iOS ends the app before a ride can stop, the size the ride
+borrowed is still written down, and the next launch puts it back without saying
+anything about it.
 
 ## Requirements
 

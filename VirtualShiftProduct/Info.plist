@@ -20,17 +20,24 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>VirtualShift uses Bluetooth to connect to your KICKR trainer and shift controller during a ride.</string>
+	<string>VirtualShift uses Bluetooth to connect to your trainer and your shift buttons, and to appear as a trainer to the app you ride with.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>VirtualShift uses Bluetooth to communicate with nearby cycling equipment.</string>
+	<string>VirtualShift uses Bluetooth to appear as a trainer to the app you ride with.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>bluetooth-peripheral</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

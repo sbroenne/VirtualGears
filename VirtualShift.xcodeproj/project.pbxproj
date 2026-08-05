@@ -29,6 +29,7 @@
 		A00000000000000000000007 /* FTMSPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FTMSPeripheral.swift */; };
 		A00000000000000000000008 /* ProxyCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* ProxyCoordinator.swift */; };
 		A00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* Assets.xcassets */; };
+		A0000000000000000000000B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* PrivacyInfo.xcprivacy */; };
 		10000000000000000000000E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -52,6 +53,7 @@
 		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		A10000000000000000000004 /* ProductBluetoothTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductBluetoothTypes.swift; sourceTree = "<group>"; };
+		A1000000000000000000000B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A10000000000000000000005 /* KickrCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* ClickCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				A10000000000000000000001 /* AppConfiguration.swift */,
 				A10000000000000000000002 /* SetupView.swift */,
 				A10000000000000000000004 /* ProductBluetoothTypes.swift */,
+				A1000000000000000000000B /* PrivacyInfo.xcprivacy */,
 				A10000000000000000000005 /* KickrCentralService.swift */,
 				A10000000000000000000006 /* ClickCentralService.swift */,
 				A10000000000000000000007 /* FTMSPeripheral.swift */,
@@ -232,6 +235,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A00000000000000000000009 /* Assets.xcassets in Resources */,
+				A0000000000000000000000B /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
