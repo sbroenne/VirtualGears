@@ -145,8 +145,6 @@ shows it instead.
   run against stand-ins with no hardware in the room.
 - `VirtualShiftProduct` — the app you ride with: the screens, and the real
   Bluetooth behind those protocols.
-- `VirtualShift` — a hardware lab used to prove trainer behaviour. It is not
-  the product and is not needed to ride.
 - `docs/screenshots` — the screens above, captured from the simulator.
 - `docs/` — also the source of the website, built with MkDocs Material.
 
@@ -162,9 +160,11 @@ touch the same data at the same time. That class of bug otherwise shows up as a
 freeze in the middle of a ride and is close to impossible to reproduce. Building
 needs Xcode 26 or later.
 
-Both app targets are built in CI. The Hardware Lab is not shipped to anyone, but
-every trainer fact in these docs was measured with it, so a broken Lab is a
-broken instrument.
+The trainer facts in these docs were measured before the app existed, using a
+scratch diagnostic app that talked to the trainer and to the riding app on its
+own. That app has since been removed: the shipping app is the proxy now and
+keeps its own diagnostic log, and the remaining Mac tools under `Tools/` cover
+what is left. The measurements it produced still stand.
 
 The app itself must be built and signed in Xcode. Open `VirtualShift.xcodeproj`,
 choose the `VirtualShift` scheme and a physical iPhone, and select your
