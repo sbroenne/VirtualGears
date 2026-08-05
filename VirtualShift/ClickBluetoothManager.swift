@@ -169,6 +169,15 @@ final class ClickBluetoothManager: NSObject, ObservableObject {
                 for event in events {
                     process(event)
                 }
+            case let .batteryLevel(percent):
+                // The Click repeats this every few seconds, which is the only
+                // way the reading stays current: the standard Bluetooth battery
+                // characteristic is readable once on connect and this device
+                // does not announce changes to it.
+                if batteryLevel != percent {
+                    batteryLevel = percent
+                    log("Click battery \(percent)%")
+                }
             case .keepAlive:
                 break
             case let .other(type) where type == 0x19:
@@ -280,289 +289,269 @@ final class ClickBluetoothManager: NSObject, ObservableObject {
     }
 }
 
-extension ClickBluetoothManager: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        MainActor.assumeIsolated {
-            bluetoothStatus = central.state.description
-            log("Bluetooth state: \(central.state.description)")
-        }
+extension ClickBluetoothManager: @preconcurrency CBCentralManagerDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        bluetoothStatus = central.state.description
+        log("Bluetooth state: \(central.state.description)")
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        MainActor.assumeIsolated {
-            let advertisedName =
-                advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            let name = advertisedName ?? peripheral.name ?? "Unnamed Click"
-            guard name.localizedCaseInsensitiveContains("Zwift Click") else {
-                return
-            }
-
-            peripherals[peripheral.identifier] = peripheral
-            let candidate = ClickCandidate(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue
-            )
-            if let index = candidates.firstIndex(where: {
-                $0.id == candidate.id
-            }) {
-                candidates[index] = candidate
-            } else {
-                candidates.append(candidate)
-                log("Found \(name), signal \(RSSI)")
-            }
-            candidates.sort { $0.rssi > $1.rssi }
+        let advertisedName =
+            advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let name = advertisedName ?? peripheral.name ?? "Unnamed Click"
+        guard name.localizedCaseInsensitiveContains("Zwift Click") else {
+            return
         }
+
+        peripherals[peripheral.identifier] = peripheral
+        let candidate = ClickCandidate(
+            id: peripheral.identifier,
+            name: name,
+            rssi: RSSI.intValue
+        )
+        if let index = candidates.firstIndex(where: {
+            $0.id == candidate.id
+        }) {
+            candidates[index] = candidate
+        } else {
+            candidates.append(candidate)
+            log("Found \(name), signal \(RSSI)")
+        }
+        candidates.sort { $0.rssi > $1.rssi }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        MainActor.assumeIsolated {
-            isConnecting = false
-            isConnected = true
-            connectionStatus = "Discovering Click controls..."
-            log("Connected to \(peripheral.name ?? peripheral.identifier.uuidString)")
-            peripheral.discoverServices([serviceUUID, batteryServiceUUID])
-        }
+        isConnecting = false
+        isConnected = true
+        connectionStatus = "Discovering Click controls..."
+        log("Connected to \(peripheral.name ?? peripheral.identifier.uuidString)")
+        peripheral.discoverServices([serviceUUID, batteryServiceUUID])
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            resetConnectionState()
-            self.peripheral = nil
-            reportError(
-                "Click connection failed: "
-                    + (error?.localizedDescription ?? "unknown error")
-            )
-        }
+        resetConnectionState()
+        self.peripheral = nil
+        reportError(
+            "Click connection failed: "
+                + (error?.localizedDescription ?? "unknown error")
+        )
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            resetConnectionState()
-            self.peripheral = nil
-            if let error {
-                connectionStatus = "Click connection lost"
-                log("Click disconnected with error: \(error.localizedDescription)")
-            } else {
-                connectionStatus = "Click disconnected"
-                log("Click disconnected")
-            }
+        resetConnectionState()
+        self.peripheral = nil
+        if let error {
+            connectionStatus = "Click connection lost"
+            log("Click disconnected with error: \(error.localizedDescription)")
+        } else {
+            connectionStatus = "Click disconnected"
+            log("Click disconnected")
         }
     }
 }
 
-extension ClickBluetoothManager: CBPeripheralDelegate {
-    nonisolated func peripheral(
+extension ClickBluetoothManager: @preconcurrency CBPeripheralDelegate {
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                reportError("Click service discovery failed: \(error.localizedDescription)")
-                return
-            }
-            guard let service = peripheral.services?.first(where: {
-                $0.uuid == serviceUUID
-            }) else {
-                reportError("Zwift Accessory service was not found")
-                return
-            }
+        if let error {
+            reportError("Click service discovery failed: \(error.localizedDescription)")
+            return
+        }
+        guard let service = peripheral.services?.first(where: {
+            $0.uuid == serviceUUID
+        }) else {
+            reportError("Zwift Accessory service was not found")
+            return
+        }
 
-            log("Found Zwift Accessory service")
+        log("Found Zwift Accessory service")
+        peripheral.discoverCharacteristics(
+            [asyncUUID, syncReceiveUUID, syncTransmitUUID],
+            for: service
+        )
+        if let batteryService = peripheral.services?.first(where: {
+            $0.uuid == batteryServiceUUID
+        }) {
             peripheral.discoverCharacteristics(
-                [asyncUUID, syncReceiveUUID, syncTransmitUUID],
-                for: service
+                [batteryLevelUUID],
+                for: batteryService
             )
-            if let batteryService = peripheral.services?.first(where: {
-                $0.uuid == batteryServiceUUID
-            }) {
-                peripheral.discoverCharacteristics(
-                    [batteryLevelUUID],
-                    for: batteryService
-                )
-            } else {
-                log("Battery service was not found")
-            }
+        } else {
+            log("Battery service was not found")
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                reportError(
-                    "Click characteristic discovery failed: "
-                        + error.localizedDescription
-                )
-                return
-            }
-            if service.uuid == batteryServiceUUID {
-                guard let battery = service.characteristics?.first(where: {
-                    $0.uuid == batteryLevelUUID
-                }) else {
-                    log("Battery level control was not found")
-                    return
-                }
-
-                batteryCharacteristic = battery
-                log(
-                    "Found battery level, properties: "
-                        + battery.properties.description
-                )
-                if battery.properties.contains(.read) {
-                    peripheral.readValue(for: battery)
-                }
-                if battery.properties.contains(.notify) {
-                    peripheral.setNotifyValue(true, for: battery)
-                }
-                return
-            }
-            guard let characteristics = service.characteristics,
-                  let async = characteristics.first(where: {
-                      $0.uuid == asyncUUID
-                  }),
-                  let syncReceive = characteristics.first(where: {
-                      $0.uuid == syncReceiveUUID
-                  }),
-                  let syncTransmit = characteristics.first(where: {
-                      $0.uuid == syncTransmitUUID
-                  })
-            else {
-                reportError("One or more required Click controls were not found")
-                return
-            }
-
-            asyncCharacteristic = async
-            syncReceiveCharacteristic = syncReceive
-            syncTransmitCharacteristic = syncTransmit
-            log(
-                "Found Click write control, properties: "
-                    + syncReceive.properties.description
+        if let error {
+            reportError(
+                "Click characteristic discovery failed: "
+                    + error.localizedDescription
             )
-            if syncReceive.properties.contains(.writeWithoutResponse) {
-                handshakeWriteType = .withoutResponse
-            } else if syncReceive.properties.contains(.write) {
-                handshakeWriteType = .withResponse
-            } else {
-                reportError("The Click handshake control is not writable")
+            return
+        }
+        if service.uuid == batteryServiceUUID {
+            guard let battery = service.characteristics?.first(where: {
+                $0.uuid == batteryLevelUUID
+            }) else {
+                log("Battery level control was not found")
                 return
             }
-            log("Found all required Click controls")
-            peripheral.setNotifyValue(true, for: async)
-            peripheral.setNotifyValue(true, for: syncTransmit)
+
+            batteryCharacteristic = battery
+            log(
+                "Found battery level, properties: "
+                    + battery.properties.description
+            )
+            if battery.properties.contains(.read) {
+                peripheral.readValue(for: battery)
+            }
+            if battery.properties.contains(.notify) {
+                peripheral.setNotifyValue(true, for: battery)
+            }
+            return
         }
+        guard let characteristics = service.characteristics,
+              let async = characteristics.first(where: {
+                  $0.uuid == asyncUUID
+              }),
+              let syncReceive = characteristics.first(where: {
+                  $0.uuid == syncReceiveUUID
+              }),
+              let syncTransmit = characteristics.first(where: {
+                  $0.uuid == syncTransmitUUID
+              })
+        else {
+            reportError("One or more required Click controls were not found")
+            return
+        }
+
+        asyncCharacteristic = async
+        syncReceiveCharacteristic = syncReceive
+        syncTransmitCharacteristic = syncTransmit
+        log(
+            "Found Click write control, properties: "
+                + syncReceive.properties.description
+        )
+        if syncReceive.properties.contains(.writeWithoutResponse) {
+            handshakeWriteType = .withoutResponse
+        } else if syncReceive.properties.contains(.write) {
+            handshakeWriteType = .withResponse
+        } else {
+            reportError("The Click handshake control is not writable")
+            return
+        }
+        log("Found all required Click controls")
+        peripheral.setNotifyValue(true, for: async)
+        peripheral.setNotifyValue(true, for: syncTransmit)
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if characteristic.uuid == batteryLevelUUID {
-                if let error {
-                    log(
-                        "Battery notification setup failed: "
-                            + error.localizedDescription
-                    )
-                } else if characteristic.isNotifying {
-                    log("Click battery notifications enabled")
-                }
-                return
-            }
-
+        if characteristic.uuid == batteryLevelUUID {
             if let error {
-                reportError(
-                    "Click notification setup failed: \(error.localizedDescription)"
+                log(
+                    "Battery notification setup failed: "
+                        + error.localizedDescription
                 )
-                return
+            } else if characteristic.isNotifying {
+                log("Click battery notifications enabled")
             }
-            guard characteristic.isNotifying else {
-                reportError("Click notification was not enabled")
-                return
-            }
-
-            if characteristic.uuid == asyncUUID {
-                asyncSubscribed = true
-                log("Click button notifications enabled")
-            } else if characteristic.uuid == syncTransmitUUID {
-                syncTransmitSubscribed = true
-                log("Click handshake replies enabled")
-            }
-            subscribeIfReady()
+            return
         }
+
+        if let error {
+            reportError(
+                "Click notification setup failed: \(error.localizedDescription)"
+            )
+            return
+        }
+        guard characteristic.isNotifying else {
+            reportError("Click notification was not enabled")
+            return
+        }
+
+        if characteristic.uuid == asyncUUID {
+            asyncSubscribed = true
+            log("Click button notifications enabled")
+        } else if characteristic.uuid == syncTransmitUUID {
+            syncTransmitSubscribed = true
+            log("Click handshake replies enabled")
+        }
+        subscribeIfReady()
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard characteristic.uuid == syncReceiveUUID else { return }
-            if let error {
-                reportError("Click handshake write failed: \(error.localizedDescription)")
-            } else {
-                log("Click handshake write confirmed; waiting for reply")
-            }
+        guard characteristic.uuid == syncReceiveUUID else { return }
+        if let error {
+            reportError("Click handshake write failed: \(error.localizedDescription)")
+        } else {
+            log("Click handshake write confirmed; waiting for reply")
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                if characteristic.uuid == batteryLevelUUID {
-                    log("Battery read failed: \(error.localizedDescription)")
-                } else {
-                    reportError(
-                        "Click notification failed: \(error.localizedDescription)"
-                    )
-                }
+        if let error {
+            if characteristic.uuid == batteryLevelUUID {
+                log("Battery read failed: \(error.localizedDescription)")
+            } else {
+                reportError(
+                    "Click notification failed: \(error.localizedDescription)"
+                )
+            }
+            return
+        }
+        let data = characteristic.value ?? Data()
+
+        if characteristic.uuid == batteryLevelUUID {
+            guard let level = data.first, level <= 100 else {
+                log("ERROR: Click returned an invalid battery level")
                 return
             }
-            let data = characteristic.value ?? Data()
-
-            if characteristic.uuid == batteryLevelUUID {
-                guard let level = data.first, level <= 100 else {
-                    log("ERROR: Click returned an invalid battery level")
-                    return
-                }
-                batteryLevel = Int(level)
-                log("Click battery: \(level)%")
-            } else if characteristic.uuid == syncTransmitUUID {
-                guard data.starts(with: ZwiftClickProtocol.rideOn) else {
-                    reportError("Click returned an unexpected handshake reply")
-                    return
-                }
-                isReady = true
-                connectionStatus = "Click ready - press + or −"
-                log("Click RideOn handshake confirmed")
-            } else if characteristic.uuid == asyncUUID, isReady {
-                processAsyncMessage(data)
+            batteryLevel = Int(level)
+            log("Click battery: \(level)%")
+        } else if characteristic.uuid == syncTransmitUUID {
+            guard data.starts(with: ZwiftClickProtocol.rideOn) else {
+                reportError("Click returned an unexpected handshake reply")
+                return
             }
+            isReady = true
+            connectionStatus = "Click ready - press + or −"
+            log("Click RideOn handshake confirmed")
+        } else if characteristic.uuid == asyncUUID, isReady {
+            processAsyncMessage(data)
         }
     }
 }

@@ -498,213 +498,193 @@ final class KickrFTMSProbeManager: NSObject, ObservableObject {
     }
 }
 
-extension KickrFTMSProbeManager: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        MainActor.assumeIsolated {
-            bluetoothState = central.state.description
-            log("bluetooth", meaning: bluetoothState)
-            if central.state != .poweredOn {
-                disconnect(reason: "Bluetooth is no longer powered on")
-            }
+extension KickrFTMSProbeManager: @preconcurrency CBCentralManagerDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        bluetoothState = central.state.description
+        log("bluetooth", meaning: bluetoothState)
+        if central.state != .poweredOn {
+            disconnect(reason: "Bluetooth is no longer powered on")
         }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        MainActor.assumeIsolated {
-            let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            let name = advertisedName ?? peripheral.name ?? "Unnamed device"
-            guard name.localizedCaseInsensitiveContains("KICKR") else { return }
-            discoveredPeripherals[peripheral.identifier] = peripheral
-            let candidate = KickrFTMSCandidate(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue
-            )
-            if let index = candidates.firstIndex(where: { $0.id == candidate.id }) {
-                candidates[index] = candidate
-            } else {
-                candidates.append(candidate)
-                log("scan result", meaning: "\(name), \(RSSI) dBm")
-            }
-            candidates.sort { $0.rssi > $1.rssi }
+        let advertisedName = advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let name = advertisedName ?? peripheral.name ?? "Unnamed device"
+        guard name.localizedCaseInsensitiveContains("KICKR") else { return }
+        discoveredPeripherals[peripheral.identifier] = peripheral
+        let candidate = KickrFTMSCandidate(
+            id: peripheral.identifier,
+            name: name,
+            rssi: RSSI.intValue
+        )
+        if let index = candidates.firstIndex(where: { $0.id == candidate.id }) {
+            candidates[index] = candidate
+        } else {
+            candidates.append(candidate)
+            log("scan result", meaning: "\(name), \(RSSI) dBm")
         }
+        candidates.sort { $0.rssi > $1.rssi }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        MainActor.assumeIsolated {
-            guard connectingPeripheral?.identifier == peripheral.identifier else {
-                log(
-                    "stale callback",
-                    meaning: "Ignored connection from \(peripheral.identifier)"
-                )
-                central.cancelPeripheralConnection(peripheral)
-                return
-            }
-            connectingPeripheral = nil
-            connectedPeripheral = peripheral
-            isConnecting = false
-            isConnected = true
-            connectionState = "Discovering services..."
-            log("connected", meaning: peripheral.name ?? peripheral.identifier.uuidString)
-            peripheral.discoverServices(nil)
+        guard connectingPeripheral?.identifier == peripheral.identifier else {
+            log(
+                "stale callback",
+                meaning: "Ignored connection from \(peripheral.identifier)"
+            )
+            central.cancelPeripheralConnection(peripheral)
+            return
         }
+        connectingPeripheral = nil
+        connectedPeripheral = peripheral
+        isConnecting = false
+        isConnected = true
+        connectionState = "Discovering services..."
+        log("connected", meaning: peripheral.name ?? peripheral.identifier.uuidString)
+        peripheral.discoverServices(nil)
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard connectingPeripheral?.identifier == peripheral.identifier else {
-                return
-            }
-            resetConnectionState()
-            connectionState = "Connection failed"
-            log("error", meaning: error?.localizedDescription ?? "Connection failed")
+        guard connectingPeripheral?.identifier == peripheral.identifier else {
+            return
         }
+        resetConnectionState()
+        connectionState = "Connection failed"
+        log("error", meaning: error?.localizedDescription ?? "Connection failed")
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard connectedPeripheral?.identifier == peripheral.identifier
-                    || connectingPeripheral?.identifier == peripheral.identifier else {
-                return
-            }
-            resetConnectionState()
-            connectionState = error == nil ? "Not connected" : "Connection lost"
-            log(
-                "disconnected",
-                meaning: error?.localizedDescription ?? "Peripheral disconnected"
-            )
+        guard connectedPeripheral?.identifier == peripheral.identifier
+                || connectingPeripheral?.identifier == peripheral.identifier else {
+            return
         }
+        resetConnectionState()
+        connectionState = error == nil ? "Not connected" : "Connection lost"
+        log(
+            "disconnected",
+            meaning: error?.localizedDescription ?? "Peripheral disconnected"
+        )
     }
 }
 
-extension KickrFTMSProbeManager: CBPeripheralDelegate {
-    nonisolated func peripheral(
+extension KickrFTMSProbeManager: @preconcurrency CBPeripheralDelegate {
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard error == nil, let services = peripheral.services else {
-                connectionState = "Service discovery failed"
-                log("error", meaning: error?.localizedDescription ?? "No services returned")
-                return
-            }
-            discoveredServices = services.count
-            processedServices = 0
-            log(
-                "services",
-                meaning: services.map(\.uuid.uuidString).joined(separator: ", ")
-            )
-            if services.isEmpty {
-                connectionState = "No services discovered"
-            }
-            for service in services {
-                if service.uuid == ftmsServiceUUID {
-                    peripheral.discoverCharacteristics(Array(requiredUUIDs), for: service)
-                } else {
-                    peripheral.discoverCharacteristics([wahooControlUUID], for: service)
-                }
+        guard error == nil, let services = peripheral.services else {
+            connectionState = "Service discovery failed"
+            log("error", meaning: error?.localizedDescription ?? "No services returned")
+            return
+        }
+        discoveredServices = services.count
+        processedServices = 0
+        log(
+            "services",
+            meaning: services.map(\.uuid.uuidString).joined(separator: ", ")
+        )
+        if services.isEmpty {
+            connectionState = "No services discovered"
+        }
+        for service in services {
+            if service.uuid == ftmsServiceUUID {
+                peripheral.discoverCharacteristics(Array(requiredUUIDs), for: service)
+            } else {
+                peripheral.discoverCharacteristics([wahooControlUUID], for: service)
             }
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            processedServices += 1
-            if let error {
-                log("error", characteristic: service.uuid, meaning: error.localizedDescription)
-            }
-            for characteristic in service.characteristics ?? [] {
-                if requiredUUIDs.contains(characteristic.uuid)
-                    || characteristic.uuid == wahooControlUUID {
-                    characteristics[characteristic.uuid] = characteristic
-                    recordDiscovery(characteristic)
-                }
-            }
-            finishDiscoveryIfNeeded()
+        processedServices += 1
+        if let error {
+            log("error", characteristic: service.uuid, meaning: error.localizedDescription)
         }
+        for characteristic in service.characteristics ?? [] {
+            if requiredUUIDs.contains(characteristic.uuid)
+                || characteristic.uuid == wahooControlUUID {
+                characteristics[characteristic.uuid] = characteristic
+                recordDiscovery(characteristic)
+            }
+        }
+        finishDiscoveryIfNeeded()
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            log(
-                error == nil ? "subscription" : "subscription error",
-                characteristic: characteristic.uuid,
-                meaning: error?.localizedDescription
-                    ?? (characteristic.isNotifying ? "Enabled" : "Disabled")
-            )
-            updateControlReadiness()
-        }
+        log(
+            error == nil ? "subscription" : "subscription error",
+            characteristic: characteristic.uuid,
+            meaning: error?.localizedDescription
+                ?? (characteristic.isNotifying ? "Enabled" : "Disabled")
+        )
+        updateControlReadiness()
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard let data = characteristic.value, error == nil else {
-                log(
-                    "value error",
-                    characteristic: characteristic.uuid,
-                    meaning: error?.localizedDescription ?? "No value"
-                )
-                return
-            }
-            if characteristic.uuid == controlPointUUID {
-                handleControlPoint(data)
-                updateRecord(.init(
-                    uuid: characteristic.uuid.uuidString,
-                    properties: propertiesDescription(characteristic.properties),
-                    rawHex: hex(data),
-                    decodedValue: decode(data, uuid: characteristic.uuid)
-                ))
-            } else {
-                recordValue(data, for: characteristic)
-            }
+        guard let data = characteristic.value, error == nil else {
+            log(
+                "value error",
+                characteristic: characteristic.uuid,
+                meaning: error?.localizedDescription ?? "No value"
+            )
+            return
+        }
+        if characteristic.uuid == controlPointUUID {
+            handleControlPoint(data)
+            updateRecord(.init(
+                uuid: characteristic.uuid.uuidString,
+                properties: propertiesDescription(characteristic.properties),
+                rawHex: hex(data),
+                decodedValue: decode(data, uuid: characteristic.uuid)
+            ))
+        } else {
+            recordValue(data, for: characteristic)
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard characteristic.uuid == controlPointUUID,
-                  let command = activeCommand else { return }
-            if let error {
-                failActive("\(command.name) write failed: \(error.localizedDescription)")
-                return
-            }
-            activeWriteConfirmed = true
-            log("write confirmed", characteristic: characteristic.uuid, meaning: command.name)
-            if activeResponse != nil {
-                completeActive()
-            }
+        guard characteristic.uuid == controlPointUUID,
+              let command = activeCommand else { return }
+        if let error {
+            failActive("\(command.name) write failed: \(error.localizedDescription)")
+            return
+        }
+        activeWriteConfirmed = true
+        log("write confirmed", characteristic: characteristic.uuid, meaning: command.name)
+        if activeResponse != nil {
+            completeActive()
         }
     }
 }

@@ -83,8 +83,9 @@ ambiguous is asked rather than guessed.
 ### Everything changeable mid-ride
 
 Trainer, gears and Click can all be changed from the ride screen. Changing gears
-quietly restarts the session, so the trainer is always put back before the new
-gears are applied.
+rebuilds them in place, without interrupting the ride, so the riding app on your
+PC never notices. If the trainer will not take the new gears, the ride carries on
+with the old ones rather than ending.
 
 ### A ride survives an interruption
 

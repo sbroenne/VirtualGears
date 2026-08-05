@@ -17,7 +17,7 @@ permissions:
 jobs:
   tests:
     name: Tests
-    # The app targets iOS 26, so it needs a runner with that SDK.
+    # Xcode 26 is needed to build with the Swift 6 language mode.
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
@@ -28,15 +28,22 @@ jobs:
   build:
     name: App build
     runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        # The Hardware Lab is not shipped, but it is how every trainer fact in
+        # the docs was measured. It was left broken for weeks because nothing
+        # built it, so it is built here too.
+        scheme: [VirtualShift, VirtualShift Hardware Lab]
     steps:
       - uses: actions/checkout@v7
 
       # Built for the simulator so it needs no signing certificate, which
       # keeps the build honest without putting a private key on a runner.
-      - name: Build the app
+      - name: Build ${{ matrix.scheme }}
         run: |
           xcodebuild build \
             -project VirtualShift.xcodeproj \
-            -scheme VirtualShift \
+            -scheme "${{ matrix.scheme }}" \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
             CODE_SIGNING_ALLOWED=NO

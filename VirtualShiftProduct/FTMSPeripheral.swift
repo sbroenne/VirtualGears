@@ -3,27 +3,6 @@ import Foundation
 import Observation
 import VirtualShiftCore
 
-enum FTMSPeripheralEvent: Equatable, Sendable {
-    case advertisingStarted
-    case advertisingStopped
-    case centralSubscribed(UUID, characteristic: String)
-    case centralUnsubscribed(UUID, characteristic: String)
-    case controlRequest(UUID, FitnessMachineControlPointRequest)
-    case controlResponse(UUID, FitnessMachineControlPointResponse)
-    case failed(String)
-}
-
-struct FTMSPeripheralCommandResult: Sendable {
-    let result: FTMSControlPointResult
-    let status: FitnessMachineStatus?
-
-    static func success(
-        status: FitnessMachineStatus? = nil
-    ) -> Self {
-        .init(result: .success, status: status)
-    }
-}
-
 @MainActor
 @Observable
 final class FTMSPeripheral: NSObject {

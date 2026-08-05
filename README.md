@@ -58,8 +58,8 @@ connecting to a neighbour's trainer would change their wheel size, so anything
 ambiguous is asked rather than guessed.
 
 **Everything changeable mid-ride.** Trainer, gears and Click can all be changed
-from the ride screen. Changing gears quietly restarts the session, so the
-trainer is always put back before the new gears are applied.
+from the ride screen. Changing gears rebuilds them in place, without
+interrupting the ride, so the riding app on your PC never notices.
 
 **A ride survives an interruption.** Taking a call, tapping a notification or
 switching to another app does not end your ride. The trainer stays connected and
@@ -128,7 +128,7 @@ shows it instead.
 
 ## Requirements
 
-- iPhone running iOS 26
+- iPhone running iOS 17 or later, which is any iPhone from the XS onwards
 - Wahoo KICKR V5. Other Wahoo KICKR models should work but are untested; the
   KICKR Snap and KICKR Bike do not, because they change gear other ways. See
   [Which trainers work](https://sbroenne.github.io/VirtualShift/requirements/#which-trainers-work).
@@ -139,9 +139,12 @@ shows it instead.
 ## Repository
 
 - `Sources/VirtualShiftCore` — the parts with no iPhone in them: command
-  encoding, gear ratios, drivetrain building, trainer limits. This is where the
-  tests live.
-- `VirtualShiftProduct` — the app you ride with.
+  encoding, gear ratios, drivetrain building, trainer limits, and the ride
+  itself. This is where the tests live. The ride reaches the trainer, the
+  riding app and the Click through narrow protocols, so a whole session can be
+  run against stand-ins with no hardware in the room.
+- `VirtualShiftProduct` — the app you ride with: the screens, and the real
+  Bluetooth behind those protocols.
 - `VirtualShift` — a hardware lab used to prove trainer behaviour. It is not
   the product and is not needed to ride.
 - `docs/screenshots` — the screens above, captured from the simulator.
@@ -152,6 +155,16 @@ shows it instead.
 ```bash
 swift test
 ```
+
+The app is written in Swift 6 language mode, so the compiler checks that the two
+Bluetooth conversations — one to the trainer, one to the riding app — never
+touch the same data at the same time. That class of bug otherwise shows up as a
+freeze in the middle of a ride and is close to impossible to reproduce. Building
+needs Xcode 26 or later.
+
+Both app targets are built in CI. The Hardware Lab is not shipped to anyone, but
+every trainer fact in these docs was measured with it, so a broken Lab is a
+broken instrument.
 
 The app itself must be built and signed in Xcode. Open `VirtualShift.xcodeproj`,
 choose the `VirtualShift` scheme and a physical iPhone, and select your

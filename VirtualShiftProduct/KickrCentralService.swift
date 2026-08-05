@@ -3,26 +3,6 @@ import Foundation
 import Observation
 import VirtualShiftCore
 
-struct KickrCapabilities: Equatable, Sendable {
-    var feature: FitnessMachineFeature?
-    var resistanceRange: SupportedResistanceLevelRange?
-    var supportsWahooControl = false
-}
-
-enum KickrEvent: Equatable, Sendable {
-    case bikeData(IndoorBikeData)
-    case rawBikeData(Data)
-    case status(FitnessMachineStatus)
-    case controlResponse(FitnessMachineControlPointResponse)
-    case wahooResponse(WahooKickrResponse)
-    case commandFailed(String)
-}
-
-enum KickrCommandResult: Equatable, Sendable {
-    case ftms(FitnessMachineControlPointResponse)
-    case wahoo(WahooKickrResponse)
-}
-
 @MainActor
 @Observable
 final class KickrCentralService: NSObject {
@@ -455,6 +435,11 @@ final class KickrCentralService: NSObject {
         guard active == nil, !queue.isEmpty, let peripheral else { return }
         let command = queue.removeFirst()
         guard let characteristic = characteristics[command.kind.characteristic] else {
+            command.continuation?.resume(
+                throwing: ProductBluetoothError.unavailable(
+                    "\(command.name): characteristic disappeared"
+                )
+            )
             commandFailed("\(command.name): characteristic disappeared")
             processNext()
             return
@@ -484,6 +469,9 @@ final class KickrCentralService: NSObject {
             }
         } catch {
             active = nil
+            // Nobody else resumes this one. Without it, whoever is awaiting the
+            // command waits for ever and the ride silently stops responding.
+            command.continuation?.resume(throwing: error)
             commandFailed("\(command.name): \(error)")
             processNext()
         }
@@ -648,6 +636,15 @@ final class KickrCentralService: NSObject {
         eventHandler?(event)
     }
 
+    /// Ride data arrives several times a second for hours. Putting it through
+    /// `emit` would fill the 100-entry diagnostic buffer with telemetry in
+    /// about ten seconds, throwing away the shift and reconnection entries that
+    /// are the whole reason the buffer exists, and would tell SwiftUI something
+    /// changed at packet rate. It is handed straight to the listener instead.
+    private func relay(_ event: KickrEvent) {
+        eventHandler?(event)
+    }
+
     private func candidateName(for peripheral: CBPeripheral) -> String {
         selectedID == peripheral.identifier ? (selectedName ?? peripheral.name ?? "KICKR")
             : (peripheral.name ?? "KICKR")
@@ -675,221 +672,201 @@ final class KickrCentralService: NSObject {
     }
 }
 
-extension KickrCentralService: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        MainActor.assumeIsolated {
-            if central.state == .poweredOn {
-                state = .disconnected
-                if desiredConnection { resumeSavedConnection() }
-            } else {
-                resetConnection()
-                state = .unavailable(central.state.productDescription)
-            }
+extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        if central.state == .poweredOn {
+            state = .disconnected
+            if desiredConnection { resumeSavedConnection() }
+        } else {
+            resetConnection()
+            state = .unavailable(central.state.productDescription)
         }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        MainActor.assumeIsolated {
-            let advertised = advertisementData[
-                CBAdvertisementDataLocalNameKey
-            ] as? String
-            let name = advertised ?? peripheral.name ?? "Unnamed trainer"
-            guard TrainerModel.isKickr(advertisedName: name) else { return }
-            discovered[peripheral.identifier] = peripheral
-            let item = BluetoothCandidate(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue,
-                compatibility: TrainerModel
-                    .compatibility(forAdvertisedName: name)
-            )
-            if let index = candidates.firstIndex(where: { $0.id == item.id }) {
-                candidates[index] = item
-            } else {
-                candidates.append(item)
-            }
-            candidates.sort { $0.rssi > $1.rssi }
+        let advertised = advertisementData[
+            CBAdvertisementDataLocalNameKey
+        ] as? String
+        let name = advertised ?? peripheral.name ?? "Unnamed trainer"
+        guard TrainerModel.isKickr(advertisedName: name) else { return }
+        discovered[peripheral.identifier] = peripheral
+        let item = BluetoothCandidate(
+            id: peripheral.identifier,
+            name: name,
+            rssi: RSSI.intValue,
+            compatibility: TrainerModel
+                .compatibility(forAdvertisedName: name)
+        )
+        if let index = candidates.firstIndex(where: { $0.id == item.id }) {
+            candidates[index] = item
+        } else {
+            candidates.append(item)
         }
+        candidates.sort { $0.rssi > $1.rssi }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else {
-                central.cancelPeripheralConnection(peripheral)
-                return
-            }
-            reconnectAttempt = 0
-            state = .discovering
-            peripheral.discoverServices([ftmsService, wahooService])
+        guard self.peripheral?.identifier == peripheral.identifier else {
+            central.cancelPeripheralConnection(peripheral)
+            return
         }
+        reconnectAttempt = 0
+        state = .discovering
+        peripheral.discoverServices([ftmsService, wahooService])
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else { return }
-            resetConnection()
-            log(error?.localizedDescription ?? "Connection failed", level: .error)
-            scheduleReconnect()
-        }
+        guard self.peripheral?.identifier == peripheral.identifier else { return }
+        resetConnection()
+        log(error?.localizedDescription ?? "Connection failed", level: .error)
+        scheduleReconnect()
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else { return }
-            resetConnection()
-            state = central.isScanning ? .scanning : .disconnected
-            if let error { log(error.localizedDescription, level: .warning) }
-            if desiredConnection { scheduleReconnect() }
-        }
+        guard self.peripheral?.identifier == peripheral.identifier else { return }
+        resetConnection()
+        state = central.isScanning ? .scanning : .disconnected
+        if let error { log(error.localizedDescription, level: .warning) }
+        if desiredConnection { scheduleReconnect() }
     }
 }
 
-extension KickrCentralService: CBPeripheralDelegate {
-    nonisolated func peripheral(
+extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                fail("Service discovery failed: \(error.localizedDescription)")
-                return
-            }
-            guard let services = peripheral.services, !services.isEmpty else {
-                fail("KICKR returned no services")
-                return
-            }
-            pendingServiceCount = services.count
-            for service in services {
-                if service.uuid == ftmsService {
-                    peripheral.discoverCharacteristics(
-                        [
-                            featureUUID, bikeDataUUID, resistanceUUID,
-                            controlUUID, statusUUID,
-                        ],
-                        for: service
-                    )
-                } else if service.uuid == wahooService {
-                    peripheral.discoverCharacteristics([wahooUUID], for: service)
-                }
+        if let error {
+            fail("Service discovery failed: \(error.localizedDescription)")
+            return
+        }
+        guard let services = peripheral.services, !services.isEmpty else {
+            fail("KICKR returned no services")
+            return
+        }
+        pendingServiceCount = services.count
+        for service in services {
+            if service.uuid == ftmsService {
+                peripheral.discoverCharacteristics(
+                    [
+                        featureUUID, bikeDataUUID, resistanceUUID,
+                        controlUUID, statusUUID,
+                    ],
+                    for: service
+                )
+            } else if service.uuid == wahooService {
+                peripheral.discoverCharacteristics([wahooUUID], for: service)
             }
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            pendingServiceCount -= 1
-            if let error {
-                fail("Characteristic discovery failed: \(error.localizedDescription)")
-                return
-            }
-            for characteristic in service.characteristics ?? [] {
-                characteristics[characteristic.uuid] = characteristic
-            }
-            if pendingServiceCount == 0 { finishDiscovery() }
+        pendingServiceCount -= 1
+        if let error {
+            fail("Characteristic discovery failed: \(error.localizedDescription)")
+            return
         }
+        for characteristic in service.characteristics ?? [] {
+            characteristics[characteristic.uuid] = characteristic
+        }
+        if pendingServiceCount == 0 { finishDiscovery() }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                fail("Could not subscribe to \(characteristic.uuid): "
-                    + error.localizedDescription)
-                return
-            }
-            guard characteristic.isNotifying else {
-                fail("\(characteristic.uuid) subscription was disabled")
-                return
-            }
-            subscribed.insert(characteristic.uuid)
-            prepareControlIfSubscribed()
+        if let error {
+            fail("Could not subscribe to \(characteristic.uuid): "
+                + error.localizedDescription)
+            return
         }
+        guard characteristic.isNotifying else {
+            fail("\(characteristic.uuid) subscription was disabled")
+            return
+        }
+        subscribed.insert(characteristic.uuid)
+        prepareControlIfSubscribed()
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard let active,
-                  active.kind.characteristic == characteristic.uuid else { return }
-            if let error {
-                failActive("\(active.name) write failed: \(error.localizedDescription)")
-                return
-            }
-            writeConfirmed = true
-            completeIfConfirmed()
+        guard let active,
+              active.kind.characteristic == characteristic.uuid else { return }
+        if let error {
+            failActive("\(active.name) write failed: \(error.localizedDescription)")
+            return
         }
+        writeConfirmed = true
+        completeIfConfirmed()
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                log("\(characteristic.uuid) update failed: "
-                    + error.localizedDescription, level: .error)
-                return
+        if let error {
+            log("\(characteristic.uuid) update failed: "
+                + error.localizedDescription, level: .error)
+            return
+        }
+        guard let data = characteristic.value else {
+            log("\(characteristic.uuid) returned no value", level: .error)
+            return
+        }
+        if characteristic.uuid == bikeDataUUID {
+            relay(.rawBikeData(data))
+        }
+        do {
+            switch characteristic.uuid {
+            case featureUUID:
+                capabilities.feature = try .decode(data)
+            case resistanceUUID:
+                capabilities.resistanceRange = try .decode(data)
+            case bikeDataUUID:
+                let value = try IndoorBikeData.decode(data)
+                latestBikeData = value
+                relay(.bikeData(value))
+            case statusUUID:
+                let value = try FitnessMachineStatus.decode(data)
+                latestStatus = value
+                emit(.status(value))
+                if value == .controlPermissionLost { hasFTMSControl = false }
+            case controlUUID:
+                handleFTMSResponse(data)
+            case wahooUUID:
+                capabilities.supportsWahooControl = true
+                handleWahooResponse(data)
+            default:
+                break
             }
-            guard let data = characteristic.value else {
-                log("\(characteristic.uuid) returned no value", level: .error)
-                return
-            }
-            if characteristic.uuid == bikeDataUUID {
-                emit(.rawBikeData(data))
-            }
-            do {
-                switch characteristic.uuid {
-                case featureUUID:
-                    capabilities.feature = try .decode(data)
-                case resistanceUUID:
-                    capabilities.resistanceRange = try .decode(data)
-                case bikeDataUUID:
-                    let value = try IndoorBikeData.decode(data)
-                    latestBikeData = value
-                    emit(.bikeData(value))
-                case statusUUID:
-                    let value = try FitnessMachineStatus.decode(data)
-                    latestStatus = value
-                    emit(.status(value))
-                    if value == .controlPermissionLost { hasFTMSControl = false }
-                case controlUUID:
-                    handleFTMSResponse(data)
-                case wahooUUID:
-                    capabilities.supportsWahooControl = true
-                    handleWahooResponse(data)
-                default:
-                    break
-                }
-            } catch {
-                log("Could not decode \(characteristic.uuid): \(error)", level: .error)
-            }
+        } catch {
+            log("Could not decode \(characteristic.uuid): \(error)", level: .error)
         }
     }
 }

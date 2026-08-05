@@ -3,16 +3,6 @@ import Foundation
 import Observation
 import VirtualShiftCore
 
-enum ShiftDirection: Equatable, Sendable {
-    case harder
-    case easier
-}
-
-enum ShiftRequest: Equatable, Sendable {
-    case single(ShiftDirection)
-    case multiple(ShiftDirection)
-}
-
 @MainActor
 @Observable
 final class ClickCentralService: NSObject {
@@ -99,6 +89,7 @@ final class ClickCentralService: NSObject {
     private var repeatTask: Task<Void, Never>?
     private var edgeTracker = ZwiftClickEdgeTracker()
     private var heldButton: ZwiftClickButton?
+    private var isHolding = false
 
     init(
         diagnostics: ProductDiagnosticsStore,
@@ -369,15 +360,14 @@ final class ClickCentralService: NSObject {
             } catch {
                 return
             }
-            guard let self else { return }
-            while !Task.isCancelled, self.heldButton == button {
-                self.emit(.multiple(self.direction(for: button)))
-                do {
-                    try await Task.sleep(nanoseconds: 300_000_000)
-                } catch {
-                    return
-                }
-            }
+            guard let self, self.heldButton == button else { return }
+            // Said once, not on a timer. The trainer confirms one gear at a
+            // time, and a timer that fires faster than that either queues up
+            // gears that arrive after the rider lets go, or has its beats
+            // dropped and sweeps in fits and starts. Handing over to the
+            // trainer's own pace avoids both.
+            self.isHolding = true
+            self.emit(.holdBegan(self.direction(for: button)))
         }
     }
 
@@ -385,6 +375,10 @@ final class ClickCentralService: NSObject {
         repeatTask?.cancel()
         repeatTask = nil
         heldButton = nil
+        if isHolding {
+            isHolding = false
+            emit(.holdEnded)
+        }
     }
 
     private func direction(for button: ZwiftClickButton) -> ShiftDirection {
@@ -446,212 +440,192 @@ final class ClickCentralService: NSObject {
     }
 }
 
-extension ClickCentralService: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        MainActor.assumeIsolated {
-            if central.state == .poweredOn {
-                state = .disconnected
-                if desiredConnection { resumeSavedConnection() }
-            } else {
-                resetConnection()
-                state = .unavailable(central.state.productDescription)
-            }
+extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        if central.state == .poweredOn {
+            state = .disconnected
+            if desiredConnection { resumeSavedConnection() }
+        } else {
+            resetConnection()
+            state = .unavailable(central.state.productDescription)
         }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        MainActor.assumeIsolated {
-            let advertised = advertisementData[
-                CBAdvertisementDataLocalNameKey
-            ] as? String
-            let name = advertised ?? peripheral.name ?? "Zwift Click"
-            discovered[peripheral.identifier] = peripheral
-            let item = BluetoothCandidate(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue
-            )
-            if let index = candidates.firstIndex(where: { $0.id == item.id }) {
-                candidates[index] = item
-            } else {
-                candidates.append(item)
-            }
-            candidates.sort { $0.rssi > $1.rssi }
+        let advertised = advertisementData[
+            CBAdvertisementDataLocalNameKey
+        ] as? String
+        let name = advertised ?? peripheral.name ?? "Zwift Click"
+        discovered[peripheral.identifier] = peripheral
+        let item = BluetoothCandidate(
+            id: peripheral.identifier,
+            name: name,
+            rssi: RSSI.intValue
+        )
+        if let index = candidates.firstIndex(where: { $0.id == item.id }) {
+            candidates[index] = item
+        } else {
+            candidates.append(item)
         }
+        candidates.sort { $0.rssi > $1.rssi }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else {
-                central.cancelPeripheralConnection(peripheral)
-                return
-            }
-            reconnectAttempt = 0
-            state = .discovering
-            peripheral.discoverServices([serviceUUID, batteryServiceUUID])
+        guard self.peripheral?.identifier == peripheral.identifier else {
+            central.cancelPeripheralConnection(peripheral)
+            return
         }
+        reconnectAttempt = 0
+        state = .discovering
+        peripheral.discoverServices([serviceUUID, batteryServiceUUID])
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else { return }
-            resetConnection()
-            log(error?.localizedDescription ?? "Connection failed", level: .error)
-            scheduleReconnect()
-        }
+        guard self.peripheral?.identifier == peripheral.identifier else { return }
+        resetConnection()
+        log(error?.localizedDescription ?? "Connection failed", level: .error)
+        scheduleReconnect()
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard self.peripheral?.identifier == peripheral.identifier else { return }
-            resetConnection()
-            state = central.isScanning ? .scanning : .disconnected
-            if let error { log(error.localizedDescription, level: .warning) }
-            if desiredConnection { scheduleReconnect() }
-        }
+        guard self.peripheral?.identifier == peripheral.identifier else { return }
+        resetConnection()
+        state = central.isScanning ? .scanning : .disconnected
+        if let error { log(error.localizedDescription, level: .warning) }
+        if desiredConnection { scheduleReconnect() }
     }
 }
 
-extension ClickCentralService: CBPeripheralDelegate {
-    nonisolated func peripheral(
+extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                fail("Click service discovery failed: \(error.localizedDescription)")
-                return
-            }
-            guard let services = peripheral.services,
-                  services.contains(where: { $0.uuid == serviceUUID }) else {
-                fail("Original Zwift Click service was not found")
-                return
-            }
-            servicesPending = services.count
-            for service in services {
-                if service.uuid == serviceUUID {
-                    peripheral.discoverCharacteristics(
-                        [asyncUUID, receiveUUID, transmitUUID],
-                        for: service
-                    )
-                } else {
-                    peripheral.discoverCharacteristics([batteryUUID], for: service)
-                }
+        if let error {
+            fail("Click service discovery failed: \(error.localizedDescription)")
+            return
+        }
+        guard let services = peripheral.services,
+              services.contains(where: { $0.uuid == serviceUUID }) else {
+            fail("Original Zwift Click service was not found")
+            return
+        }
+        servicesPending = services.count
+        for service in services {
+            if service.uuid == serviceUUID {
+                peripheral.discoverCharacteristics(
+                    [asyncUUID, receiveUUID, transmitUUID],
+                    for: service
+                )
+            } else {
+                peripheral.discoverCharacteristics([batteryUUID], for: service)
             }
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            servicesPending -= 1
-            if let error {
-                if service.uuid == batteryServiceUUID {
-                    log("Battery discovery unavailable: "
-                        + error.localizedDescription, level: .warning)
-                    if servicesPending == 0 { finishDiscovery() }
-                } else {
-                    fail("Click control discovery failed: \(error.localizedDescription)")
-                }
-                return
+        servicesPending -= 1
+        if let error {
+            if service.uuid == batteryServiceUUID {
+                log("Battery discovery unavailable: "
+                    + error.localizedDescription, level: .warning)
+                if servicesPending == 0 { finishDiscovery() }
+            } else {
+                fail("Click control discovery failed: \(error.localizedDescription)")
             }
-            for characteristic in service.characteristics ?? [] {
-                switch characteristic.uuid {
-                case asyncUUID: asyncCharacteristic = characteristic
-                case receiveUUID: receiveCharacteristic = characteristic
-                case transmitUUID: transmitCharacteristic = characteristic
-                case batteryUUID: batteryCharacteristic = characteristic
-                default: break
-                }
-            }
-            if servicesPending == 0 { finishDiscovery() }
+            return
         }
+        for characteristic in service.characteristics ?? [] {
+            switch characteristic.uuid {
+            case asyncUUID: asyncCharacteristic = characteristic
+            case receiveUUID: receiveCharacteristic = characteristic
+            case transmitUUID: transmitCharacteristic = characteristic
+            case batteryUUID: batteryCharacteristic = characteristic
+            default: break
+            }
+        }
+        if servicesPending == 0 { finishDiscovery() }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                if characteristic.uuid == batteryUUID {
-                    log("Battery notification unavailable: "
-                        + error.localizedDescription, level: .warning)
-                } else {
-                    fail("Click subscription failed: \(error.localizedDescription)")
-                }
-                return
+        if let error {
+            if characteristic.uuid == batteryUUID {
+                log("Battery notification unavailable: "
+                    + error.localizedDescription, level: .warning)
+            } else {
+                fail("Click subscription failed: \(error.localizedDescription)")
             }
-            if characteristic.isNotifying {
-                subscribed.insert(characteristic.uuid)
-                sendHandshakeIfReady()
-            }
+            return
+        }
+        if characteristic.isNotifying {
+            subscribed.insert(characteristic.uuid)
+            sendHandshakeIfReady()
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            guard characteristic.uuid == receiveUUID, let error else { return }
-            handshakeTimeoutTask?.cancel()
-            fail("Click handshake write failed: \(error.localizedDescription)")
-        }
+        guard characteristic.uuid == receiveUUID, let error else { return }
+        handshakeTimeoutTask?.cancel()
+        fail("Click handshake write failed: \(error.localizedDescription)")
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                log("\(characteristic.uuid) update failed: "
-                    + error.localizedDescription, level: .error)
+        if let error {
+            log("\(characteristic.uuid) update failed: "
+                + error.localizedDescription, level: .error)
+            return
+        }
+        guard let data = characteristic.value else {
+            log("\(characteristic.uuid) returned no value", level: .error)
+            return
+        }
+        if characteristic.uuid == batteryUUID {
+            guard let value = data.first, value <= 100 else {
+                log("Click returned an invalid battery level", level: .error)
                 return
             }
-            guard let data = characteristic.value else {
-                log("\(characteristic.uuid) returned no value", level: .error)
+            batteryLevel = Int(value)
+        } else if characteristic.uuid == transmitUUID {
+            guard data.starts(with: ZwiftClickProtocol.rideOn) else {
+                fail("Click returned an unexpected handshake reply")
                 return
             }
-            if characteristic.uuid == batteryUUID {
-                guard let value = data.first, value <= 100 else {
-                    log("Click returned an invalid battery level", level: .error)
-                    return
-                }
-                batteryLevel = Int(value)
-            } else if characteristic.uuid == transmitUUID {
-                guard data.starts(with: ZwiftClickProtocol.rideOn) else {
-                    fail("Click returned an unexpected handshake reply")
-                    return
-                }
-                handshakeTimeoutTask?.cancel()
-                state = .ready
-            } else if characteristic.uuid == asyncUUID, isReady {
-                processAsync(data)
-            }
+            handshakeTimeoutTask?.cancel()
+            state = .ready
+        } else if characteristic.uuid == asyncUUID, isReady {
+            processAsync(data)
         }
     }
 }

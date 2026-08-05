@@ -1,4 +1,5 @@
 import SwiftUI
+import VirtualShiftCore
 
 @main
 struct VirtualShiftApp: App {
@@ -19,6 +20,8 @@ struct VirtualShiftApp: App {
         _coordinator = State(initialValue: ProxyCoordinator(
             kickr: kickr,
             click: click,
+            peripheral: FTMSPeripheral(diagnostics: diagnostics),
+            screen: DeviceScreenWake(),
             diagnostics: diagnostics
         ))
     }
