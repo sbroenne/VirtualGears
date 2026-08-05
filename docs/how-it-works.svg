@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420"
+     role="img" aria-labelledby="title desc">
+  <title id="title">How VirtualShift works</title>
+  <desc id="desc">Your riding app talks to the iPhone, the iPhone talks to the
+    trainer, and shifting on the phone changes how hard the trainer feels
+    without anything on the bike moving.</desc>
+
+  <style>
+    /* Drawn in greys and one amber so it reads on both the light and the dark
+       version of the site without needing two files. */
+    .card   { fill: none; stroke: #9aa0a6; stroke-width: 2; rx: 14; }
+    .screen { fill: #9aa0a6; opacity: .18; }
+    .label  { font: 600 17px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
+              fill: #9aa0a6; text-anchor: middle; }
+    .sub    { font: 400 14px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif;
+              fill: #9aa0a6; text-anchor: middle; opacity: .8; }
+    .gear   { font: 700 54px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+              fill: #ffab00; text-anchor: middle; }
+    .gearof { font: 400 13px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+              fill: #9aa0a6; text-anchor: middle; }
+    .caption{ font: 500 20px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+              fill: #9aa0a6; text-anchor: middle; }
+    .wire   { fill: none; stroke: #9aa0a6; stroke-width: 2; opacity: .35; }
+    .bar    { fill: #9aa0a6; opacity: .35; }
+    .bar.on { fill: #ffab00; opacity: 1; }
+    .dot    { fill: #ffab00; }
+
+    /* Data flowing in both directions, all the time: the phone is a proxy, not
+       a remote control, so nothing ever stops passing through. */
+    @keyframes runRight { from { offset-distance: 0%;   } to { offset-distance: 100%; } }
+    @keyframes runLeft  { from { offset-distance: 100%; } to { offset-distance: 0%;   } }
+    .flowA { offset-path: path('M 236 196 L 396 196'); animation: runRight 1.8s linear infinite; }
+    .flowB { offset-path: path('M 564 196 L 724 196'); animation: runRight 1.8s linear infinite; }
+    .flowC { offset-path: path('M 236 232 L 396 232'); animation: runLeft  2.4s linear infinite; }
+    .flowD { offset-path: path('M 564 232 L 724 232'); animation: runLeft  2.4s linear infinite; }
+    .d2 { animation-delay: -.6s; }
+    .d3 { animation-delay: -1.2s; }
+
+    /* One sixteen-second story, told four seconds at a time. */
+    @keyframes showCaption {
+      0%, 2%    { opacity: 0; }
+      4%, 23%   { opacity: 1; }
+      25%, 100% { opacity: 0; }
+    }
+    .caption { opacity: 0; animation: showCaption 16s linear infinite; }
+    .c1 { animation-delay: 0s; }
+    .c2 { animation-delay: 4s; }
+    .c3 { animation-delay: 8s; }
+    .c4 { animation-delay: 12s; }
+
+    /* The shift happens on the third caption, so the number changes while the
+       words explain it. */
+    @keyframes gearLo { 0%, 49% { opacity: 1; } 51%, 100% { opacity: 0; } }
+    @keyframes gearHi { 0%, 49% { opacity: 0; } 51%, 100% { opacity: 1; } }
+    .gearLo { animation: gearLo 16s steps(1, end) infinite; }
+    .gearHi { animation: gearHi 16s steps(1, end) infinite; }
+
+    /* The three gears gained by the shift light up with it. */
+    @keyframes gained { 0%, 49% { fill: #9aa0a6; opacity: .35; }
+                        51%, 100% { fill: #ffab00; opacity: 1; } }
+    .gained { animation: gained 16s steps(1, end) infinite; }
+
+    /* The wheel size is the mechanism, so it changes at the same moment. A
+       harder gear is a larger wheel, because it covers more ground per pedal
+       stroke. Both figures are what a KICKR is really sent for those gears. */
+    @keyframes sizeLo { 0%, 49% { opacity: .8; } 51%, 100% { opacity: 0; } }
+    @keyframes sizeHi { 0%, 49% { opacity: 0; } 51%, 100% { opacity: .8; } }
+    .sizeLo { animation: sizeLo 16s steps(1, end) infinite; }
+    .sizeHi { animation: sizeHi 16s steps(1, end) infinite; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .flowA, .flowB, .flowC, .flowD,
+      .caption, .gearLo, .gearHi, .gained, .sizeLo, .sizeHi {
+        animation: none;
+      }
+      .caption.c1 { opacity: 1; }
+      .gearLo { opacity: 1; }
+      .gearHi { opacity: 0; }
+      .sizeLo { opacity: .8; }
+      .sizeHi { opacity: 0; }
+    }
+  </style>
+
+  <!-- The computer running the riding app -->
+  <g>
+    <rect class="card" x="60" y="120" width="176" height="118" rx="14"/>
+    <rect class="screen" x="78" y="138" width="140" height="74" rx="6"/>
+    <path class="wire" d="M 48 250 H 248"/>
+    <text class="label" x="148" y="288">Your riding app</text>
+    <text class="sub" x="148" y="310">on your computer</text>
+  </g>
+
+  <!-- The iPhone running VirtualShift -->
+  <g>
+    <rect class="card" x="400" y="66" width="160" height="266" rx="26"/>
+    <text class="gearof" x="480" y="118">GEAR</text>
+    <text class="gear gearLo" x="480" y="168">12</text>
+    <text class="gear gearHi" x="480" y="168">15</text>
+    <text class="gearof" x="480" y="190">of 24</text>
+
+    <!-- Twelve of the twenty-four gears, drawn as the app draws them -->
+    <g>
+      <rect class="bar" x="424" y="248" width="8" height="12"/>
+      <rect class="bar" x="436" y="243" width="8" height="17"/>
+      <rect class="bar" x="448" y="238" width="8" height="22"/>
+      <rect class="bar" x="460" y="233" width="8" height="27"/>
+      <rect class="bar" x="472" y="228" width="8" height="32"/>
+      <rect class="bar on" x="484" y="223" width="8" height="37"/>
+      <rect class="bar gained" x="496" y="218" width="8" height="42"/>
+      <rect class="bar gained" x="508" y="213" width="8" height="47"/>
+      <rect class="bar gained" x="520" y="208" width="8" height="52"/>
+      <rect class="bar" x="532" y="203" width="8" height="57"/>
+    </g>
+
+    <text class="label" x="480" y="300">VirtualShift</text>
+    <text class="sub" x="480" y="322">on your iPhone</text>
+  </g>
+
+  <!-- The trainer -->
+  <g>
+    <rect class="card" x="724" y="120" width="176" height="118" rx="14"/>
+    <circle class="screen" cx="812" cy="179" r="40"/>
+    <circle class="wire" cx="812" cy="179" r="40"/>
+    <text class="label" x="812" y="288">Your trainer</text>
+    <text class="sub sizeLo" x="812" y="310">wheel size 2070 mm</text>
+    <text class="sub sizeHi" x="812" y="310">wheel size 2613 mm</text>
+  </g>
+
+  <!-- Everything the riding app says, passed straight through -->
+  <circle class="dot flowA" r="4"/>
+  <circle class="dot flowA d2" r="4"/>
+  <circle class="dot flowA d3" r="4"/>
+  <circle class="dot flowB" r="4"/>
+  <circle class="dot flowB d2" r="4"/>
+  <circle class="dot flowB d3" r="4"/>
+
+  <!-- And everything the trainer reports, passed straight back -->
+  <circle class="dot flowC" r="4"/>
+  <circle class="dot flowC d2" r="4"/>
+  <circle class="dot flowD" r="4"/>
+  <circle class="dot flowD d2" r="4"/>
+
+  <text class="caption c1" x="480" y="384">Your riding app connects to the iPhone instead of the trainer.</text>
+  <text class="caption c2" x="480" y="384">Everything passes straight through, both ways.</text>
+  <text class="caption c3" x="480" y="384">Shift on the phone, and the trainer suddenly feels harder.</text>
+  <text class="caption c4" x="480" y="384">Nothing on the bike moved. Your chain never left its gear.</text>
+</svg>

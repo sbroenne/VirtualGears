@@ -7,6 +7,14 @@ to put on the website.
 
 Aim for **90 seconds**. Longer and the reviewer stops watching.
 
+!!! danger "An animation will not do"
+
+    The website has an animated explainer, and it is not a substitute here. The
+    reviewer is not asking what the app would look like; they are asking whether
+    it really drives the hardware it names. Only footage of the real thing
+    answers that, and offering an animation instead invites a harder rejection
+    than sending nothing.
+
 ## Before you start
 
 - Bike on the trainer, trainer plugged in and awake.
