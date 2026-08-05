@@ -3,6 +3,25 @@ import Observation
 import UIKit
 import VirtualShiftCore
 
+/// Why a ride ended badly. A failure to start and a failure to stop need
+/// different words: one is worth retrying, the other means the trainer may
+/// still be carrying a gear's wheel size and needs putting right.
+enum RideFailure: Equatable {
+    case starting(trainerNeedsRestoring: Bool)
+    case stopping(trainerNeedsRestoring: Bool)
+
+    var trainerNeedsRestoring: Bool {
+        switch self {
+        case let .starting(needs), let .stopping(needs): needs
+        }
+    }
+
+    var happenedWhileStopping: Bool {
+        if case .stopping = self { return true }
+        return false
+    }
+}
+
 enum ProxySessionState: Equatable {
     case idle
     case connecting
@@ -32,6 +51,10 @@ enum ShiftFeedbackKind: Equatable {
 @Observable
 final class ProxyCoordinator {
     private(set) var state: ProxySessionState = .idle
+
+    /// Only meaningful alongside a failed state, and always set before it, so
+    /// the screen never has to guess which kind of failure it is describing.
+    private(set) var failure: RideFailure?
     private(set) var displayedGear: VirtualGear?
     private(set) var confirmedGearIndex: Int?
     /// The gear the rider asked for. It differs from `confirmedGearIndex` only
@@ -58,6 +81,19 @@ final class ProxyCoordinator {
     private var usesClick = false
     private var pendingFeedback: [ShiftFeedbackKind] = []
     private var baselineUpdateInProgress = false
+    private var restoreTask: Task<Void, Never>?
+
+    /// Cancelling `restoreTask` is not enough on its own. The restore spends
+    /// most of its life waiting on a Bluetooth round trip, and those waits do
+    /// not observe cancellation, so a cancelled restore still runs to the end.
+    /// Starting a ride changes this token instead, and the restore checks it
+    /// after every wait, so it can neither fight the new ride for the wheel
+    /// size nor delete the record that ride depends on.
+    private var restoreToken = UUID()
+    /// The wheel size a ride borrowed, written down before the ride starts.
+    /// A ride normally puts it back on Stop and clears this, so a value still
+    /// here at launch means the last ride never got to finish.
+    private let unfinishedRideKey = "VirtualShift.unfinishedRideBaselineMillimeters"
 
     var isRidePresented: Bool {
         switch state {
@@ -102,22 +138,97 @@ final class ProxyCoordinator {
         }
     }
 
+    /// Puts the trainer back after a ride that never got to stop.
+    ///
+    /// A ride normally restores the wheel size on Stop. If iOS ends the app
+    /// first, that never runs and the trainer keeps the last gear's wheel size,
+    /// which would quietly distort its speed and distance for anything else that
+    /// connects to it. The size a ride borrows is written down before the ride
+    /// starts, so the next launch can finish the job.
+    ///
+    /// Nothing is reported to the rider. This is tidying up after an interruption
+    /// they did not cause and cannot act on, and the ride they are about to start
+    /// sets its own gear regardless.
+    func restoreInterruptedRideIfNeeded() {
+        guard restoreTask == nil, state == .idle || isFailed else { return }
+        restoreTask = Task { [weak self] in
+            await self?.restoreInterruptedRide()
+            self?.restoreTask = nil
+        }
+    }
+
+    private func restoreInterruptedRide() async {
+        guard state == .idle || isFailed else { return }
+        let token = restoreToken
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
+        let baseline = defaults.double(forKey: unfinishedRideKey)
+        guard baseline > 0 else {
+            defaults.removeObject(forKey: unfinishedRideKey)
+            return
+        }
+        for _ in 0..<100 {
+            if kickr.isReady { break }
+            guard isStillWanted(token) else { return }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        guard isStillWanted(token), kickr.isReady else { return }
+        do {
+            if !kickr.hasFTMSControl {
+                let control = try await kickr.execute(.requestControl)
+                guard control.result == .success else { return }
+            }
+            // A ride can have started while control was being asked for. Its
+            // own gear is the wheel size that should win, and it owns the
+            // record below, so the restore stands down rather than overwrite
+            // either.
+            guard isStillWanted(token) else { return }
+            let command = try WahooKickrCommand.setWheelCircumference(
+                millimeters: baseline
+            )
+            let response = try await kickr.executeWahoo(command)
+            guard response.confirmsSuccess(for: command) else { return }
+            guard isStillWanted(token) else { return }
+            defaults.removeObject(forKey: unfinishedRideKey)
+            log("Restored the wheel size left behind by an interrupted ride")
+        } catch {
+            log(
+                "Could not yet restore the wheel size from an interrupted ride: "
+                    + error.localizedDescription,
+                .warning
+            )
+        }
+    }
+
+    private func isStillWanted(_ token: UUID) -> Bool {
+        !Task.isCancelled && token == restoreToken
+            && (state == .idle || isFailed)
+    }
+
     /// Starts a ride immediately so the UI can switch to the ride screen in the
     /// same update. The state transition is synchronous, so a second tap is
     /// rejected by the same guard that protected the previous async entry point.
     func startRide(configuration: AppConfiguration) {
         guard state == .idle || isFailed else { return }
+        // A ride sets its own wheel size and puts it back on Stop, so it does
+        // the tidying up itself. Letting both run could leave the rider in a
+        // gear they did not choose.
+        restoreTask?.cancel()
+        restoreTask = nil
+        restoreToken = UUID()
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
               configuration.canFinishSetup,
               kickr.selectedID?.uuidString == configuration.kickrUUID else {
+            failure = .starting(trainerNeedsRestoring: false)
             state = .failed("Setup is incomplete")
             return
         }
         let id = UUID()
         sessionID = id
         usesClick = configuration.usesClick
+        failure = nil
         state = .connecting
         Task { await runRide(configuration: configuration, sessionID: id) }
     }
@@ -142,6 +253,10 @@ final class ProxyCoordinator {
             updateDisplayedGear()
             sessionBaselineMillimeters =
                 Double(configuration.neutralCircumferenceMillimeters)
+            UserDefaults.standard.set(
+                Double(configuration.neutralCircumferenceMillimeters),
+                forKey: unfinishedRideKey
+            )
 
             kickr.resumeSavedConnection()
             if usesClick { click.resumeSavedConnection() }
@@ -232,6 +347,7 @@ final class ProxyCoordinator {
                         "KICKR did not confirm baseline restoration"
                     )
                 }
+                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
             } catch {
                 failures.append(
                     "Baseline restoration failed: \(error.localizedDescription)"
@@ -255,10 +371,17 @@ final class ProxyCoordinator {
         sessionBaselineMillimeters = nil
         ridingAppSetWheelSize = false
         if failures.isEmpty {
+            failure = nil
             state = .idle
             log("Ride session stopped")
         } else {
             failures.forEach { log($0, .error) }
+            // The record is only removed once the trainer confirms the
+            // original wheel size is back, so its presence is the honest
+            // answer to whether the trainer still needs putting right.
+            let stillSet = UserDefaults.standard
+                .object(forKey: unfinishedRideKey) != nil
+            failure = .stopping(trainerNeedsRestoring: stillSet)
             state = .failed(failures.joined(separator: ". "))
         }
     }
@@ -485,7 +608,12 @@ final class ProxyCoordinator {
     }
 
     private func beginRecovery(startImmediately: Bool = true) {
-        guard sessionID != nil else { return }
+        // A stop in progress is already putting the trainer back, and a KICKR
+        // commonly drops the control grant while it stops. Recovering here
+        // would re-apply the gear's wheel size behind the stop's back and
+        // leave the trainer holding it. Only a live ride is worth recovering.
+        guard sessionID != nil,
+              state == .active || state == .reconnecting else { return }
         state = .reconnecting
         peripheral.notifyControlLost()
         shiftTask?.cancel()
@@ -499,7 +627,6 @@ final class ProxyCoordinator {
 
     private func handleShiftRequest(_ request: ShiftRequest) {
         guard state == .active, !baselineUpdateInProgress else { return }
-        shiftInteraction &+= 1
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
         switch request {
@@ -507,9 +634,19 @@ final class ProxyCoordinator {
             direction = value
             feedback = .single
         case let .multiple(value):
+            // Holding a button asks for one more gear only once the trainer has
+            // finished the last one. Repeats used to arrive on a fixed timer,
+            // which is faster than the trainer can confirm a shift, so a hold
+            // queued up gears that carried on arriving after the rider had let
+            // go. Asking at the trainer's pace means letting go stops it.
+            if let engine = gearEngine,
+               engine.requestedIndex != engine.confirmedIndex {
+                return
+            }
             direction = value
             feedback = .multiple
         }
+        shiftInteraction &+= 1
         guard var engine = gearEngine else { return }
         let oldRequested = engine.requestedIndex
         let oldConfirmed = engine.confirmedIndex
@@ -594,6 +731,34 @@ final class ProxyCoordinator {
     }
 
     private func abortStart(_ error: Error) async {
+        // The first gear's wheel size may already be on the trainer, and the
+        // trainer works out speed and distance from it. Leaving it there would
+        // quietly distort any ride done without VirtualShift, so it goes back
+        // before the connection is dropped, while there is still one to use.
+        var trainerRestored = true
+        if let baseline = sessionBaselineMillimeters, kickr.isReady {
+            do {
+                let command = try WahooKickrCommand.setWheelCircumference(
+                    millimeters: baseline
+                )
+                let response = try await kickr.executeWahoo(command)
+                guard response.confirmsSuccess(for: command) else {
+                    throw ProductBluetoothError.commandFailed(
+                        "KICKR did not confirm baseline restoration"
+                    )
+                }
+                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
+            } catch {
+                trainerRestored = false
+                log(
+                    "Could not put the wheel size back after a failed start: "
+                        + error.localizedDescription,
+                    .error
+                )
+            }
+        } else if sessionBaselineMillimeters != nil {
+            trainerRestored = false
+        }
         peripheral.stopAdvertising()
         click.disconnect()
         kickr.disconnect()
@@ -607,6 +772,7 @@ final class ProxyCoordinator {
         pendingFeedback = []
         sessionBaselineMillimeters = nil
         ridingAppSetWheelSize = false
+        failure = .starting(trainerNeedsRestoring: !trainerRestored)
         state = .failed(error.localizedDescription)
         log("Ride start failed: \(error.localizedDescription)", .error)
     }

@@ -186,8 +186,10 @@ private struct TrainerSetupView: View {
                         selected: candidate.id.uuidString
                             == store.configuration.kickrUUID
                     ) {
-                        store.configuration.kickrName = candidate.name
-                        store.configuration.kickrUUID = candidate.id.uuidString
+                        store.configuration.rememberKickr(
+                            named: candidate.name,
+                            id: candidate.id
+                        )
                         kickr.selectAndConnect(candidate.id)
                     }
                 }
@@ -239,6 +241,9 @@ private struct ShiftingSetupView: View {
                         symbol: "button.programmable",
                         connected: click.isReady
                     )
+                    if let battery = click.batteryLevel {
+                        ClickBatteryRow(percent: battery)
+                    }
                     ConnectionAdvice(
                         isReady: click.isReady,
                         isScanning: click.isScanning,
@@ -249,8 +254,7 @@ private struct ShiftingSetupView: View {
                     )
                     Button(role: .destructive) {
                         click.forgetSelection()
-                        store.configuration.clickName = ""
-                        store.configuration.clickUUID = ""
+                        store.configuration.forgetClick()
                     } label: {
                         Text("Stop using this Click")
                     }
@@ -290,8 +294,10 @@ private struct ShiftingSetupView: View {
                         selected: candidate.id.uuidString
                             == store.configuration.clickUUID
                     ) {
-                        store.configuration.clickName = candidate.name
-                        store.configuration.clickUUID = candidate.id.uuidString
+                        store.configuration.rememberClick(
+                            named: candidate.name,
+                            id: candidate.id
+                        )
                         click.selectAndConnect(candidate.id)
                     }
                 }
@@ -815,6 +821,50 @@ private struct BluetoothHelp: View {
         default:
             EmptyView()
         }
+    }
+}
+
+private struct ClickBatteryRow: View {
+    let percent: Int
+
+    private var isLow: Bool { percent <= ClickCentralService.lowBatteryPercent }
+
+    /// The bar fills in quarters, so it reads at a glance without anyone
+    /// having to interpret the number.
+    private var symbol: String {
+        switch percent {
+        case ...10: "battery.0percent"
+        case ...40: "battery.25percent"
+        case ...70: "battery.50percent"
+        case ...90: "battery.75percent"
+        default: "battery.100percent"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(isLow ? .orange : .secondary)
+                .frame(width: 38)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Battery \(percent)%")
+                    .font(.subheadline)
+                if isLow {
+                    Text("Worth replacing the battery soon.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            isLow
+                ? "Click battery \(percent) percent. Worth replacing soon."
+                : "Click battery \(percent) percent."
+        )
     }
 }
 

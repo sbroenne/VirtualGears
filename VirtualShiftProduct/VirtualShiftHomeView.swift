@@ -1,4 +1,3 @@
-import AudioToolbox
 import SwiftUI
 import UIKit
 import VirtualShiftCore
@@ -123,9 +122,21 @@ private struct StartupView: View {
         }
         guard !seen.isEmpty else { return }
         switch TrainerPicker.choice(from: seen) {
-        case let .connect(id): kickr.selectAndConnect(id)
+        case let .connect(id): adopt(id)
         case .ask: mustChoose = true
         }
+    }
+
+    /// Connecting is not enough on its own. Everything that lets a ride start
+    /// asks whether a trainer has been *chosen*, so a trainer found
+    /// automatically has to be recorded exactly as one picked in Settings is.
+    /// Without this a new rider watches their trainer connect and then waits
+    /// forever, because nothing ever agreed which trainer it was.
+    private func adopt(_ id: UUID) {
+        let name = kickr.candidates.first { $0.id == id }?.name
+            ?? store.configuration.kickrName
+        store.configuration.rememberKickr(named: name, id: id)
+        kickr.selectAndConnect(id)
     }
 
     private var searching: some View {
@@ -166,7 +177,7 @@ private struct StartupView: View {
             ForEach(kickr.candidates) { candidate in
                 Button {
                     mustChoose = false
-                    kickr.selectAndConnect(candidate.id)
+                    adopt(candidate.id)
                 } label: {
                     HStack {
                         Text(candidate.name)
@@ -219,11 +230,25 @@ private struct StartupView: View {
     }
 
     private func failureCard(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Ride could not start", systemImage: "exclamationmark.triangle.fill")
+        let failure = coordinator.failure ?? .starting(trainerNeedsRestoring: false)
+        let heading = failure.happenedWhileStopping
+            ? "Ride could not be ended cleanly"
+            : "Ride could not start"
+        // Being told to check Bluetooth is useless when the problem is that
+        // the trainer is still carrying a gear's wheel size. That distorts the
+        // speed and distance it reports to anything else, so the rider is told
+        // what actually puts it right.
+        let advice = failure.trainerNeedsRestoring
+            ? "Your trainer is still set to a gear's wheel size, so it will "
+                + "report the wrong speed and distance to other apps. Bring "
+                + "your phone near the trainer and open VirtualShift again, "
+                + "and it will put the setting back on its own."
+            : "Check that Bluetooth is on and your trainer is awake."
+        return VStack(alignment: .leading, spacing: 10) {
+            Label(heading, systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
             Text(message)
-            Text("Check that Bluetooth is on and your trainer is awake.")
+            Text(advice)
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -612,6 +637,19 @@ private struct ActiveRideView: View {
                 HStack(spacing: 26) {
                     equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
                     equipmentGroup(items: [ridingAppEquipment])
+                    // Deliberately separate from the Click's tick, which means
+                    // connected. Tinting that tick would read, at a glance on
+                    // a moving bike, as the Click having dropped out.
+                    if configuration.usesClick, click.isReady, click.batteryIsLow,
+                        let battery = click.batteryLevel {
+                        HStack(spacing: 4) {
+                            Image(systemName: "battery.25percent")
+                                .foregroundStyle(.orange)
+                            Text("Click \(battery)%")
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Click battery low, \(battery) percent")
+                    }
                     if coordinator.ridingAppSetWheelSize {
                         Text("Wheel size from your app")
                             .accessibilityLabel(
@@ -829,14 +867,15 @@ private struct ActiveRideView: View {
         }
     }
 
+    /// Haptics only. A shift has to be felt through the bars rather than heard:
+    /// a rider is usually wearing headphones or running the riding app's sound,
+    /// and a phone chirping into that is noise, not information.
     private func performFeedback(_ kind: ShiftFeedbackKind) {
         switch kind {
         case .single:
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            AudioServicesPlaySystemSound(1104)
         case .multiple:
             UIImpactFeedbackGenerator(style: .rigid).impactOccurred(intensity: 1)
-            AudioServicesPlaySystemSound(1157)
         }
     }
 }
