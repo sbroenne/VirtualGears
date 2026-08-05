@@ -1,0 +1,69 @@
+site_name: VirtualShift
+site_description: >-
+  Virtual gears for a smart trainer. An iPhone app that sits between your
+  riding app and a Wahoo KICKR V5 and gives you gears the trainer does not have.
+site_url: https://sbroenne.github.io/VirtualShift/
+repo_url: https://github.com/sbroenne/VirtualShift
+repo_name: sbroenne/VirtualShift
+copyright: Copyright &copy; 2026 Stefan Broenner. All rights reserved.
+
+docs_dir: docs
+
+# These are notes for whoever builds and ships the app, not for riders, so they
+# stay in the repository rather than going up on the website. The trace log is
+# raw evidence and would only confuse a visitor.
+exclude_docs: |
+  APP_STORE.md
+  DEMO_VIDEO.md
+  requirements.txt
+  zwift-click-button-trace.log
+
+theme:
+  name: material
+  logo: logo.png
+  favicon: logo.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light
+  features:
+    - navigation.instant
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - See it working: demo.md
+  - What you need: requirements.md
+  - How the gears work: how-it-works.md
+  - Safety: safety.md
+  - Privacy: PRIVACY.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sbroenne/VirtualShift
+
+strict: true

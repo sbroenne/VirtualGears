@@ -22,13 +22,12 @@ Xcode creates the distribution certificate for you the first time you upload.
 Apple requires a public web address for a privacy policy, even for an app that
 collects nothing.
 
-`docs/PRIVACY.md` in this repository is the policy. The simplest public URL is:
+This is already done. The policy is published as part of the project website:
 
-    https://github.com/sbroenne/VirtualShift/blob/main/docs/PRIVACY.md
+    https://sbroenne.github.io/VirtualShift/PRIVACY/
 
-That renders as a web page and is acceptable. If you would rather have a tidier
-address, switch on GitHub Pages for the repository and use the `/PRIVACY` URL it
-gives you.
+The site is built from `docs/` by `.github/workflows/docs.yml` and republishes
+itself whenever `main` changes, so the policy cannot drift out of date.
 
 ## Stage 3 — Create the app record
 
@@ -110,8 +109,8 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 ### URLs
 
 - Support URL: `https://github.com/sbroenne/VirtualShift/issues`
-- Marketing URL: `https://github.com/sbroenne/VirtualShift`
-- Privacy Policy URL: see Stage 2
+- Marketing URL: `https://sbroenne.github.io/VirtualShift/`
+- Privacy Policy URL: `https://sbroenne.github.io/VirtualShift/PRIVACY/`
 
 ### Category and rating
 
@@ -179,10 +178,9 @@ you explain it. Paste this into **App Review Information → Notes**:
     that must survive an incoming call or a notification. Losing it mid-ride would
     disconnect the rider's trainer.
 
-**Record the video before you submit.** Screen-record your iPhone with the trainer
-connected, ride for thirty seconds, shift up and down a few times, and stop the ride.
-Upload it anywhere the reviewer can open without an account, and put the link in the
-notes above.
+**Record the video before you submit.** `DEMO_VIDEO.md` in this folder is a
+shot-by-shot script for it, including what to say, what the reviewer specifically
+needs to see, and where to host the file so it opens without an account.
 
 ## Likely rejection reasons, and what to say
 

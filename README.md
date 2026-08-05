@@ -4,6 +4,8 @@
 
 # VirtualShift
 
+**[Read the full documentation at sbroenne.github.io/VirtualShift](https://sbroenne.github.io/VirtualShift/)**
+
 VirtualShift gives you gears on an indoor trainer that has none.
 
 Your chain stays in one quiet, straight gear all ride. Shifting happens on your
@@ -124,6 +126,7 @@ anything about it.
 - `VirtualShift` — a hardware lab used to prove trainer behaviour. It is not
   the product and is not needed to ride.
 - `docs/screenshots` — the screens above, captured from the simulator.
+- `docs/` — also the source of the website, built with MkDocs Material.
 
 ## Development
 
@@ -138,3 +141,18 @@ hardware procedures.
 
 A successful build or a successful CoreBluetooth write is not hardware evidence.
 A trainer command counts as proven only when the trainer replies to confirm it.
+
+To work on the website:
+
+```bash
+pip install -r docs/requirements.txt
+mkdocs serve
+```
+
+## Licence
+
+Copyright &copy; 2026 Stefan Broenner. All rights reserved.
+
+The source is public so it can be read and checked, but it is not open source:
+you may not redistribute it or publish an app derived from it. See
+[LICENSE](LICENSE) for the exact terms.
