@@ -3,22 +3,6 @@ import Foundation
 import Observation
 import VirtualShiftCore
 
-enum ShiftDirection: Equatable, Sendable {
-    case harder
-    case easier
-}
-
-enum ShiftRequest: Equatable, Sendable {
-    case single(ShiftDirection)
-    /// A button has been held long enough to mean "keep going". The sweep is
-    /// then paced by the trainer rather than by a timer, so it runs as fast as
-    /// the trainer can really confirm gears instead of dropping the beats that
-    /// land while it is still working.
-    case holdBegan(ShiftDirection)
-    /// The button was let go. The sweep stops after the gear already in flight.
-    case holdEnded
-}
-
 @MainActor
 @Observable
 final class ClickCentralService: NSObject {

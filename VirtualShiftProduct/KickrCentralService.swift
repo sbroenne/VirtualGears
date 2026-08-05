@@ -3,26 +3,6 @@ import Foundation
 import Observation
 import VirtualShiftCore
 
-struct KickrCapabilities: Equatable, Sendable {
-    var feature: FitnessMachineFeature?
-    var resistanceRange: SupportedResistanceLevelRange?
-    var supportsWahooControl = false
-}
-
-enum KickrEvent: Equatable, Sendable {
-    case bikeData(IndoorBikeData)
-    case rawBikeData(Data)
-    case status(FitnessMachineStatus)
-    case controlResponse(FitnessMachineControlPointResponse)
-    case wahooResponse(WahooKickrResponse)
-    case commandFailed(String)
-}
-
-enum KickrCommandResult: Equatable, Sendable {
-    case ftms(FitnessMachineControlPointResponse)
-    case wahoo(WahooKickrResponse)
-}
-
 @MainActor
 @Observable
 final class KickrCentralService: NSObject {

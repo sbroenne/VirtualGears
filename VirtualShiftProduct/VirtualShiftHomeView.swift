@@ -1108,6 +1108,8 @@ private struct GearPositionRail: View {
         coordinator: ProxyCoordinator(
             kickr: kickr,
             click: click,
+            peripheral: FTMSPeripheral(diagnostics: diagnostics),
+            screen: DeviceScreenWake(),
             diagnostics: diagnostics
         )
     )

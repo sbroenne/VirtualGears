@@ -139,9 +139,12 @@ shows it instead.
 ## Repository
 
 - `Sources/VirtualShiftCore` — the parts with no iPhone in them: command
-  encoding, gear ratios, drivetrain building, trainer limits. This is where the
-  tests live.
-- `VirtualShiftProduct` — the app you ride with.
+  encoding, gear ratios, drivetrain building, trainer limits, and the ride
+  itself. This is where the tests live. The ride reaches the trainer, the
+  riding app and the Click through narrow protocols, so a whole session can be
+  run against stand-ins with no hardware in the room.
+- `VirtualShiftProduct` — the app you ride with: the screens, and the real
+  Bluetooth behind those protocols.
 - `VirtualShift` — a hardware lab used to prove trainer behaviour. It is not
   the product and is not needed to ride.
 - `docs/screenshots` — the screens above, captured from the simulator.

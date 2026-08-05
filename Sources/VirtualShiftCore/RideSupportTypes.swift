@@ -1,16 +1,27 @@
-import CoreBluetooth
 import Foundation
 import Observation
 import VirtualShiftCore
 
-struct BluetoothCandidate: Identifiable, Equatable {
-    let id: UUID
-    let name: String
-    let rssi: Int
-    var compatibility: TrainerCompatibility = .untested
+public struct BluetoothCandidate: Identifiable, Equatable {
+    public let id: UUID
+    public let name: String
+    public let rssi: Int
+    public var compatibility: TrainerCompatibility = .untested
+
+    public init(
+        id: UUID,
+        name: String,
+        rssi: Int,
+        compatibility: TrainerCompatibility = .untested
+    ) {
+        self.id = id
+        self.name = name
+        self.rssi = rssi
+        self.compatibility = compatibility
+    }
 }
 
-enum ProductConnectionState: Equatable {
+public enum ProductConnectionState: Equatable {
     case unavailable(String)
     case disconnected
     case scanning
@@ -23,7 +34,7 @@ enum ProductConnectionState: Equatable {
     case failed(String)
 
     /// True while a connection attempt is actively in progress.
-    var isConnectionInProgress: Bool {
+    public var isConnectionInProgress: Bool {
         switch self {
         case .connecting, .reconnecting, .discovering, .preparing: true
         default: false
@@ -33,7 +44,7 @@ enum ProductConnectionState: Equatable {
     /// What the rider sees. These reach the ride screen footer, so they say what
     /// is happening rather than what the Bluetooth layer is doing. An attempt
     /// count in particular only tells a rider how long it has been going wrong.
-    var label: String {
+    public var label: String {
         switch self {
         case let .unavailable(reason): reason
         case .disconnected: "Not connected"
@@ -49,7 +60,7 @@ enum ProductConnectionState: Equatable {
     }
 
     /// A short form for rows that already show the device name beside it.
-    var shortLabel: String {
+    public var shortLabel: String {
         switch self {
         case .connecting: "Connecting…"
         case .reconnecting: "Reconnecting…"
@@ -67,19 +78,19 @@ enum ProductConnectionState: Equatable {
 /// completes the moment the device wakes, and a failed attempt is retried on its
 /// own every fifteen seconds. Waking the device really is the only thing left to
 /// do, so that is the only thing we ask for.
-enum WakeInstruction {
-    static let trainer =
+public enum WakeInstruction {
+    public static let trainer =
         "Turn the trainer on and give the pedals half a turn. VirtualShift "
             + "connects on its own as soon as it wakes up."
-    static let click =
+    public static let click =
         "The Click sleeps to save its battery. Press either of its buttons "
             + "once. VirtualShift connects on its own as soon as it wakes up."
 }
 
-enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)
+public enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)
     case commandFailed(String)
 
-    var errorDescription: String? {
+    public var errorDescription: String? {
         switch self {
         case let .unavailable(message), let .commandFailed(message):
             message
@@ -87,31 +98,31 @@ enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)
     }
 }
 
-enum ProductDiagnosticLevel: String, Sendable {
+public enum ProductDiagnosticLevel: String, Sendable {
     case info
     case warning
     case error
 }
 
-struct ProductDiagnosticEntry: Identifiable, Sendable {
-    let id = UUID()
-    let date = Date()
-    let source: String
-    let level: ProductDiagnosticLevel
-    let message: String
+public struct ProductDiagnosticEntry: Identifiable, Sendable {
+    public let id = UUID()
+    public let date = Date()
+    public let source: String
+    public let level: ProductDiagnosticLevel
+    public let message: String
 }
 
 @MainActor
 @Observable
-final class ProductDiagnosticsStore {
-    private(set) var entries: [ProductDiagnosticEntry] = []
-    let capacity: Int
+public final class ProductDiagnosticsStore {
+    public private(set) var entries: [ProductDiagnosticEntry] = []
+    public let capacity: Int
 
-    init(capacity: Int = 200) {
+    public init(capacity: Int = 200) {
         self.capacity = max(1, capacity)
     }
 
-    func record(
+    public func record(
         _ message: String,
         source: String,
         level: ProductDiagnosticLevel = .info
@@ -126,7 +137,7 @@ final class ProductDiagnosticsStore {
         }
     }
 
-    func exportText(
+    public func exportText(
         appVersion: String,
         deviceDescription: String
     ) -> String {
@@ -159,16 +170,3 @@ final class ProductDiagnosticsStore {
     }
 }
 
-extension CBManagerState {
-    var productDescription: String {
-        switch self {
-        case .unknown: "Bluetooth state is unknown"
-        case .resetting: "Bluetooth is resetting"
-        case .unsupported: "Bluetooth is unsupported"
-        case .unauthorized: "Bluetooth permission is denied"
-        case .poweredOff: "Bluetooth is off"
-        case .poweredOn: "Bluetooth is on"
-        @unknown default: "Bluetooth is unavailable"
-        }
-    }
-}

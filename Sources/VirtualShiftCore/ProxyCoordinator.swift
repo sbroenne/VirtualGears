@@ -1,38 +1,39 @@
 import Foundation
 import Observation
-import UIKit
 import VirtualShiftCore
 
 @MainActor
 @Observable
-final class ProxyCoordinator {
+public final class ProxyCoordinator {
     /// Where the ride has got to, and every rule that follows from it. Kept in
     /// the package so those rules can be checked without a trainer.
-    private(set) var lifecycle = RideLifecycle()
-    private(set) var displayedGear: VirtualGear?
-    private(set) var confirmedGearIndex: Int?
+    public private(set) var lifecycle = RideLifecycle()
+    public private(set) var displayedGear: VirtualGear?
+    public private(set) var confirmedGearIndex: Int?
     /// The gear the rider asked for. It differs from `confirmedGearIndex` only
     /// while the trainer has not acknowledged a shift, so the ride screen can
     /// acknowledge a tap without ever displaying an unconfirmed gear.
-    private(set) var requestedGearIndex: Int?
-    private(set) var gearSequence: [VirtualGear] = []
-    private(set) var shiftConfirmation = 0
-    private(set) var shiftInteraction = 0
+    public private(set) var requestedGearIndex: Int?
+    public private(set) var gearSequence: [VirtualGear] = []
+    public private(set) var shiftConfirmation = 0
+    public private(set) var shiftInteraction = 0
     /// The wheel size the gears are currently built around. A riding app can
     /// move it mid-ride, so it is not the size the trainer gets back on Stop.
-    private(set) var sessionBaselineMillimeters: Double?
+    public private(set) var sessionBaselineMillimeters: Double?
     /// The wheel size the trainer had before this ride borrowed it, and the one
     /// value every exit path puts back. It is deliberately separate from
     /// `sessionBaselineMillimeters`: a riding app that sets its own wheel size
     /// changes what the gears are scaled around, not what the trainer is owed.
-    private(set) var borrowedNeutralMillimeters: Double?
+    public private(set) var borrowedNeutralMillimeters: Double?
     /// True once a riding app has set its own wheel size, so the ride screen can
     /// say whose number the gears are built around.
-    private(set) var ridingAppSetWheelSize = false
+    public private(set) var ridingAppSetWheelSize = false
 
-    let peripheral: FTMSPeripheral
-    private let kickr: KickrCentralService
-    private let click: ClickCentralService
+    public let peripheral: any FitnessMachineBroadcast
+    private let kickr: any TrainerLink
+    private let click: any ShifterLink
+    private let screen: any ScreenWake
+    private let defaults: UserDefaults
     private let diagnostics: ProductDiagnosticsStore
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
@@ -50,30 +51,35 @@ final class ProxyCoordinator {
     /// here at launch means the last ride never got to finish.
     private let unfinishedRideKey = "VirtualShift.unfinishedRideBaselineMillimeters"
 
-    var state: ProxySessionState { lifecycle.state }
-    var failure: RideFailure? { lifecycle.failure }
-    var lastShiftFeedback: ShiftFeedbackKind { feedback.latest }
+    public var state: ProxySessionState { lifecycle.state }
+    public var failure: RideFailure? { lifecycle.failure }
+    public var lastShiftFeedback: ShiftFeedbackKind { feedback.latest }
 
-    var isRidePresented: Bool { lifecycle.isRidePresented }
+    public var isRidePresented: Bool { lifecycle.isRidePresented }
 
-    var canShiftEasier: Bool {
+    public var canShiftEasier: Bool {
         lifecycle.isRiding && (confirmedGearIndex ?? 0) > 0
     }
 
-    var canShiftHarder: Bool {
+    public var canShiftHarder: Bool {
         lifecycle.isRiding
             && (confirmedGearIndex ?? Int.max) < gearSequence.count - 1
     }
 
-    init(
-        kickr: KickrCentralService,
-        click: ClickCentralService,
-        diagnostics: ProductDiagnosticsStore
+    public init(
+        kickr: any TrainerLink,
+        click: any ShifterLink,
+        peripheral: any FitnessMachineBroadcast,
+        screen: any ScreenWake,
+        diagnostics: ProductDiagnosticsStore,
+        defaults: UserDefaults = .standard
     ) {
         self.kickr = kickr
         self.click = click
+        self.peripheral = peripheral
+        self.screen = screen
         self.diagnostics = diagnostics
-        peripheral = FTMSPeripheral(diagnostics: diagnostics)
+        self.defaults = defaults
 
         peripheral.commandHandler = { [weak self] request, centralID in
             guard let self else {
@@ -103,7 +109,7 @@ final class ProxyCoordinator {
     /// Nothing is reported to the rider. This is tidying up after an interruption
     /// they did not cause and cannot act on, and the ride they are about to start
     /// sets its own gear regardless.
-    func restoreInterruptedRideIfNeeded() {
+    public func restoreInterruptedRideIfNeeded() {
         guard restoreTask == nil, lifecycle.isBetweenRides else { return }
         restoreTask = Task { [weak self] in
             await self?.restoreInterruptedRide()
@@ -114,7 +120,6 @@ final class ProxyCoordinator {
     private func restoreInterruptedRide() async {
         guard lifecycle.isBetweenRides else { return }
         let token = lifecycle.restoreToken
-        let defaults = UserDefaults.standard
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
         let baseline = defaults.double(forKey: unfinishedRideKey)
         guard baseline > 0 else {
@@ -161,7 +166,7 @@ final class ProxyCoordinator {
     /// Starts a ride immediately so the UI can switch to the ride screen in the
     /// same update. The state transition is synchronous, so a second tap is
     /// rejected by the same guard that protected the previous async entry point.
-    func startRide(configuration: AppConfiguration) {
+    public func startRide(configuration: AppConfiguration) {
         guard lifecycle.canStart else { return }
         // A ride sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
@@ -204,7 +209,7 @@ final class ProxyCoordinator {
                 Double(configuration.neutralCircumferenceMillimeters)
             borrowedNeutralMillimeters =
                 Double(configuration.neutralCircumferenceMillimeters)
-            UserDefaults.standard.set(
+            defaults.set(
                 Double(configuration.neutralCircumferenceMillimeters),
                 forKey: unfinishedRideKey
             )
@@ -215,7 +220,7 @@ final class ProxyCoordinator {
             // wake the trainer and watching for it to appear. Letting the phone
             // sleep here hides the one thing they are waiting for. Every exit
             // path below hands control of this back.
-            UIApplication.shared.isIdleTimerDisabled = true
+            screen.keepAwake = true
             try await waitUntilReady(kickr, named: "KICKR", sessionID: id)
             let response = try await kickr.execute(.requestControl)
             guard response.result == .success else {
@@ -245,7 +250,7 @@ final class ProxyCoordinator {
         }
     }
 
-    func stopRide() async {
+    public func stopRide() async {
         guard let id = lifecycle.beginStopping() else { return }
         peripheral.stopAcceptingCommands()
         shiftTask?.cancel()
@@ -305,7 +310,7 @@ final class ProxyCoordinator {
                         "KICKR did not confirm baseline restoration"
                     )
                 }
-                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
+                defaults.removeObject(forKey: unfinishedRideKey)
             } catch {
                 failures.append(
                     "Baseline restoration failed: \(error.localizedDescription)"
@@ -317,13 +322,13 @@ final class ProxyCoordinator {
 
         peripheral.stopAdvertising()
         click.disconnect()
-        kickr.disconnect()
-        UIApplication.shared.isIdleTimerDisabled = false
+        kickr.disconnect(restoringCircumferenceMillimeters: nil)
+        screen.keepAwake = false
         clearRideData()
         // The record is only removed once the trainer confirms the original
         // wheel size is back, so its presence is the honest answer to whether
         // the trainer still needs putting right.
-        let stillSet = UserDefaults.standard
+        let stillSet = defaults
             .object(forKey: unfinishedRideKey) != nil
         failures.forEach { log($0, .error) }
         lifecycle.finishStop(
@@ -346,17 +351,17 @@ final class ProxyCoordinator {
         ridingAppSetWheelSize = false
     }
 
-    func shift(_ direction: ShiftDirection) {
+    public func shift(_ direction: ShiftDirection) {
         handleShiftRequest(.single(direction))
     }
 
     /// An on-screen button has been held. The sweep runs until `endHold`, paced
     /// by the trainer, exactly as a held Click button does.
-    func beginHold(_ direction: ShiftDirection) {
+    public func beginHold(_ direction: ShiftDirection) {
         handleShiftRequest(.holdBegan(direction))
     }
 
-    func endHold() {
+    public func endHold() {
         handleShiftRequest(.holdEnded)
     }
 
@@ -368,7 +373,7 @@ final class ProxyCoordinator {
     /// changed a gear. The gears are rebuilt in place instead, exactly as they
     /// are when a riding app sets its own wheel size, so the riding app never
     /// notices anything happened.
-    func changeDrivetrain(_ configuration: AppConfiguration) async {
+    public func changeDrivetrain(_ configuration: AppConfiguration) async {
         guard lifecycle.isRiding, let drivetrain = configuration.drivetrain,
               AppConfiguration.isSafe(drivetrain) else { return }
         baselineUpdateInProgress = true
@@ -407,7 +412,7 @@ final class ProxyCoordinator {
     }
 
     private func waitUntilReady(
-        _ service: KickrCentralService,
+        _ service: any ConnectableLink,
         named name: String,
         sessionID: UUID
     ) async throws {
@@ -445,22 +450,6 @@ final class ProxyCoordinator {
         throw ProductBluetoothError.unavailable(
             "KICKR did not reconnect in time for safe stop"
         )
-    }
-
-    private func waitUntilReady(
-        _ service: ClickCentralService,
-        named name: String,
-        sessionID: UUID
-    ) async throws {
-        for _ in 0..<300 {
-            guard lifecycle.owns(sessionID) else { throw CancellationError() }
-            if service.isReady { return }
-            if case let .failed(message) = service.state {
-                throw ProductBluetoothError.unavailable("\(name): \(message)")
-            }
-            try await Task.sleep(nanoseconds: 100_000_000)
-        }
-        throw ProductBluetoothError.unavailable("\(name) did not become ready")
     }
 
     private func handle(
@@ -763,7 +752,7 @@ final class ProxyCoordinator {
                         "KICKR did not confirm baseline restoration"
                     )
                 }
-                UserDefaults.standard.removeObject(forKey: unfinishedRideKey)
+                defaults.removeObject(forKey: unfinishedRideKey)
             } catch {
                 trainerRestored = false
                 log(
@@ -777,8 +766,8 @@ final class ProxyCoordinator {
         }
         peripheral.stopAdvertising()
         click.disconnect()
-        kickr.disconnect()
-        UIApplication.shared.isIdleTimerDisabled = false
+        kickr.disconnect(restoringCircumferenceMillimeters: nil)
+        screen.keepAwake = false
         clearRideData()
         lifecycle.failStart(
             error.localizedDescription,
