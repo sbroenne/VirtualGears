@@ -1,10 +1,13 @@
 # See it working
 
-!!! warning "The video is not recorded yet"
+!!! info "The ride video is not filmed yet"
 
-    This page is ready for it. The film needs a real bike, a real trainer and a
-    real ride, so it has to be shot rather than generated. The shot list is in
+    A film of a real ride needs a real bike and a real trainer, so it cannot be
+    generated. This page is ready for it, and the shot list is in
     `docs/DEMO_VIDEO.md` in the repository.
+
+    In the meantime, [the animation on the How the gears work
+    page](how-it-works.md) shows what the app is doing.
 
 <!-- When the video exists, replace the admonition above with this block and
      point src at wherever the file is hosted:

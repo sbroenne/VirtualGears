@@ -21,12 +21,10 @@ Your riding app connects to the iPhone instead of to the trainer. VirtualShift
 passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
-```text
-riding app on your computer  <->  iPhone running VirtualShift  <->  KICKR V5
-                                              ^
-                                              |
-                                     Zwift Click (optional)
-```
+![How VirtualShift sits between your riding app and your trainer](how-it-works.svg)
+
+A Zwift Click can be added to shift from the handlebar, but it is never
+required.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24">

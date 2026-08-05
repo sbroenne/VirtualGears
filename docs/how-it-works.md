@@ -1,5 +1,7 @@
 # How the gears work
 
+![Your riding app talks to the iPhone, the iPhone talks to the trainer, and a shift changes the wheel size the trainer is running](how-it-works.svg)
+
 The KICKR has no virtual-shifting protocol of its own. VirtualShift uses a Wahoo
 command that changes the trainer's idea of your wheel size: a smaller wheel
 covers less ground per pedal stroke, which feels like an easier gear. The riding
