@@ -428,4 +428,46 @@ final class ConfirmedGearEngineTests: XCTestCase {
         let bytes = Array(change.command)
         return UInt16(bytes[1]) | UInt16(bytes[2]) << 8
     }
+
+    // MARK: - Whether the trainer has caught up
+
+    func testAFreshEngineIsSettled() throws {
+        let engine = try ConfirmedGearEngine(
+            drivetrain: try Drivetrain.virtualLadder(),
+            baselineCircumferenceMillimeters: 2070
+        )
+        XCTAssertTrue(engine.isSettled)
+    }
+
+    /// Holding a shift button waits on this. Before the fix, repeats went out
+    /// on a fixed timer that never asked whether the trainer had caught up, so
+    /// a hold queued gears that carried on arriving after the rider let go.
+    func testAnUnconfirmedShiftLeavesTheEngineUnsettled() throws {
+        var engine = try ConfirmedGearEngine(
+            drivetrain: try Drivetrain.virtualLadder(),
+            baselineCircumferenceMillimeters: 2070
+        )
+        let change = try XCTUnwrap(engine.requestShift(by: 1))
+        XCTAssertFalse(engine.isSettled)
+
+        let response = WahooKickrResponse.wheelCircumference(
+            result: 1,
+            encodedTenthsOfMillimeter: UInt16(
+                (change.circumferenceMillimeters * 10).rounded()
+            )
+        )
+        engine.acknowledge(response)
+        XCTAssertTrue(engine.isSettled)
+    }
+
+    func testCancellingPendingChangesSettlesTheEngine() throws {
+        var engine = try ConfirmedGearEngine(
+            drivetrain: try Drivetrain.virtualLadder(),
+            baselineCircumferenceMillimeters: 2070
+        )
+        engine.requestShift(by: 1)
+        XCTAssertFalse(engine.isSettled)
+        engine.cancelPendingChanges()
+        XCTAssertTrue(engine.isSettled)
+    }
 }

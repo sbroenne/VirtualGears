@@ -53,6 +53,13 @@ public struct ConfirmedGearEngine: Sendable {
         self.changes = changes
     }
 
+    /// True when the trainer has caught up with everything asked of it.
+    /// Holding a shift button waits for this, so a hold asks for gears at the
+    /// trainer's pace and stops the moment the rider lets go.
+    public var isSettled: Bool {
+        requestedIndex == confirmedIndex
+    }
+
     public var requestedGear: VirtualGear {
         drivetrain.gears[requestedIndex]
     }
