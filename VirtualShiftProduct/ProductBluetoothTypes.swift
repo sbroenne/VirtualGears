@@ -30,19 +30,22 @@ enum ProductConnectionState: Equatable {
         }
     }
 
-    var label: String {        switch self {
+    /// What the rider sees. These reach the ride screen footer, so they say what
+    /// is happening rather than what the Bluetooth layer is doing. An attempt
+    /// count in particular only tells a rider how long it has been going wrong.
+    var label: String {
+        switch self {
         case let .unavailable(reason): reason
         case .disconnected: "Not connected"
-        case .scanning: "Scanning…"
-        case let .reconnecting(attempt): "Reconnecting (attempt \(attempt))…"
+        case .scanning: "Looking for it…"
+        case .reconnecting: "Reconnecting…"
         case let .connecting(name): "Connecting to \(name)…"
-        case .discovering: "Discovering controls…"
-        case .preparing: "Preparing controls…"
+        case .discovering: "Getting ready…"
+        case .preparing: "Almost ready…"
         case .ready: "Ready"
         case .disconnecting: "Disconnecting…"
-        case let .failed(message): "Error: \(message)"
+        case let .failed(message): message
         }
-
     }
 
     /// A short form for rows that already show the device name beside it.

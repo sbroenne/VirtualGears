@@ -128,7 +128,7 @@ shows it instead.
 
 ## Requirements
 
-- iPhone running iOS 26
+- iPhone running iOS 17 or later, which is any iPhone from the XS onwards
 - Wahoo KICKR V5. Other Wahoo KICKR models should work but are untested; the
   KICKR Snap and KICKR Bike do not, because they change gear other ways. See
   [Which trainers work](https://sbroenne.github.io/VirtualShift/requirements/#which-trainers-work).
@@ -152,6 +152,16 @@ shows it instead.
 ```bash
 swift test
 ```
+
+The app is written in Swift 6 language mode, so the compiler checks that the two
+Bluetooth conversations — one to the trainer, one to the riding app — never
+touch the same data at the same time. That class of bug otherwise shows up as a
+freeze in the middle of a ride and is close to impossible to reproduce. Building
+needs Xcode 26 or later.
+
+Both app targets are built in CI. The Hardware Lab is not shipped to anyone, but
+every trainer fact in these docs was measured with it, so a broken Lab is a
+broken instrument.
 
 The app itself must be built and signed in Xcode. Open `VirtualShift.xcodeproj`,
 choose the `VirtualShift` scheme and a physical iPhone, and select your

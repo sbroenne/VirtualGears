@@ -18,7 +18,14 @@ final class ProxyCoordinator {
     private(set) var gearSequence: [VirtualGear] = []
     private(set) var shiftConfirmation = 0
     private(set) var shiftInteraction = 0
+    /// The wheel size the gears are currently built around. A riding app can
+    /// move it mid-ride, so it is not the size the trainer gets back on Stop.
     private(set) var sessionBaselineMillimeters: Double?
+    /// The wheel size the trainer had before this ride borrowed it, and the one
+    /// value every exit path puts back. It is deliberately separate from
+    /// `sessionBaselineMillimeters`: a riding app that sets its own wheel size
+    /// changes what the gears are scaled around, not what the trainer is owed.
+    private(set) var borrowedNeutralMillimeters: Double?
     /// True once a riding app has set its own wheel size, so the ride screen can
     /// say whose number the gears are built around.
     private(set) var ridingAppSetWheelSize = false
@@ -192,6 +199,8 @@ final class ProxyCoordinator {
             updateDisplayedGear()
             sessionBaselineMillimeters =
                 Double(configuration.neutralCircumferenceMillimeters)
+            borrowedNeutralMillimeters =
+                Double(configuration.neutralCircumferenceMillimeters)
             UserDefaults.standard.set(
                 Double(configuration.neutralCircumferenceMillimeters),
                 forKey: unfinishedRideKey
@@ -199,6 +208,11 @@ final class ProxyCoordinator {
 
             kickr.resumeSavedConnection()
             if usesClick { click.resumeSavedConnection() }
+            // The connecting screen is exactly when a rider is pedalling to
+            // wake the trainer and watching for it to appear. Letting the phone
+            // sleep here hides the one thing they are waiting for. Every exit
+            // path below hands control of this back.
+            UIApplication.shared.isIdleTimerDisabled = true
             try await waitUntilReady(kickr, named: "KICKR", sessionID: id)
             let response = try await kickr.execute(.requestControl)
             guard response.result == .success else {
@@ -220,7 +234,6 @@ final class ProxyCoordinator {
             guard lifecycle.owns(id) else { return }
             peripheral.startAdvertising()
             try await waitUntilPeripheralReady(sessionID: id)
-            UIApplication.shared.isIdleTimerDisabled = true
             lifecycle.markActive()
             log("Ride session started")
         } catch {
@@ -274,10 +287,14 @@ final class ProxyCoordinator {
             failures.append("Trainer stop could not be confirmed")
         }
 
-        if let baseline = sessionBaselineMillimeters, kickr.isReady {
+        // The wheel size the trainer had before this ride, not whatever a
+        // riding app moved the gears onto. A trainer left sitting on a riding
+        // app's number works out speed and distance wrongly for everything
+        // that connects to it afterwards.
+        if let neutral = borrowedNeutralMillimeters, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
-                    millimeters: baseline
+                    millimeters: neutral
                 )
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
@@ -321,6 +338,7 @@ final class ProxyCoordinator {
         gearSequence = []
         feedback.clear()
         sessionBaselineMillimeters = nil
+        borrowedNeutralMillimeters = nil
         ridingAppSetWheelSize = false
     }
 
@@ -660,10 +678,10 @@ final class ProxyCoordinator {
         // quietly distort any ride done without VirtualShift, so it goes back
         // before the connection is dropped, while there is still one to use.
         var trainerRestored = true
-        if let baseline = sessionBaselineMillimeters, kickr.isReady {
+        if let neutral = borrowedNeutralMillimeters, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
-                    millimeters: baseline
+                    millimeters: neutral
                 )
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
@@ -680,7 +698,7 @@ final class ProxyCoordinator {
                     .error
                 )
             }
-        } else if sessionBaselineMillimeters != nil {
+        } else if borrowedNeutralMillimeters != nil {
             trainerRestored = false
         }
         peripheral.stopAdvertising()

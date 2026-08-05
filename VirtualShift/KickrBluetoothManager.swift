@@ -543,334 +543,314 @@ final class KickrBluetoothManager: NSObject, ObservableObject {
     }
 }
 
-extension KickrBluetoothManager: CBCentralManagerDelegate {
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
-        MainActor.assumeIsolated {
-            bluetoothStatus = central.state.description
-            log("Bluetooth state: \(central.state.description)")
-            if central.state != .poweredOn {
-                isScanning = false
-                isReady = false
-            }
+extension KickrBluetoothManager: @preconcurrency CBCentralManagerDelegate {
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        bluetoothStatus = central.state.description
+        log("Bluetooth state: \(central.state.description)")
+        if central.state != .poweredOn {
+            isScanning = false
+            isReady = false
         }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        MainActor.assumeIsolated {
-            let advertisedName =
-                advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            let name = advertisedName ?? peripheral.name ?? "Unnamed trainer"
-            guard name.localizedCaseInsensitiveContains("KICKR") else { return }
+        let advertisedName =
+            advertisementData[CBAdvertisementDataLocalNameKey] as? String
+        let name = advertisedName ?? peripheral.name ?? "Unnamed trainer"
+        guard name.localizedCaseInsensitiveContains("KICKR") else { return }
 
-            peripherals[peripheral.identifier] = peripheral
-            let candidate = TrainerCandidate(
-                id: peripheral.identifier,
-                name: name,
-                rssi: RSSI.intValue
-            )
-            if let index = trainers.firstIndex(where: { $0.id == candidate.id }) {
-                trainers[index] = candidate
-            } else {
-                trainers.append(candidate)
-                log("Found \(name), signal \(RSSI)")
-            }
-            trainers.sort { $0.rssi > $1.rssi }
+        peripherals[peripheral.identifier] = peripheral
+        let candidate = TrainerCandidate(
+            id: peripheral.identifier,
+            name: name,
+            rssi: RSSI.intValue
+        )
+        if let index = trainers.firstIndex(where: { $0.id == candidate.id }) {
+            trainers[index] = candidate
+        } else {
+            trainers.append(candidate)
+            log("Found \(name), signal \(RSSI)")
         }
+        trainers.sort { $0.rssi > $1.rssi }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
-        MainActor.assumeIsolated {
-            connectedPeripheral = peripheral
-            pendingPeripheral = nil
-            isConnecting = false
-            isConnected = true
-            if stopping {
-                cancelledBeforeCommands = true
-                connectionStatus = "Cancelling connection..."
-                log("Connection completed after Stop; disconnecting without sending commands")
-                central.cancelPeripheralConnection(peripheral)
-                return
-            }
-            connectionStatus = "Discovering trainer controls..."
-            log("Connected to \(peripheral.name ?? peripheral.identifier.uuidString)")
-            peripheral.discoverServices([serviceUUID])
+        connectedPeripheral = peripheral
+        pendingPeripheral = nil
+        isConnecting = false
+        isConnected = true
+        if stopping {
+            cancelledBeforeCommands = true
+            connectionStatus = "Cancelling connection..."
+            log("Connection completed after Stop; disconnecting without sending commands")
+            central.cancelPeripheralConnection(peripheral)
+            return
         }
+        connectionStatus = "Discovering trainer controls..."
+        log("Connected to \(peripheral.name ?? peripheral.identifier.uuidString)")
+        peripheral.discoverServices([serviceUUID])
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didFailToConnect peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            pendingPeripheral = nil
-            isConnecting = false
-            connectedPeripheral = nil
-            isConnected = false
-            if stopping {
-                stopping = false
-                safeDisconnectConfirmed = false
-                cancelledBeforeCommands = false
-                connectionStatus = "Connection cancelled"
-                log("Connection cancelled before any trainer command")
-            } else {
-                reportError(
-                    "Connection failed: \(error?.localizedDescription ?? "unknown error")"
-                )
-            }
+        pendingPeripheral = nil
+        isConnecting = false
+        connectedPeripheral = nil
+        isConnected = false
+        if stopping {
+            stopping = false
+            safeDisconnectConfirmed = false
+            cancelledBeforeCommands = false
+            connectionStatus = "Connection cancelled"
+            log("Connection cancelled before any trainer command")
+        } else {
+            reportError(
+                "Connection failed: \(error?.localizedDescription ?? "unknown error")"
+            )
         }
     }
 
-    nonisolated func centralManager(
+    func centralManager(
         _ central: CBCentralManager,
         didDisconnectPeripheral peripheral: CBPeripheral,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            let wasSafe = stopping && safeDisconnectConfirmed
-            let wasCancelledBeforeCommands = stopping && cancelledBeforeCommands
-            pendingPeripheral = nil
-            isConnecting = false
-            connectedPeripheral = nil
-            isConnected = false
-            controlCharacteristic = nil
-            commandQueue.removeAll()
-            activeCommand = nil
-            activeWriteConfirmed = false
-            activeResponse = nil
-            activeResponseFailure = nil
-            isReady = false
-            isBusy = false
-            stopping = false
-            unlockConfirmed = false
-            safeDisconnectConfirmed = false
-            cancelledBeforeCommands = false
-            characteristicProperties = "Not discovered"
-            measurementCharacteristic = nil
-            powerWatts = nil
-            cadenceRPM = nil
-            cadenceTracker = CrankCadenceTracker()
-            lastCrankEventTime = nil
-            lastCrankEventDate = nil
+        let wasSafe = stopping && safeDisconnectConfirmed
+        let wasCancelledBeforeCommands = stopping && cancelledBeforeCommands
+        pendingPeripheral = nil
+        isConnecting = false
+        connectedPeripheral = nil
+        isConnected = false
+        controlCharacteristic = nil
+        commandQueue.removeAll()
+        activeCommand = nil
+        activeWriteConfirmed = false
+        activeResponse = nil
+        activeResponseFailure = nil
+        isReady = false
+        isBusy = false
+        stopping = false
+        unlockConfirmed = false
+        safeDisconnectConfirmed = false
+        cancelledBeforeCommands = false
+        characteristicProperties = "Not discovered"
+        measurementCharacteristic = nil
+        powerWatts = nil
+        cadenceRPM = nil
+        cadenceTracker = CrankCadenceTracker()
+        lastCrankEventTime = nil
+        lastCrankEventDate = nil
 
-            if wasCancelledBeforeCommands {
-                safetyWarning = nil
-                connectionStatus = "Connection cancelled"
-                log("Disconnected without sending trainer commands")
-            } else if let error {
+        if wasCancelledBeforeCommands {
+            safetyWarning = nil
+            connectionStatus = "Connection cancelled"
+            log("Disconnected without sending trainer commands")
+        } else if let error {
+            safetyWarning =
+                "Connection was lost. Neutral could not be confirmed at disconnect; "
+                + "it will be restored first on reconnect."
+            connectionStatus = "Connection lost"
+            log("Disconnected with error: \(error.localizedDescription)")
+        } else if wasSafe {
+            safetyWarning = nil
+            connectionStatus = "Stopped safely"
+            log("Disconnected after confirmed starting-value restore")
+        } else {
+            if safetyWarning == nil {
                 safetyWarning =
-                    "Connection was lost. Neutral could not be confirmed at disconnect; "
-                    + "it will be restored first on reconnect."
-                connectionStatus = "Connection lost"
-                log("Disconnected with error: \(error.localizedDescription)")
-            } else if wasSafe {
-                safetyWarning = nil
-                connectionStatus = "Stopped safely"
-                log("Disconnected after confirmed starting-value restore")
-            } else {
-                if safetyWarning == nil {
-                    safetyWarning =
-                        "Disconnected without a confirmed neutral restore. "
-                        + "Reconnect before riding."
-                }
-                connectionStatus = "Disconnected without confirmed restore"
-                log("WARNING: disconnect occurred without confirmed neutral restore")
+                    "Disconnected without a confirmed neutral restore. "
+                    + "Reconnect before riding."
             }
+            connectionStatus = "Disconnected without confirmed restore"
+            log("WARNING: disconnect occurred without confirmed neutral restore")
         }
     }
 }
 
-extension KickrBluetoothManager: CBPeripheralDelegate {
-    nonisolated func peripheral(
+extension KickrBluetoothManager: @preconcurrency CBPeripheralDelegate {
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                reportError("Service discovery failed: \(error.localizedDescription)")
-                return
-            }
-            guard let service = peripheral.services?.first(where: {
-                $0.uuid == serviceUUID
-            }) else {
-                reportError("Cycling Power service 1818 was not found")
-                return
-            }
-
-            log("Found Cycling Power service \(service.uuid.uuidString)")
-            peripheral.discoverCharacteristics(
-                [controlUUID, measurementUUID],
-                for: service
-            )
+        if let error {
+            reportError("Service discovery failed: \(error.localizedDescription)")
+            return
         }
+        guard let service = peripheral.services?.first(where: {
+            $0.uuid == serviceUUID
+        }) else {
+            reportError("Cycling Power service 1818 was not found")
+            return
+        }
+
+        log("Found Cycling Power service \(service.uuid.uuidString)")
+        peripheral.discoverCharacteristics(
+            [controlUUID, measurementUUID],
+            for: service
+        )
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                reportError(
-                    "Characteristic discovery failed: \(error.localizedDescription)"
-                )
-                return
-            }
-            guard let characteristic = service.characteristics?.first(where: {
-                $0.uuid == controlUUID
-            }) else {
-                reportError(
-                    "Wahoo control characteristic \(controlUUID.uuidString) was not found"
-                )
-                return
-            }
-
-            controlCharacteristic = characteristic
-            characteristicProperties = characteristic.properties.description
-            log(
-                "Found control characteristic \(characteristic.uuid.uuidString), "
-                    + "properties: \(characteristic.properties.description)"
+        if let error {
+            reportError(
+                "Characteristic discovery failed: \(error.localizedDescription)"
             )
+            return
+        }
+        guard let characteristic = service.characteristics?.first(where: {
+            $0.uuid == controlUUID
+        }) else {
+            reportError(
+                "Wahoo control characteristic \(controlUUID.uuidString) was not found"
+            )
+            return
+        }
 
-            if characteristic.properties.contains(.notify)
-                || characteristic.properties.contains(.indicate)
-            {
-                peripheral.setNotifyValue(true, for: characteristic)
-                log("Requested control notifications")
-            } else {
-                reportError(
-                    "The Wahoo control characteristic cannot return command replies"
-                )
-            }
+        controlCharacteristic = characteristic
+        characteristicProperties = characteristic.properties.description
+        log(
+            "Found control characteristic \(characteristic.uuid.uuidString), "
+                + "properties: \(characteristic.properties.description)"
+        )
 
-            if let measurement = service.characteristics?.first(where: {
-                $0.uuid == measurementUUID
-            }) {
-                measurementCharacteristic = measurement
-                log(
-                    "Found power measurement \(measurement.uuid.uuidString), "
-                        + "properties: \(measurement.properties.description)"
-                )
-                if measurement.properties.contains(.notify) {
-                    peripheral.setNotifyValue(true, for: measurement)
-                    log("Requested live power and cadence")
-                } else {
-                    log("ERROR: Power measurement does not support notifications")
-                }
+        if characteristic.properties.contains(.notify)
+            || characteristic.properties.contains(.indicate)
+        {
+            peripheral.setNotifyValue(true, for: characteristic)
+            log("Requested control notifications")
+        } else {
+            reportError(
+                "The Wahoo control characteristic cannot return command replies"
+            )
+        }
+
+        if let measurement = service.characteristics?.first(where: {
+            $0.uuid == measurementUUID
+        }) {
+            measurementCharacteristic = measurement
+            log(
+                "Found power measurement \(measurement.uuid.uuidString), "
+                    + "properties: \(measurement.properties.description)"
+            )
+            if measurement.properties.contains(.notify) {
+                peripheral.setNotifyValue(true, for: measurement)
+                log("Requested live power and cadence")
             } else {
-                log("ERROR: Cycling Power Measurement 2A63 was not found")
+                log("ERROR: Power measurement does not support notifications")
             }
+        } else {
+            log("ERROR: Cycling Power Measurement 2A63 was not found")
         }
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            handleWriteResult(error: error)
-        }
+        handleWriteResult(error: error)
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if let error {
-                if characteristic.uuid == controlUUID, activeCommand != nil {
-                    holdOrReportResponseFailure(
-                        "KICKR reply failed: \(error.localizedDescription)"
-                    )
-                } else {
-                    reportError(
-                        "Notification failed: \(error.localizedDescription)"
-                    )
-                }
-                return
+        if let error {
+            if characteristic.uuid == controlUUID, activeCommand != nil {
+                holdOrReportResponseFailure(
+                    "KICKR reply failed: \(error.localizedDescription)"
+                )
+            } else {
+                reportError(
+                    "Notification failed: \(error.localizedDescription)"
+                )
             }
-            let value = characteristic.value ?? Data()
-            if characteristic.uuid == measurementUUID {
-                do {
-                    let measurement = try CyclingPowerMeasurement.decode(value)
-                    powerWatts = measurement.powerWatts
-                    if let eventTime = measurement.lastCrankEventTime {
-                        if eventTime != lastCrankEventTime {
-                            lastCrankEventTime = eventTime
-                            lastCrankEventDate = Date()
-                        } else if let lastCrankEventDate,
-                                  Date().timeIntervalSince(lastCrankEventDate) > 2
-                        {
-                            cadenceRPM = 0
-                        }
-                    }
-                    if let cadence = cadenceTracker.update(with: measurement) {
-                        cadenceRPM = cadence
-                    }
-                } catch {
-                    log("ERROR: Could not read power measurement: \(error)")
-                }
-                return
-            }
-            if characteristic.uuid == controlUUID {
-                handleControlResponse(value)
-                return
-            }
-            log(
-                "Notification from \(characteristic.uuid.uuidString): "
-                    + value.hexString
-            )
+            return
         }
+        let value = characteristic.value ?? Data()
+        if characteristic.uuid == measurementUUID {
+            do {
+                let measurement = try CyclingPowerMeasurement.decode(value)
+                powerWatts = measurement.powerWatts
+                if let eventTime = measurement.lastCrankEventTime {
+                    if eventTime != lastCrankEventTime {
+                        lastCrankEventTime = eventTime
+                        lastCrankEventDate = Date()
+                    } else if let lastCrankEventDate,
+                              Date().timeIntervalSince(lastCrankEventDate) > 2
+                    {
+                        cadenceRPM = 0
+                    }
+                }
+                if let cadence = cadenceTracker.update(with: measurement) {
+                    cadenceRPM = cadence
+                }
+            } catch {
+                log("ERROR: Could not read power measurement: \(error)")
+            }
+            return
+        }
+        if characteristic.uuid == controlUUID {
+            handleControlResponse(value)
+            return
+        }
+        log(
+            "Notification from \(characteristic.uuid.uuidString): "
+                + value.hexString
+        )
     }
 
-    nonisolated func peripheral(
+    func peripheral(
         _ peripheral: CBPeripheral,
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        MainActor.assumeIsolated {
-            if characteristic.uuid == measurementUUID {
-                if let error {
-                    log(
-                        "ERROR: Live power notification setup failed: "
-                            + error.localizedDescription
-                    )
-                } else {
-                    log(
-                        "Live power and cadence "
-                            + (characteristic.isNotifying ? "enabled" : "disabled")
-                    )
-                }
-                return
-            }
-
+        if characteristic.uuid == measurementUUID {
             if let error {
-                reportError(
-                    "Notification setup failed: \(error.localizedDescription)"
+                log(
+                    "ERROR: Live power notification setup failed: "
+                        + error.localizedDescription
                 )
             } else {
                 log(
-                    "Notifications \(characteristic.isNotifying ? "enabled" : "disabled") "
-                        + "for \(characteristic.uuid.uuidString)"
+                    "Live power and cadence "
+                        + (characteristic.isNotifying ? "enabled" : "disabled")
                 )
-                if characteristic.isNotifying {
-                    beginSafeSession()
-                } else {
-                    reportError(
-                        "The trainer did not enable control notifications"
-                    )
-                }
+            }
+            return
+        }
+
+        if let error {
+            reportError(
+                "Notification setup failed: \(error.localizedDescription)"
+            )
+        } else {
+            log(
+                "Notifications \(characteristic.isNotifying ? "enabled" : "disabled") "
+                    + "for \(characteristic.uuid.uuidString)"
+            )
+            if characteristic.isNotifying {
+                beginSafeSession()
+            } else {
+                reportError(
+                    "The trainer did not enable control notifications"
+                )
             }
         }
     }

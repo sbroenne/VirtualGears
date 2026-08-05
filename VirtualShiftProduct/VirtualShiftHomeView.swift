@@ -247,7 +247,7 @@ private struct StartupView: View {
         return VStack(alignment: .leading, spacing: 10) {
             Label(heading, systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
-            Text(message)
+            Text(plainEnglish(message))
             Text(advice)
                 .foregroundStyle(.secondary)
         }
@@ -255,6 +255,28 @@ private struct StartupView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.14), in: .rect(cornerRadius: 18))
         .accessibilityElement(children: .combine)
+    }
+
+    /// The messages behind a failure are written for whoever is reading the
+    /// diagnostic log, and they name parts of the Bluetooth standard a rider has
+    /// no reason to have heard of. The ones that can actually reach this card
+    /// are given a sentence that says what happened instead.
+    private func plainEnglish(_ message: String) -> String {
+        switch message {
+        case "KICKR denied FTMS control":
+            "Your trainer would not hand over control. Something else may still "
+                + "be connected to it."
+        case "Initial virtual gear is unavailable",
+             "KICKR did not confirm the initial virtual gear":
+            "Your trainer did not take the first gear."
+        case "These gears are outside the trainer's safe range":
+            "These gears go further than your trainer can be set to. Pick a "
+                + "different gear set in Settings."
+        case "Setup is incomplete":
+            "Your setup is not finished yet."
+        default:
+            message
+        }
     }
 
     private var retryButton: some View {
@@ -297,62 +319,6 @@ private struct StartupView: View {
 }
 
 
-private struct EquipmentStatusRow: View {
-    let title: String
-    let name: String
-    let state: ProductConnectionState
-    let required: Bool
-    let isStalled: Bool
-    let wakeInstruction: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 14) {
-                Image(systemName: state == .ready
-                    ? "checkmark.circle.fill" : "antenna.radiowaves.left.and.right")
-                    .font(.title2)
-                    .foregroundStyle(state == .ready ? Color.green : Color.secondary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.headline)
-                    Text(name)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(state.shortLabel)
-                    .lineLimit(2)
-                    .font(.subheadline.weight(.semibold))
-                    .multilineTextAlignment(.trailing)
-            }
-            .frame(minHeight: 52)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                "\(required ? "Required " : "")\(title), \(name), \(state.label)"
-            )
-
-            if needsWakeHint {
-                Text(wakeInstruction)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    /// Waiting is normal for a few seconds. Waiting with no explanation is what
-    /// makes it feel broken, so the advice appears as soon as it stalls, or
-    /// straight away if nothing is being attempted at all.
-    ///
-    /// Only equipment a ride actually needs says this. Telling a rider to wake
-    /// a Zwift Click would be asking them to fix something that is not holding
-    /// anything up, since the on-screen buttons always shift.
-    private var needsWakeHint: Bool {
-        guard required, state != .ready else { return false }
-        if isStalled { return true }
-        return !state.isConnectionInProgress && state != .scanning
-    }
-}
-
 private struct ActiveRideView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
@@ -362,6 +328,7 @@ private struct ActiveRideView: View {
     /// itself is never mistaken for one they meant to end.
     let onRiderStop: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
     @State private var confirmsStop = false
     @State private var lastInteraction = Date()
     @State private var isDimmed = false
@@ -370,6 +337,10 @@ private struct ActiveRideView: View {
     /// Remembers the gears the ride started with, so the session is only rebuilt
     /// when the rider actually changed them.
     @State private var gearsWhenOpened: Drivetrain?
+    /// True while new gears are being applied. The ride is torn down and rebuilt
+    /// to do it safely, so without this the rider would be told their ride was
+    /// stopping moments after they picked a gear set.
+    @State private var isChangingGears = false
 
     private var configuration: AppConfiguration { store.configuration }
 
@@ -389,8 +360,14 @@ private struct ActiveRideView: View {
         guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
+            // The rebuild runs through the normal stop, so without this the bar
+            // would read "Stopping safely" and then "Ride stopped" seconds after
+            // the rider chose new gears — which looks like their ride just
+            // ended, rather than their choice being applied.
+            isChangingGears = true
             await coordinator.stopRide()
             coordinator.startRide(configuration: updated)
+            isChangingGears = false
         }
     }
 
@@ -424,6 +401,12 @@ private struct ActiveRideView: View {
                     } label: {
                         Image(systemName: "gearshape")
                             .font(.title2.weight(.semibold))
+                            // A phone on handlebars is usually on its side, and
+                            // iOS shrinks the bar in landscape. Without a floor
+                            // the target drops under the 44pt minimum in exactly
+                            // the orientation it is aimed at while moving.
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(.rect)
                     }
                     .controlSize(.large)
                     .accessibilityLabel("Settings")
@@ -445,8 +428,11 @@ private struct ActiveRideView: View {
                     Button(role: .destructive) {
                         confirmsStop = true
                     } label: {
-                        Text(coordinator.state == .stopping ? "Stopping" : "Stop")
+                        Text(coordinator.state == .stopping && !isChangingGears
+                            ? "Stopping" : "Stop")
                             .font(.title3.weight(.bold))
+                            .frame(minWidth: 44, minHeight: 44)
+                            .contentShape(.rect)
                     }
                     .controlSize(.large)
                     .tint(.red)
@@ -486,17 +472,24 @@ private struct ActiveRideView: View {
         }
         .simultaneousGesture(TapGesture().onEnded(wake))
         .onChange(of: hasEquipmentProblem) { _, hasProblem in
+            guard !hasProblem else {
+                // A rider not looking at the screen needs telling, because the
+                // next shift will not work until this is dealt with.
+                announce(equipmentProblem ?? "Check your equipment")
+                return
+            }
             // Trouble holds the chrome bright, so the instant it clears the
             // footer would otherwise snap straight to faded — right as the
             // rider plugged something back in, which reads as a fault rather
             // than a fix. Count the repair as activity so the fade happens
             // gently, and later.
-            guard !hasProblem else { return }
             wake()
+            announce("Equipment reconnected")
         }
         .onChange(of: coordinator.shiftConfirmation) {
             wake()
             performFeedback(coordinator.lastShiftFeedback)
+            announce("Gear \(gearAccessibilityValue)")
         }
         .onChange(of: coordinator.shiftInteraction) {
             wake()
@@ -625,6 +618,14 @@ private struct ActiveRideView: View {
         equipmentItems.contains { $0.state != .ok }
     }
 
+    /// The one thing worth telling the rider about, if anything is wrong.
+    private var equipmentProblem: String? {
+        guard let problem = equipmentItems.first(where: {
+            !$0.isOptional && $0.state != .ok
+        }) else { return nil }
+        return "\(problem.title), \(problem.detail)"
+    }
+
     /// Supporting detail, so it sits at the bottom in the quietest type on the
     /// screen and never takes more than one line. When something is wrong that
     /// single line becomes the plain-English problem instead, so the rider only
@@ -639,6 +640,8 @@ private struct ActiveRideView: View {
                     systemImage: problem.state.symbol
                 )
                 .foregroundStyle(problem.state.tint)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(equipmentProblem ?? "")
             } else {
                 // The KICKR and the Click are grouped because VirtualShift is
                 // the one connecting to them. The riding app is set apart
@@ -671,8 +674,12 @@ private struct ActiveRideView: View {
             }
         }
         .font(.caption)
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
+        // The one line a rider most needs when something is wrong is the line
+        // that must not be squeezed away. Large text sizes are chosen by people
+        // who need them, so it wraps rather than shrinking to nothing.
+        .lineLimit(2)
+        .minimumScaleFactor(0.8)
+        .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
@@ -763,7 +770,8 @@ private struct ActiveRideView: View {
                 .foregroundStyle(
                     coordinator.state == .active ? Color.primary : Color.secondary
                 )
-                .accessibilityLabel(gearAccessibilityLabel)
+                .accessibilityLabel("Gear")
+                .accessibilityValue(gearAccessibilityValue)
             Text(secondaryGearText)
                 .font(.headline)
                 .foregroundStyle(isShiftPending ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
@@ -840,23 +848,46 @@ private struct ActiveRideView: View {
             + "\(gear.cog) tooth cog"
     }
 
+    /// VoiceOver reads a label once and re-reads the *value* when it changes, so
+    /// the gear belongs in the value. With everything in the label, a rider who
+    /// cannot see the screen hears nothing when they shift.
+    private var gearAccessibilityValue: String {
+        guard let gear = coordinator.displayedGear,
+              let index = coordinator.confirmedGearIndex else {
+            return "not available"
+        }
+        let position = "\(index + 1) of \(coordinator.gearSequence.count)"
+        guard !configuration.usesVirtualGears else { return position }
+        return position + ", \(gear.chainring) tooth chainring by "
+            + "\(gear.cog) tooth cog"
+    }
+
+    /// Says something out loud to a rider using VoiceOver. On a bike the screen
+    /// is often not being looked at, so a confirmed shift has to be audible.
+    private func announce(_ message: String) {
+        guard voiceOverRunning else { return }
+        AccessibilityNotification.Announcement(message).post()
+    }
+
     private var statusText: String {
+        if isChangingGears { return "Changing gears" }
         switch coordinator.state {
-        case .connecting: "Connecting equipment"
-        case .active: "Ride active"
-        case .reconnecting: "Control lost · reconnecting"
-        case .stopping: "Stopping safely"
-        case .idle: "Ride stopped"
-        case let .failed(message): message
+        case .connecting: return "Connecting equipment"
+        case .active: return "Ride active"
+        case .reconnecting: return "Control lost · reconnecting"
+        case .stopping: return "Stopping safely"
+        case .idle: return "Ride stopped"
+        case let .failed(message): return message
         }
     }
 
     private var statusSymbol: String {
+        if isChangingGears { return "progress.indicator" }
         switch coordinator.state {
-        case .active: "checkmark.circle.fill"
-        case .connecting, .stopping: "progress.indicator"
-        case .reconnecting, .failed: "exclamationmark.triangle.fill"
-        case .idle: "stop.circle"
+        case .active: return "checkmark.circle.fill"
+        case .connecting, .stopping: return "progress.indicator"
+        case .reconnecting, .failed: return "exclamationmark.triangle.fill"
+        case .idle: return "stop.circle"
         }
     }
 
@@ -978,7 +1009,7 @@ private struct ShiftButton: View {
         }
         .accessibilityLabel("Shift \(title.lowercased())")
         .accessibilityHint(
-            disabled ? "Unavailable at the drivetrain boundary" : hint
+            disabled ? "You are already in the last gear" : hint
         )
     }
 
@@ -1039,12 +1070,10 @@ private struct GearPositionRail: View {
             .frame(maxHeight: .infinity)
         }
         .frame(height: 24)
-        .accessibilityElement()
-        .accessibilityLabel(
-            selectedIndex.map {
-                "Gear position \($0 + 1) of \(gears.count)"
-            } ?? "Gear position unavailable"
-        )
+        // The big readout directly above already says which gear this is, and
+        // saying it twice makes a rider swipe past the same fact to reach the
+        // shift buttons. This is a picture of what that number means.
+        .accessibilityHidden(true)
     }
 
     private func fill(for index: Int) -> Color {

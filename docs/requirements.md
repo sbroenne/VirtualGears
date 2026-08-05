@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **iPhone** | Running iOS 26 or later |
+| **iPhone** | Running iOS 17 or later — any iPhone from the XS onwards |
 | **Trainer** | Wahoo KICKR V5. Other KICKRs, [see below](#which-trainers-work) |
 | **Riding app** | Anything that supports FTMS trainers. Development is validated against RealVelo; Zwift, FulGaz and others use the same interface. |
 | **Shift buttons** | Optional. An original Zwift Click. |
