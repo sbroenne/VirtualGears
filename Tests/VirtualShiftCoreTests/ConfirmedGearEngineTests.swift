@@ -273,8 +273,13 @@ final class ConfirmedGearEngineTests: XCTestCase {
                         )
                     )
                     let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
+                    let safeEncodedRange = Int(
+                        TrainerSafety.provenCircumferenceMillimeters.lowerBound * 10
+                    )...Int(
+                        TrainerSafety.provenCircumferenceMillimeters.upperBound * 10
+                    )
                     XCTAssertTrue(
-                        (6_469...48_000).contains(encoded),
+                        safeEncodedRange.contains(encoded),
                         "\(chainring.name) with \(cassette.name), gear "
                             + "\(gear.chainring)x\(gear.cog) encodes \(encoded), "
                             + "outside the proven range"

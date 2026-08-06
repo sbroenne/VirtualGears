@@ -19,12 +19,12 @@ public enum DrivetrainError: Error, Equatable {
 }
 
 public struct Drivetrain: Equatable, Sendable {
-    /// The virtual gears Zwift and Wahoo give a rider who has no gears on the
-    /// bike at all: an even ladder of twenty-four ratios that belongs to no
-    /// real bike, tuned to feel right from a standstill to a sprint.
+    /// An even ladder of twenty-four virtual ratios that belongs to no real
+    /// bike. The lower half extends farther than the common 0.75-based ladder
+    /// so first gear is genuinely easy without sacrificing the harder half.
     public static let virtualRatiosHundredths = [
-        75, 87, 99, 111, 123, 138, 153, 168,
-        186, 204, 222, 240, 261, 282, 303, 324,
+        60, 68, 77, 88, 100, 113, 129, 146,
+        165, 187, 212, 240, 261, 282, 303, 324,
         349, 374, 399, 424, 454, 484, 514, 549,
     ]
 

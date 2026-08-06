@@ -84,10 +84,9 @@ command that changes the trainer's idea of your wheel size: a smaller wheel
 covers less ground per pedal stroke, which feels like an easier gear. The riding
 app's own terrain command is left untouched, so the two never fight.
 
-Every gear is scaled away from a 2070 mm reference. The trainer accepts
-that scaling over a lopsided range — about 2.3 times harder but 3.2 times easier
-— so the starting gear is placed where the tighter end has the most room, rather
-than in the middle. A drivetrain too wide to fit is refused at setup rather than
+Every gear is scaled away from a 2070 mm reference. The default ladder reaches
+about four times easier and 2.3 times harder while keeping gear 12 as the
+starting point. A drivetrain too wide to fit is refused at setup rather than
 mid-ride.
 
 Wheel size is part of the standard interface available to every riding app.
@@ -100,7 +99,7 @@ the ride carries on at the size it already had.
 
 ## Safety
 
-The selected 646.9-4800 mm operating range was confirmed on a physical KICKR V5,
+The selected 500-4800 mm operating range was confirmed on a physical KICKR V5,
 every value acknowledged by the trainer, with the reference restored between
 each probe. These are the edges we chose to test, not a claim that the KICKR
 rejects values outside them. VirtualShift never asks for anything outside the
@@ -108,11 +107,9 @@ selected riding range. Ending virtual shifting removes VirtualShift's gear and
 returns to the riding app's latest wheel size, or to the trainer's starting size
 if the riding app did not set one.
 
-A later boundary search tested the complete range that fits in Wahoo's two-byte
-command. This KICKR acknowledged every value from 0.1 through 6553.5 mm. That
-proves command acceptance, not that the extreme values make useful riding gears,
-so the app's narrower riding range remains in place until those gears are tested
-while pedalling.
+A later boundary search reached both ends of Wahoo's two-byte command, with
+samples throughout the range acknowledged by this KICKR. That proves broad
+command acceptance, not that every extreme value makes a useful riding gear.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 what the safety check judges.
