@@ -210,7 +210,8 @@ private struct StartupView: View {
     /// The one thing the app cannot do for the rider.
     private var chainReminder: some View {
         Label(
-            "Put your chain in one quiet, straight gear and leave it there.",
+            "Use the smaller front ring if your bike has one. Pick a rear gear "
+                + "that keeps the chain straight, and leave it there.",
             systemImage: "link"
         )
         .font(.footnote)

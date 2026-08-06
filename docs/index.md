@@ -6,9 +6,10 @@
 
 **VirtualShift gives you gears on an indoor trainer that has none.**
 
-Your chain stays in one quiet, straight gear all ride. Shifting happens on your
-iPhone instead, which changes how hard the trainer feels. Nothing on the bike
-moves, so there is no chain noise, no dropped chain, and no wear.
+Use the smaller front ring if your bike has one, then pick a rear gear that keeps
+the chain straight and leave it there. Shifting happens on your iPhone instead,
+which changes how hard the trainer feels. Nothing on the bike moves, so there is
+no chain noise, no dropped chain, and no wear.
 
 !!! quote "Why this exists"
 

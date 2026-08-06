@@ -8,9 +8,10 @@
 
 VirtualShift gives you gears on an indoor trainer that has none.
 
-Your chain stays in one quiet, straight gear all ride. Shifting happens on your
-iPhone instead, which changes how hard the trainer feels. Nothing on the bike
-moves, so there is no chain noise, no dropped chain, and no wear.
+Use the smaller front ring if your bike has one, then pick a rear gear that keeps
+the chain straight and leave it there. Shifting happens on your iPhone instead,
+which changes how hard the trainer feels. Nothing on the bike moves, so there is
+no chain noise, no dropped chain, and no wear.
 
 ```text
 riding app on your computer  <->  iPhone running VirtualShift  <->  KICKR V5
@@ -99,11 +100,13 @@ the ride carries on at the size it already had.
 
 ## Safety
 
-The 646.9-4800 mm range was confirmed on a physical KICKR V5, every value
-acknowledged by the trainer, with the reference restored between each probe.
-VirtualShift never asks for anything outside it. Ending virtual shifting removes
-VirtualShift's gear and returns to the riding app's latest wheel size, or to the
-trainer's starting size if the riding app did not set one.
+The selected 646.9-4800 mm operating range was confirmed on a physical KICKR V5,
+every value acknowledged by the trainer, with the reference restored between
+each probe. These are the edges we chose to test, not a claim that the KICKR
+rejects values outside them. VirtualShift never asks for anything outside the
+tested range. Ending virtual shifting removes VirtualShift's gear and returns to
+the riding app's latest wheel size, or to the trainer's starting size if the
+riding app did not set one.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 what the safety check judges.

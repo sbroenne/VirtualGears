@@ -6,9 +6,11 @@ app asks for.
 
 ## The range was measured, not guessed
 
-The 646.9–4800 mm range was confirmed on a physical KICKR V5, every value
-acknowledged by the trainer, with the reference restored between each probe.
-VirtualShift never asks for anything outside it.
+The selected 646.9–4800 mm operating range was confirmed on a physical KICKR V5,
+every value acknowledged by the trainer, with the reference restored between
+each probe. These are the edges we chose to test, not a claim that the KICKR
+rejects values outside them. VirtualShift never asks for anything outside the
+tested range.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

@@ -114,8 +114,9 @@ struct SetupView: View {
     private var chainLineSection: some View {
         Section {
             Label(
-                "Put your chain in one quiet, straight position and leave it "
-                    + "there. VirtualShift does all the shifting from now on.",
+                "Use the smaller front ring if your bike has one. Pick a rear gear "
+                    + "that keeps the chain straight, and leave it there. "
+                    + "VirtualShift does all the shifting from now on.",
                 systemImage: "link"
             )
             .font(.callout)

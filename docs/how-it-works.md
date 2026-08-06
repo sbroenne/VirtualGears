@@ -9,11 +9,10 @@ app's own terrain command is left untouched, so the two never fight.
 
 ## Where the gears sit
 
-Every gear is scaled away from a 2070 mm reference. The trainer accepts that
-scaling over a lopsided range — about 2.3 times harder but 3.2 times easier — so
-the starting gear is placed where the tighter end has the most room, rather than
-in the middle. A drivetrain too wide to fit is refused at setup rather than
-mid-ride.
+Every gear is scaled away from a 2070 mm reference. We tested a lopsided
+operating range — about 2.3 times harder but 3.2 times easier — so the starting
+gear is placed where the tighter end has the most room, rather than in the
+middle. A drivetrain too wide to fit is refused at setup rather than mid-ride.
 
 ## When the riding app has its own idea
 
