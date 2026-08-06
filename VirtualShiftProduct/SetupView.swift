@@ -9,6 +9,7 @@ struct SetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
+    @Bindable var headwind: HeadwindCentralService
     var onFinish: (() -> Void)?
 
     var body: some View {
@@ -24,6 +25,9 @@ struct SetupView: View {
         }
         .onChange(of: store.configuration.usesClick) { _, enabled in
             if enabled { click.autoConnectSavedDevice() }
+        }
+        .onChange(of: store.configuration.usesHeadwind) { _, enabled in
+            if enabled { headwind.autoConnectSavedDevice() }
         }
         .toolbar {
             // A sheet is dismissed from its own navigation bar, which is where
@@ -66,6 +70,18 @@ struct SetupView: View {
                     value: shiftingValue,
                     status: store.configuration.usesClick
                         ? .init(state: click.state, isRequired: false)
+                        : .satisfied
+                )
+            }
+
+            NavigationLink {
+                HeadwindSetupView(store: store, headwind: headwind)
+            } label: {
+                SetupRow(
+                    title: "Wahoo Headwind",
+                    value: store.configuration.headwindName ?? "Not added",
+                    status: store.configuration.usesHeadwind
+                        ? .init(state: headwind.state, isRequired: false)
                         : .satisfied
                 )
             }
@@ -129,6 +145,9 @@ struct SetupView: View {
         kickr.autoConnectSavedDevice()
         if store.configuration.usesClick {
             click.autoConnectSavedDevice()
+        }
+        if store.configuration.usesHeadwind {
+            headwind.autoConnectSavedDevice()
         }
     }
 
@@ -330,6 +349,242 @@ private struct ShiftingSetupView: View {
             }
         }
         .onDisappear { click.stopScanning() }
+    }
+}
+
+// MARK: - Headwind
+
+private struct HeadwindSetupView: View {
+    @Bindable var store: ConfigurationStore
+    @Bindable var headwind: HeadwindCentralService
+
+    var body: some View {
+        Form {
+            if store.configuration.usesHeadwind {
+                Section {
+                    EquipmentSummary(
+                        name: store.configuration.headwindName
+                            ?? "Wahoo HEADWIND",
+                        state: headwind.state.label,
+                        symbol: "fan.fill",
+                        connected: headwind.isReady
+                    )
+                    ConnectionAdvice(
+                        isReady: headwind.isReady,
+                        isScanning: headwind.isScanning,
+                        isConnecting: headwind.state.isConnectionInProgress,
+                        isStalled: headwind.connectionIsStalled,
+                        hasSavedDevice: headwind.hasSavedDevice,
+                        wakeInstruction: WakeInstruction.headwind
+                    )
+                    Button(role: .destructive) {
+                        headwind.stopUsing()
+                    } label: {
+                        Text("Stop using this Headwind")
+                    }
+                } header: {
+                    Text("Your Headwind")
+                } footer: {
+                    Text(
+                        "If the fan is in Manual, VirtualShift returns it to "
+                            + "Sensors before forgetting it."
+                    )
+                }
+
+                HeadwindControls(headwind: headwind)
+            }
+
+            Section {
+                Button {
+                    headwind.isScanning
+                        ? headwind.stopScanning() : headwind.startScanning()
+                } label: {
+                    Label(
+                        headwind.isScanning
+                            ? "Stop looking"
+                            : (store.configuration.usesHeadwind
+                                ? "Choose a different Headwind"
+                                : "Find my Headwind"),
+                        systemImage: headwind.isScanning
+                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
+                    )
+                    .frame(maxWidth: .infinity, minHeight: 50)
+                }
+                .buttonStyle(.borderedProminent)
+
+                if headwind.isScanning, headwind.candidates.isEmpty {
+                    SearchingRow(message: "Looking for a nearby Headwind…")
+                }
+
+                ForEach(headwind.candidates) { candidate in
+                    CandidateRow(
+                        candidate: candidate,
+                        selected: candidate.id.uuidString
+                            == store.configuration.headwindUUID
+                    ) {
+                        store.configuration.rememberHeadwind(
+                            named: candidate.name,
+                            id: candidate.id
+                        )
+                        headwind.selectAndConnect(candidate.id)
+                    }
+                }
+
+                BluetoothHelp(state: headwind.state)
+            } header: {
+                Text(
+                    store.configuration.usesHeadwind
+                        ? "Change your Headwind" : "Add a Wahoo Headwind"
+                )
+            } footer: {
+                Text(
+                    store.configuration.usesHeadwind
+                        ? WakeInstruction.headwind
+                        : "Optional. Add a Headwind to switch between its own "
+                            + "sensors and manual fan speed during a ride."
+                )
+            }
+        }
+        .navigationTitle("Wahoo Headwind")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if store.configuration.usesHeadwind {
+                headwind.autoConnectSavedDevice()
+            } else {
+                headwind.startScanning()
+            }
+        }
+        .onChange(of: headwind.hasSavedDevice) { _, saved in
+            if !saved { store.configuration.forgetHeadwind() }
+        }
+        .onDisappear { headwind.stopScanning() }
+    }
+}
+
+struct HeadwindControlView: View {
+    @Bindable var headwind: HeadwindCentralService
+    var onDone: (() -> Void)?
+
+    var body: some View {
+        Form {
+            HeadwindControls(headwind: headwind)
+        }
+        .navigationTitle("Headwind")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onDone {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done", action: onDone)
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+    }
+}
+
+private struct HeadwindControls: View {
+    @Bindable var headwind: HeadwindCentralService
+
+    var body: some View {
+        Section {
+            Picker("Fan control", selection: manualBinding) {
+                Text("Sensors").tag(false)
+                Text("Manual").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .disabled(!headwind.isReady || headwind.isCommandPending)
+
+            if headwind.isManual || manualBinding.wrappedValue {
+                VStack(spacing: 16) {
+                    Text("\(headwind.desiredManualSpeed)%")
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                        .contentTransition(.numericText())
+
+                    Slider(
+                        value: speedBinding,
+                        in: 0...100,
+                        step: 5
+                    ) {
+                        Text("Fan speed")
+                    } minimumValueLabel: {
+                        Image(systemName: "fan")
+                    } maximumValueLabel: {
+                        Image(systemName: "fan.fill")
+                    }
+
+                    HStack {
+                        speedButton(
+                            title: "Slower",
+                            symbol: "minus",
+                            change: -5
+                        )
+                        Spacer()
+                        speedButton(
+                            title: "Faster",
+                            symbol: "plus",
+                            change: 5
+                        )
+                    }
+                }
+                .padding(.vertical, 8)
+                .disabled(
+                    !headwind.isReady
+                        || headwind.isCommandPending
+                        || !headwind.requestedManual
+                )
+            } else {
+                LabeledContent(
+                    "Headwind mode",
+                    value: headwind.mode?.label ?? headwind.lastSensorMode.label
+                )
+            }
+
+            if headwind.isCommandPending {
+                SearchingRow(message: "Applying fan control…")
+            }
+            if let error = headwind.commandError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+        } header: {
+            Text("Fan control")
+        } footer: {
+            Text(
+                "Sensors leaves speed control to the Headwind. Manual keeps "
+                    + "the selected speed until you switch back to Sensors."
+            )
+        }
+    }
+
+    private var manualBinding: Binding<Bool> {
+        Binding {
+            headwind.requestedManual
+        } set: { manual in
+            manual ? headwind.useManualControl() : headwind.useSensorControl()
+        }
+    }
+
+    private var speedBinding: Binding<Double> {
+        Binding {
+            Double(headwind.desiredManualSpeed)
+        } set: { value in
+            headwind.setManualSpeed(Int(value.rounded()))
+        }
+    }
+
+    private func speedButton(
+        title: String,
+        symbol: String,
+        change: Int
+    ) -> some View {
+        Button {
+            headwind.setManualSpeed(headwind.desiredManualSpeed + change)
+        } label: {
+            Label(title, systemImage: symbol)
+                .frame(minWidth: 110, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
     }
 }
 
@@ -931,7 +1186,8 @@ private struct EquipmentSummary: View {
         SetupView(
             store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!),
             kickr: KickrCentralService(diagnostics: diagnostics),
-            click: ClickCentralService(diagnostics: diagnostics)
+            click: ClickCentralService(diagnostics: diagnostics),
+            headwind: HeadwindCentralService(diagnostics: diagnostics)
         )
     }
 }

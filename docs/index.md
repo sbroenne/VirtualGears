@@ -40,7 +40,8 @@ top. The riding app still controls the road: hills feel like hills.
 ![How VirtualShift sits between your riding app and your trainer](how-it-works.svg)
 
 A Zwift Click can be added to shift from the handlebar, but it is never
-required.
+required. A Wahoo Headwind can also be added, with a choice between its own
+sensor control and manual fan speed.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24">
@@ -52,11 +53,10 @@ required.
 
 ### Gears you can see
 
-Either the 24 virtual gears Zwift and Wahoo use, which suit any bike and are the
-starting choice, or a copy of a real bike described by its chainrings and
-cassette. A real 50/34 with an 11-34 cassette gives sixteen gears, running 34x34
-up to 50x11 — the gears you would really ride, not every possible pairing of a
-ring with a cog.
+Either a 24-step virtual ladder, tuned with extra room for easy climbing, or a
+copy of a real bike described by its chainrings and cassette. A real 50/34 with
+an 11-34 cassette gives sixteen gears, running 34x34 up to 50x11 — the gears you
+would really ride, not every possible pairing of a ring with a cog.
 
 Whichever you choose is drawn rather than listed: one bar per gear, easiest to
 hardest, on a scale where a tall step is a jump the legs will notice. How far
@@ -68,6 +68,13 @@ list of tooth counts can tell you.
 Two large buttons on the phone, placed for sweaty hands and a locked-out gaze.
 An original Zwift Click can be added and shifts the same gears, but it is never
 required and nothing ever waits for it.
+
+### Headwind control
+
+An optional Wahoo Headwind can use its own paired sensor or a manual speed from
+the ride screen. Manual mode stays on the fan even after Bluetooth disconnects,
+so VirtualShift explicitly returns it to Sensors and waits for confirmation
+before forgetting or replacing it.
 
 ### Nothing to set up
 
@@ -83,9 +90,9 @@ ambiguous is asked rather than guessed.
 
 ### Everything changeable mid-ride
 
-Trainer, gears and Click can all be changed from the ride screen. Changing gears
-rebuilds them in place, without interrupting the ride, so the riding app on your
-PC never notices. If the trainer will not take the new gears, the ride carries on
+Trainer, gears, Click and Headwind can all be changed from the ride screen.
+Changing gears rebuilds them in place, without interrupting the ride, so the
+riding app on your PC never notices. If the trainer will not take the new gears, the ride carries on
 with the old ones rather than ending.
 
 ### A ride survives an interruption

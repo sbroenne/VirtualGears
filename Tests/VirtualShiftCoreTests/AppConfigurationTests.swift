@@ -152,6 +152,7 @@ final class AppConfigurationTests: XCTestCase {
     func testAStoredConfigurationSurvivesBeingReloaded() throws {
         var configuration = trainerReady()
         configuration.rememberClick(named: "Zwift Click", id: UUID())
+        configuration.rememberHeadwind(named: "HEADWIND 9267", id: UUID())
         let restored = try JSONDecoder().decode(
             AppConfiguration.self,
             from: JSONEncoder().encode(configuration)
@@ -159,5 +160,31 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertEqual(restored, configuration)
         XCTAssertTrue(restored.canFinishSetup)
         XCTAssertTrue(restored.usesClick)
+        XCTAssertTrue(restored.usesHeadwind)
+    }
+
+    func testAConfigurationFromBeforeHeadwindSupportStillLoads() throws {
+        let id = UUID()
+        let data = Data(
+            """
+            {
+              "kickrName": "Wahoo KICKR",
+              "kickrUUID": "\(id.uuidString)",
+              "clickName": "",
+              "clickUUID": "",
+              "chainringID": "\(DrivetrainCatalog.defaultChainringID)",
+              "cassetteID": "\(DrivetrainCatalog.defaultCassetteID)",
+              "usesVirtualGears": true
+            }
+            """.utf8
+        )
+
+        let configuration = try JSONDecoder().decode(
+            AppConfiguration.self,
+            from: data
+        )
+
+        XCTAssertTrue(configuration.hasValidKickr)
+        XCTAssertFalse(configuration.usesHeadwind)
     }
 }
