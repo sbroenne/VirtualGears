@@ -467,7 +467,7 @@ struct HeadwindControlView: View {
 
     var body: some View {
         Form {
-            HeadwindControls(headwind: headwind)
+            HeadwindControls(headwind: headwind, showsHelp: false)
         }
         .navigationTitle("Headwind")
         .navigationBarTitleDisplayMode(.inline)
@@ -483,22 +483,37 @@ struct HeadwindControlView: View {
 }
 
 private struct HeadwindControls: View {
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Bindable var headwind: HeadwindCentralService
+    var showsHelp = true
+    private let quickSpeeds = [0, 25, 50, 75, 100]
 
     var body: some View {
         Section {
             Picker("Fan control", selection: manualBinding) {
-                Text("Sensors").tag(false)
+                Text("Automatic").tag(false)
                 Text("Manual").tag(true)
             }
             .pickerStyle(.segmented)
             .disabled(!headwind.isReady || headwind.isCommandPending)
 
+            if verticalSizeClass != .compact {
+                modeSummary
+            }
+
             if headwind.isManual || manualBinding.wrappedValue {
-                VStack(spacing: 16) {
-                    Text("\(headwind.desiredManualSpeed)%")
-                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                        .contentTransition(.numericText())
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Fan speed")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(headwind.desiredManualSpeed)%")
+                            .font(
+                                .system(.largeTitle, design: .rounded)
+                                    .weight(.bold)
+                            )
+                            .contentTransition(.numericText())
+                    }
 
                     Slider(
                         value: speedBinding,
@@ -512,18 +527,25 @@ private struct HeadwindControls: View {
                         Image(systemName: "fan.fill")
                     }
 
-                    HStack {
-                        speedButton(
-                            title: "Slower",
-                            symbol: "minus",
-                            change: -5
-                        )
-                        Spacer()
-                        speedButton(
-                            title: "Faster",
-                            symbol: "plus",
-                            change: 5
-                        )
+                    HStack(spacing: 8) {
+                        ForEach(quickSpeeds, id: \.self) { speed in
+                            quickSpeedButton(speed)
+                        }
+                    }
+
+                    if verticalSizeClass != .compact {
+                        HStack(spacing: 12) {
+                            speedButton(
+                                title: "Slower",
+                                symbol: "minus",
+                                change: -5
+                            )
+                            speedButton(
+                                title: "Faster",
+                                symbol: "plus",
+                                change: 5
+                            )
+                        }
                     }
                 }
                 .padding(.vertical, 8)
@@ -532,15 +554,6 @@ private struct HeadwindControls: View {
                         || headwind.isCommandPending
                         || !headwind.requestedManual
                 )
-            } else {
-                LabeledContent(
-                    "Headwind mode",
-                    value: headwind.mode?.label ?? headwind.lastSensorMode.label
-                )
-            }
-
-            if headwind.isCommandPending {
-                SearchingRow(message: "Applying fan control…")
             }
             if let error = headwind.commandError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
@@ -550,11 +563,50 @@ private struct HeadwindControls: View {
         } header: {
             Text("Fan control")
         } footer: {
-            Text(
-                "Sensors leaves speed control to the Headwind. Manual keeps "
-                    + "the selected speed until you switch back to Sensors."
-            )
+            if showsHelp {
+                Text(
+                    "Automatic uses the sensor already paired to your Headwind. "
+                        + "Manual holds a fixed speed until you switch back."
+                )
+            }
         }
+    }
+
+    private var modeSummary: some View {
+        HStack(spacing: 12) {
+            Image(
+                systemName: manualBinding.wrappedValue
+                    ? "slider.horizontal.3" : "sensor.tag.radiowaves.forward"
+            )
+            .font(.title2)
+            .foregroundStyle(.blue)
+            .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(manualBinding.wrappedValue ? "Fixed fan speed" : "Sensor control")
+                    .font(.headline)
+                Text(modeDetail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+            ProgressView()
+                .opacity(headwind.isCommandPending ? 1 : 0)
+                .accessibilityHidden(!headwind.isCommandPending)
+        }
+        .frame(minHeight: 44)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var modeDetail: String {
+        if headwind.isCommandPending {
+            return "Applying change…"
+        }
+        if manualBinding.wrappedValue {
+            return "Keeps running at the speed you choose"
+        }
+        return "Following \(headwind.lastSensorMode.label.lowercased())"
     }
 
     private var manualBinding: Binding<Bool> {
@@ -582,9 +634,26 @@ private struct HeadwindControls: View {
             headwind.setManualSpeed(headwind.desiredManualSpeed + change)
         } label: {
             Label(title, systemImage: symbol)
-                .frame(minWidth: 110, minHeight: 44)
+                .frame(maxWidth: .infinity, minHeight: 52)
         }
         .buttonStyle(.bordered)
+        .accessibilityHint("Changes fan speed by 5 percent")
+    }
+
+    private func quickSpeedButton(_ speed: Int) -> some View {
+        Button {
+            headwind.setManualSpeed(speed)
+        } label: {
+            Text(speed == 0 ? "Off" : "\(speed)")
+                .font(.subheadline.weight(.semibold))
+                .frame(maxWidth: .infinity, minHeight: 40)
+        }
+        .buttonStyle(
+            .borderedProminent
+        )
+        .tint(headwind.desiredManualSpeed == speed ? .blue : .gray.opacity(0.28))
+        .foregroundStyle(headwind.desiredManualSpeed == speed ? .white : .primary)
+        .accessibilityLabel(speed == 0 ? "Fan off" : "\(speed) percent")
     }
 }
 

@@ -111,12 +111,13 @@ screen if it drops below 20%.
 ## Adding a Wahoo Headwind
 
 Open Settings, choose Wahoo Headwind, and select the nearby fan. During a ride,
-the fan button switches between the Headwind's own sensor control and a manual
-speed from 0–100%.
+the fan button switches between Automatic control from the Headwind's paired
+sensor and a manual speed from 0–100%. Manual has a slider and one-tap buttons
+for Off, 25%, 50%, 75% and 100%.
 
 Manual mode remains on the Headwind after Bluetooth disconnects. VirtualShift
-therefore sends an explicit Sensors command and waits for the fan to confirm it
-before removing or replacing a saved Headwind.
+therefore sends an explicit sensor-control command and waits for the fan to
+confirm it before removing or replacing a saved Headwind.
 
 ## Choosing your gears
 

@@ -139,7 +139,8 @@ Upload these six, in this order:
 1. `riding.png` — the ride screen, which is what the app is for.
 2. `gears.png` — the 24 virtual gears drawn as bars.
 3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
-4. `headwind-control.png` — optional Headwind sensor/manual fan control.
+4. `headwind-control.png` — optional Automatic/Manual Headwind control with
+   one-tap speeds.
 5. `starting.png` — automatic reconnect for the trainer, Click and Headwind.
 6. `settings.png` — the three remembered equipment rows and gear choice.
 

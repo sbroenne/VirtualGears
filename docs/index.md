@@ -71,10 +71,11 @@ required and nothing ever waits for it.
 
 ### Headwind control
 
-An optional Wahoo Headwind can use its own paired sensor or a manual speed from
-the ride screen. Manual mode stays on the fan even after Bluetooth disconnects,
-so VirtualShift explicitly returns it to Sensors and waits for confirmation
-before forgetting or replacing it.
+An optional Wahoo Headwind can use Automatic control from its paired sensor or a
+manual speed from the ride screen. Manual offers a slider and one-tap common
+speeds. It stays on the fan even after Bluetooth disconnects, so VirtualShift
+explicitly returns control to the sensor and waits for confirmation before
+forgetting or replacing it.
 
 <p align="center">
   <img src="screenshots/headwind-control.png" width="30%" alt="Headwind manual fan control at 50 percent in portrait">
