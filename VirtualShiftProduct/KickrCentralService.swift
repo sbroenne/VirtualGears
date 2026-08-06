@@ -146,8 +146,17 @@ final class KickrCentralService: NSObject {
         }
         candidates.removeAll()
         discovered.removeAll()
+        // Ask for trainers, rather than being told about every Bluetooth
+        // device in the building. A trainer only has to name one of these two
+        // to be found: Bluetooth matches any entry in the list, not all of
+        // them.
+        //
+        // A KICKR V5 was measured naming both before anything connected to it,
+        // and every riding app finds trainers this same way - which is far
+        // better evidence than one measurement, because a trainer that named
+        // neither could not be found by Zwift or FulGaz either.
         central.scanForPeripherals(
-            withServices: nil,
+            withServices: [ftmsService, wahooService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
         state = .scanning
@@ -702,12 +711,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
             compatibility: TrainerModel
                 .compatibility(forAdvertisedName: name)
         )
-        if let index = candidates.firstIndex(where: { $0.id == item.id }) {
-            candidates[index] = item
-        } else {
-            candidates.append(item)
-        }
-        candidates.sort { $0.rssi > $1.rssi }
+        candidates.absorb(item)
     }
 
     func centralManager(

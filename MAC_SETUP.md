@@ -42,6 +42,24 @@ The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
 used, reconnect before riding so the starting circumference is restored first.
 
+## What a KICKR V5 puts in its advertisement
+
+Measured on a woken KICKR V5 from this Mac, reading only - nothing was
+connected to and nothing was written.
+
+    FOUND "Wahoo KICKR 2A93" -73dBm services=[1818,1826] connectable=true
+
+So the trainer names both Cycling Power (1818) and Fitness Machine (1826)
+before anything connects to it, and a scan filtered on those two finds it every
+time.
+
+The app scans for those two services rather than looking at every Bluetooth
+device in range. A trainer only has to name one of them to be found, because
+Bluetooth matches any entry in the list rather than all of them - so a trainer
+would have to name neither to be missed, and such a trainer could not be found
+by Zwift or FulGaz either. That is stronger evidence than the measurement
+above: every riding app discovers trainers this way.
+
 ## What the original Zwift Click proof found
 
 This proof was independent of the KICKR and sent no trainer commands. Starting

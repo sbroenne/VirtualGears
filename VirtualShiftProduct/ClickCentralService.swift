@@ -467,12 +467,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
             name: name,
             rssi: RSSI.intValue
         )
-        if let index = candidates.firstIndex(where: { $0.id == item.id }) {
-            candidates[index] = item
-        } else {
-            candidates.append(item)
-        }
-        candidates.sort { $0.rssi > $1.rssi }
+        candidates.absorb(item)
     }
 
     func centralManager(

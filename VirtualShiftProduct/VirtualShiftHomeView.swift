@@ -330,8 +330,6 @@ private struct ActiveRideView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
     @State private var confirmsStop = false
-    @State private var lastInteraction = Date()
-    @State private var isDimmed = false
     @State private var showsSettings = false
     @State private var showsGears = false
     /// Remembers the gears the ride started with, so the session is only rebuilt
@@ -387,7 +385,6 @@ private struct ActiveRideView: View {
                     gearHero(geometry, landscape: landscape)
                     shiftButtons(geometry, landscape: landscape)
                     equipmentFooter
-                        .opacity(showsChrome ? 1 : 0.3)
                 }
                 .padding(.horizontal, landscape ? 18 : 14)
                 .padding(.bottom, 4)
@@ -478,7 +475,6 @@ private struct ActiveRideView: View {
         .onChange(of: showsGears) { _, isOpen in
             rememberOrRestartGears(isOpen: isOpen)
         }
-        .simultaneousGesture(TapGesture().onEnded(wake))
         .onChange(of: hasEquipmentProblem) { _, hasProblem in
             guard !hasProblem else {
                 // A rider not looking at the screen needs telling, because the
@@ -486,40 +482,11 @@ private struct ActiveRideView: View {
                 announce(equipmentProblem ?? "Check your equipment")
                 return
             }
-            // Trouble holds the chrome bright, so the instant it clears the
-            // footer would otherwise snap straight to faded — right as the
-            // rider plugged something back in, which reads as a fault rather
-            // than a fix. Count the repair as activity so the fade happens
-            // gently, and later.
-            wake()
             announce("Equipment reconnected")
         }
         .onChange(of: coordinator.shiftConfirmation) {
-            wake()
             performFeedback(coordinator.lastShiftFeedback)
             announce("Gear \(gearAccessibilityValue)")
-        }
-        .onChange(of: coordinator.shiftInteraction) {
-            wake()
-        }
-        .task {
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(for: .seconds(1))
-                } catch {
-                    return
-                }
-                guard Date().timeIntervalSince(lastInteraction) >= 30 else {
-                    continue
-                }
-                if reduceMotion {
-                    isDimmed = true
-                } else {
-                    withAnimation(.easeOut(duration: 0.8)) {
-                        isDimmed = true
-                    }
-                }
-            }
         }
         .confirmationDialog(
             "Stop this ride?",
@@ -527,7 +494,6 @@ private struct ActiveRideView: View {
             titleVisibility: .visible
         ) {
             Button("Stop Ride", role: .destructive) {
-                wake()
                 onRiderStop()
                 Task { await coordinator.stopRide() }
             }
@@ -614,13 +580,6 @@ private struct ActiveRideView: View {
         }
         .frame(height: max(120, geometry.size.height * (landscape ? 0.46 : 0.62)))
         .accessibilityElement(children: .contain)
-    }
-
-    /// Equipment trouble always wins over the ambient state, so a problem can
-    /// never hide behind a faded screen. The Stop control and the layout stay
-    /// put either way, so no target ever moves under the rider's thumb.
-    private var showsChrome: Bool {
-        !isDimmed || hasEquipmentProblem || coordinator.state != .active
     }
 
     private var hasEquipmentProblem: Bool {
@@ -809,10 +768,8 @@ private struct ActiveRideView: View {
                 : "Requests the next harder gear. Hold to keep shifting harder.",
             disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder
         ) {
-            wake()
             coordinator.shift(easier ? .easier : .harder)
         } repeatAction: {
-            wake()
             coordinator.beginHold(easier ? .easier : .harder)
         } releaseAction: {
             coordinator.endHold()
@@ -907,18 +864,6 @@ private struct ActiveRideView: View {
         case .active: .green
         case .reconnecting, .failed: .orange
         default: .secondary
-        }
-    }
-
-    private func wake() {
-        lastInteraction = Date()
-        guard isDimmed else { return }
-        if reduceMotion {
-            isDimmed = false
-        } else {
-            withAnimation(.easeIn(duration: 0.2)) {
-                isDimmed = false
-            }
         }
     }
 
