@@ -124,9 +124,11 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 
 ### Screenshots
 
-Required: **6.9-inch iPhone**. All five images in `docs/screenshots/` are already
-1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be uploaded as
-they are. Apple scales them down for smaller phones; one set is enough.
+Required: **6.9-inch iPhone**. The five portrait images in `docs/screenshots/`
+are 1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
+uploaded as they are. Apple scales them down for smaller phones; one set is
+enough. `riding-landscape.png` is the 2868 × 1320 documentation view and is not
+part of the upload set below.
 
 Upload these three, in this order:
 
@@ -134,10 +136,10 @@ Upload these three, in this order:
 2. `gears.png` — the 24 virtual gears drawn as bars.
 3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
 
-Do **not** upload `settings.png` or `starting.png` as they stand. Both were captured
-with no trainer present, so one shows an orange "your trainer is not connected"
-warning and the other shows an endless "Looking for your trainer" spinner. Accurate
-for the documentation, a poor advertisement.
+Do **not** upload `settings.png` as it stands: it was captured with no trainer
+present and shows an orange "your trainer is not connected" warning. The updated
+`starting.png` is suitable for documentation and shows the named trainer and Click
+states, but the three images above still tell the App Store story more directly.
 
 ### Privacy answers ("App Privacy" section)
 

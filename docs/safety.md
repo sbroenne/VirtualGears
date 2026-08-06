@@ -15,24 +15,24 @@ exactly what the safety check judged.
 
 ## The trainer is always put back
 
-Every ride ends by returning the trainer to the wheel size it had before that
-ride started, which is 2070 mm.
+Ending virtual shifting returns the trainer to the riding app's latest wheel
+size, or to the size VirtualShift borrowed if the riding app did not set one.
 
-This matters because the trainer works out its speed from that setting. A value
-left behind would quietly distort the speed and distance of any ride that did
-not use VirtualShift.
+This matters because the trainer works out its speed from that setting. A
+virtual gear left behind would quietly distort speed and distance. A wheel size
+set by the riding app is different: that app still owns the ride, so its latest
+number remains the baseline when virtual shifting ends.
 
-Some riding apps, FulGaz among them, set their own wheel size mid-ride.
-VirtualShift honours it while the ride is running and rebuilds every gear around
-it — but that number belongs to that app and that session, so it is not what the
-trainer gets back at the end. The size put back is always the one the ride
-borrowed.
+Wheel size is part of the standard interface available to every riding app.
+Whenever one sets it, VirtualShift rebuilds every gear around it. That number
+belongs to the riding app, and stopping VirtualShift does not stop the app's
+ride, so the trainer returns to that number when virtual shifting ends.
 
 !!! info "If the app is interrupted"
 
-    If iOS ends the app before a ride can stop, the size the ride borrowed is
-    still written down. The next launch puts the trainer back, without saying
-    anything about it.
+    If iOS ends VirtualShift, the riding app's Bluetooth link cannot survive.
+    The size VirtualShift originally borrowed is still written down, so the next
+    launch puts the trainer back without saying anything about it.
 
 ## What it is not
 

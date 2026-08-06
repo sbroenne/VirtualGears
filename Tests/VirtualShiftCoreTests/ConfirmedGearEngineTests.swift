@@ -344,7 +344,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         }
     }
 
-    /// A riding app such as FulGaz may set its own wheel size, and VirtualShift
+    /// Any riding app may set its own wheel size through FTMS, and VirtualShift
     /// rebuilds the gears around it. It must still refuse a size that would put
     /// any gear outside what the trainer was proven to accept.
     func testRebaseRefusesAWheelSizeTheGearsCannotFitAround() throws {

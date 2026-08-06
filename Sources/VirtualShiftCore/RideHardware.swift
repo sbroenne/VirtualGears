@@ -1,5 +1,15 @@
 import Foundation
 
+public struct RidingAppCommandSource: Equatable, Sendable {
+    public let centralID: UUID
+    public let subscriptionID: UUID
+
+    public init(centralID: UUID, subscriptionID: UUID) {
+        self.centralID = centralID
+        self.subscriptionID = subscriptionID
+    }
+}
+
 /// What a ride needs from the hardware, and nothing more.
 ///
 /// The ride used to talk to the Bluetooth classes directly, which meant none of
@@ -44,12 +54,13 @@ public protocol FitnessMachineBroadcast: AnyObject {
     var latestEvent: FTMSPeripheralEvent? { get }
     var commandHandler: ((
         FitnessMachineControlPointRequest,
-        UUID
+        RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)? { get set }
 
     func startAdvertising()
     func stopAcceptingCommands()
     func stopAdvertising()
+    func isControlSubscriber(_ source: RidingAppCommandSource) -> Bool
     func relayIndoorBikeData(_ data: Data)
     func notifyControlLost()
 }

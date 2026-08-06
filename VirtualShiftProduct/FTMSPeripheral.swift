@@ -15,7 +15,7 @@ final class FTMSPeripheral: NSObject {
     private(set) var latestEvent: FTMSPeripheralEvent?
     var commandHandler: ((
         FitnessMachineControlPointRequest,
-        UUID
+        RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)?
 
     private let diagnostics: ProductDiagnosticsStore
@@ -42,12 +42,13 @@ final class FTMSPeripheral: NSObject {
     private var servicePublished = false
     private var acceptingCommands = false
     private var subscriptions: [UUID: Set<CBUUID>] = [:]
+    private var controlSubscriptionIDs: [UUID: UUID] = [:]
     private var centrals: [UUID: CBCentral] = [:]
     private var controlOwnerID: UUID?
 
     private struct ControlCommand {
         let request: FitnessMachineControlPointRequest
-        let centralID: UUID
+        let source: RidingAppCommandSource
     }
 
     private struct Update {
@@ -103,12 +104,13 @@ final class FTMSPeripheral: NSObject {
         let rejected = commands
         commands.removeAll()
         for command in rejected {
+            let centralID = command.source.centralID
             let response = FitnessMachineControlPointResponse(
                 requestOpcode: command.request.opcode,
                 result: .operationFailed
             )
-            send(response.encode(), on: controlCharacteristic, to: command.centralID)
-            emit(.controlResponse(command.centralID, response))
+            send(response.encode(), on: controlCharacteristic, to: centralID)
+            emit(.controlResponse(centralID, response))
         }
     }
 
@@ -123,11 +125,17 @@ final class FTMSPeripheral: NSObject {
         servicePublished = false
         isAdvertising = false
         subscriptions.removeAll()
+        controlSubscriptionIDs.removeAll()
         centrals.removeAll()
         subscribedAppCount = 0
         controlOwnerID = nil
         controllingAppID = nil
         emit(.advertisingStopped)
+    }
+
+    func isControlSubscriber(_ source: RidingAppCommandSource) -> Bool {
+        subscriptions[source.centralID]?.contains(controlUUID) == true
+            && controlSubscriptionIDs[source.centralID] == source.subscriptionID
     }
 
     /// Sent to every subscribed app. A riding app that only reads ride data,
@@ -212,9 +220,9 @@ final class FTMSPeripheral: NSObject {
 
     private func enqueue(
         _ request: FitnessMachineControlPointRequest,
-        from centralID: UUID
+        from source: RidingAppCommandSource
     ) {
-        commands.append(.init(request: request, centralID: centralID))
+        commands.append(.init(request: request, source: source))
         processNextCommand()
     }
 
@@ -233,9 +241,9 @@ final class FTMSPeripheral: NSObject {
         _ command: ControlCommand
     ) async -> FTMSPeripheralCommandResult {
         let request = command.request
-        let centralID = command.centralID
+        let centralID = command.source.centralID
         emit(.controlRequest(centralID, request))
-        guard acceptingCommands else {
+        guard acceptingCommands, isControlSubscriber(command.source) else {
             return .init(result: .operationFailed, status: nil)
         }
         guard subscriptions[centralID]?.contains(controlUUID) == true else {
@@ -254,16 +262,22 @@ final class FTMSPeripheral: NSObject {
         guard let commandHandler else {
             return .init(result: .operationFailed, status: nil)
         }
-        return await commandHandler(request, centralID)
+        return await commandHandler(request, command.source)
     }
 
     private func finish(
         _ command: ControlCommand,
         result: FTMSPeripheralCommandResult
     ) {
+        guard isControlSubscriber(command.source) else {
+            processingCommand = false
+            processNextCommand()
+            return
+        }
+        let centralID = command.source.centralID
         if result.result == .success {
             if command.request == .requestControl {
-                controlOwnerID = command.centralID
+                controlOwnerID = centralID
             } else if command.request == .reset {
                 controlOwnerID = nil
             }
@@ -273,11 +287,11 @@ final class FTMSPeripheral: NSObject {
             requestOpcode: command.request.opcode,
             result: result.result
         )
-        send(response.encode(), on: controlCharacteristic, to: command.centralID)
+        send(response.encode(), on: controlCharacteristic, to: centralID)
         if let status = result.status, result.result == .success {
-            send(status.encode(), on: statusCharacteristic, to: command.centralID)
+            send(status.encode(), on: statusCharacteristic, to: centralID)
         }
-        emit(.controlResponse(command.centralID, response))
+        emit(.controlResponse(centralID, response))
         processingCommand = false
         processNextCommand()
     }
@@ -427,8 +441,18 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
             } else {
                 do {
                     let decoded = try FitnessMachineControlPointRequest.decode(data)
-                    result = .success
-                    enqueue(decoded, from: id)
+                    if let subscriptionID = controlSubscriptionIDs[id] {
+                        result = .success
+                        enqueue(
+                            decoded,
+                            from: .init(
+                                centralID: id,
+                                subscriptionID: subscriptionID
+                            )
+                        )
+                    } else {
+                        result = .writeNotPermitted
+                    }
                 } catch let FTMSCodecError.unsupportedOpcode(opcode) {
                     result = .success
                     let response = FitnessMachineControlPointResponse(
@@ -460,6 +484,9 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
     ) {
         centrals[central.identifier] = central
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
+        if characteristic.uuid == controlUUID {
+            controlSubscriptionIDs[central.identifier] = UUID()
+        }
         refreshSubscribedAppCount()
         emit(.centralSubscribed(
             central.identifier,
@@ -479,6 +506,9 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
            controlOwnerID == central.identifier {
             controlOwnerID = nil
             controllingAppID = nil
+        }
+        if characteristic.uuid == controlUUID {
+            controlSubscriptionIDs.removeValue(forKey: central.identifier)
         }
         if subscriptions[central.identifier]?.isEmpty == true {
             subscriptions.removeValue(forKey: central.identifier)
