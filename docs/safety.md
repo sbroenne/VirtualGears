@@ -10,7 +10,16 @@ The selected 646.9–4800 mm operating range was confirmed on a physical KICKR V
 every value acknowledged by the trainer, with the reference restored between
 each probe. These are the edges we chose to test, not a claim that the KICKR
 rejects values outside them. VirtualShift never asks for anything outside the
-tested range.
+selected riding range.
+
+A later boundary search tested the complete range representable by Wahoo's
+two-byte command. The same KICKR V5 acknowledged every value from 0.1 through
+6553.5 mm. The search restored 2070 mm after every probe and again at the end.
+
+That result proves what the command accepts; it does not prove that the extreme
+values produce useful, predictable gears while someone is pedalling. VirtualShift
+therefore keeps its narrower riding range until the wider gears are physically
+ride-tested.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
