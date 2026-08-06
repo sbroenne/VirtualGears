@@ -576,7 +576,7 @@ private struct ActiveRideView: View {
                     showsFan = false
                 }
             }
-            .presentationDetents([.medium])
+            .presentationDetents([.fraction(0.66)])
         }
         // Asking for gears lands on the gears, not on a screen the rider then
         // has to navigate. Anything else would be a longer way round mid-ride.

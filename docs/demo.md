@@ -35,8 +35,9 @@
 
 <figure markdown>
   ![Headwind manual fan control at 50 percent](screenshots/headwind-control.png){ width="280" }
-  <figcaption>An optional Headwind can stay with its own sensor or use a manual
-  speed. Slower and Faster are large enough to use on the bike.</figcaption>
+  <figcaption>An optional Headwind can stay on Automatic or use a manual speed.
+  Common speeds take one tap, and Slower and Faster are large enough to use on
+  the bike.</figcaption>
 </figure>
 
 <figure markdown>

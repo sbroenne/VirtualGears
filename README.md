@@ -58,10 +58,11 @@ list of tooth counts can tell you.
 locked-out gaze. An original Zwift Click can be added and shifts the same
 gears, but it is never required and nothing ever waits for it.
 
-**Optional Headwind control.** Add a Wahoo Headwind and switch between its own
-sensor control and a manual fan speed from the ride screen. Returning to Sensors
-is explicitly confirmed before VirtualShift disconnects from the fan. The
-controls work in both portrait and landscape.
+**Optional Headwind control.** Add a Wahoo Headwind and choose Automatic or
+Manual from the ride screen. Manual has a slider, one-tap common speeds, and
+large Slower and Faster buttons in portrait. Returning control to the fan's
+sensor is explicitly confirmed before VirtualShift disconnects. The controls
+work in both portrait and landscape.
 
 **Nothing to set up.** Open the app. It looks for your trainer, connects to it,
 starts the session and appears to your riding app, all on its own. There is no
