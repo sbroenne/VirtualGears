@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import VirtualShiftCore
 
 @MainActor
 @Observable
@@ -16,7 +15,6 @@ public final class ProxyCoordinator {
     public private(set) var requestedGearIndex: Int?
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
-    public private(set) var shiftInteraction = 0
     /// The wheel size the gears are currently built around. A riding app can
     /// move it mid-ride, so it is not the size the trainer gets back on Stop.
     public private(set) var sessionBaselineMillimeters: Double?
@@ -740,7 +738,6 @@ public final class ProxyCoordinator {
         case .holdEnded:
             return
         }
-        shiftInteraction &+= 1
         guard var engine = gearEngine else { return }
         let oldRequested = engine.requestedIndex
         let oldConfirmed = engine.confirmedIndex
@@ -798,7 +795,6 @@ public final class ProxyCoordinator {
                         self.gearEngine = sweeping
                         if change != nil {
                             self.feedback.record(.multiple)
-                            self.shiftInteraction &+= 1
                             self.updateDisplayedGear()
                         } else {
                             self.heldDirection = nil

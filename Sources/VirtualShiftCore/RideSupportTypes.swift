@@ -1,6 +1,5 @@
 import Foundation
 import Observation
-import VirtualShiftCore
 
 public struct BluetoothCandidate: Identifiable, Equatable {
     public let id: UUID
