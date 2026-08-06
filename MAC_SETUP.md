@@ -53,12 +53,12 @@ So the trainer names both Cycling Power (1818) and Fitness Machine (1826)
 before anything connects to it, and a scan filtered on those two finds it every
 time.
 
-The app still scans without a filter, on purpose. Advertising a service is not
-the same as having one - an advertisement has little room and firmware may
-leave the list out - and only this one model has been measured. A KICKR that
-kept its services to itself would never appear at all, and an empty list is the
-worst thing to show somebody setting up for the first time. The saving would
-only ever apply while the pairing screen is open.
+The app scans for those two services rather than looking at every Bluetooth
+device in range. A trainer only has to name one of them to be found, because
+Bluetooth matches any entry in the list rather than all of them - so a trainer
+would have to name neither to be missed, and such a trainer could not be found
+by Zwift or FulGaz either. That is stronger evidence than the measurement
+above: every riding app discovers trainers this way.
 
 ## What the original Zwift Click proof found
 

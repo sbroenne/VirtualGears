@@ -146,22 +146,17 @@ final class KickrCentralService: NSObject {
         }
         candidates.removeAll()
         discovered.removeAll()
-        // Deliberately unfiltered, which looks wasteful and has been checked
-        // rather than assumed. A KICKR V5 was measured advertising both
-        // Cycling Power (1818) and Fitness Machine (1826), and a scan filtered
-        // on those finds it every time - so filtering would work for the
-        // trainer this app was built against.
+        // Ask for trainers, rather than being told about every Bluetooth
+        // device in the building. A trainer only has to name one of these two
+        // to be found: Bluetooth matches any entry in the list, not all of
+        // them.
         //
-        // It stays unfiltered because of the trainers that were not measured.
-        // Advertising a service is not the same as having one: an advertisement
-        // has little room, and firmware is free to leave the list out. A KICKR
-        // that did so would simply never appear, and an empty list is the worst
-        // thing a first-time rider can be shown - far worse than a scan that
-        // looks at more devices than it needs to for the few seconds this
-        // screen is open. Names are what identify a trainer here anyway, and
-        // anything not a KICKR is dropped on the next line without ceremony.
+        // A KICKR V5 was measured naming both before anything connected to it,
+        // and every riding app finds trainers this same way - which is far
+        // better evidence than one measurement, because a trainer that named
+        // neither could not be found by Zwift or FulGaz either.
         central.scanForPeripherals(
-            withServices: nil,
+            withServices: [ftmsService, wahooService],
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
         state = .scanning
