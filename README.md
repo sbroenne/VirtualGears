@@ -26,14 +26,19 @@ passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
 <p align="center">
-  <img src="docs/screenshots/starting.png" width="24%" alt="The saved trainer connecting while the Zwift Click is already connected">
-  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24">
+  <img src="docs/screenshots/starting.png" width="24%" alt="The saved trainer connecting while the Zwift Click and Headwind are connected">
+  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24 with trainer, Click, Headwind and riding app connected">
   <img src="docs/screenshots/gears.png" width="24%" alt="The 24 virtual gears drawn as bars">
   <img src="docs/screenshots/gears-real-bike.png" width="24%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
 </p>
 
 <p align="center">
   <img src="docs/screenshots/riding-landscape.png" width="80%" alt="The landscape ride screen, with gear 12 between large Easier and Harder buttons">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/headwind-control.png" width="24%" alt="Headwind manual fan control at 50 percent in portrait">
+  <img src="docs/screenshots/headwind-control-landscape.png" width="56%" alt="Headwind manual fan control at 50 percent in landscape">
 </p>
 
 ## What you get
@@ -55,7 +60,8 @@ gears, but it is never required and nothing ever waits for it.
 
 **Optional Headwind control.** Add a Wahoo Headwind and switch between its own
 sensor control and a manual fan speed from the ride screen. Returning to Sensors
-is explicitly confirmed before VirtualShift disconnects from the fan.
+is explicitly confirmed before VirtualShift disconnects from the fan. The
+controls work in both portrait and landscape.
 
 **Nothing to set up.** Open the app. It looks for your trainer, connects to it,
 starts the session and appears to your riding app, all on its own. There is no

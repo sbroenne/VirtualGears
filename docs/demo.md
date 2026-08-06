@@ -21,15 +21,28 @@
 ## What a ride looks like
 
 <figure markdown>
-  ![The saved trainer connecting while the Zwift Click is already connected](screenshots/starting.png){ width="280" }
+  ![The saved trainer connecting while the Zwift Click and Headwind are connected](screenshots/starting.png){ width="280" }
   <figcaption>Open the app and it goes looking for your trainer. There is
-  nothing to press.</figcaption>
+  nothing to press. Optional equipment reconnects by itself.</figcaption>
 </figure>
 
 <figure markdown>
   ![The ride screen, showing gear 12 of 24](screenshots/riding.png){ width="280" }
   <figcaption>The ride screen. Two large buttons, a gear number big enough to
-  read from the saddle, and your power and cadence passing through.</figcaption>
+  read from the saddle, a fan button when a Headwind is added, and live
+  connection state along the bottom.</figcaption>
+</figure>
+
+<figure markdown>
+  ![Headwind manual fan control at 50 percent](screenshots/headwind-control.png){ width="280" }
+  <figcaption>An optional Headwind can stay with its own sensor or use a manual
+  speed. Slower and Faster are large enough to use on the bike.</figcaption>
+</figure>
+
+<figure markdown>
+  ![Settings with trainer, Zwift Click and Wahoo Headwind](screenshots/settings.png){ width="280" }
+  <figcaption>Trainer, Click and Headwind are remembered in one ordinary
+  Settings screen.</figcaption>
 </figure>
 
 <figure markdown>

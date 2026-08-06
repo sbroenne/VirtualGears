@@ -610,9 +610,9 @@ struct GearChoiceView: View {
             } footer: {
                 Text(
                     store.configuration.usesVirtualGears
-                        ? "The same 24 virtual gears Zwift and Wahoo use. They "
-                            + "belong to no particular bike and suit everything "
-                            + "from a standing start to a sprint."
+                        ? "Twenty-four very wide virtual gears, from an easier "
+                            + "climbing gear to the same hard end. They belong "
+                            + "to no particular bike."
                         : "Copy the numbers printed on your own bike, or pick "
                             + "any combination you would like to ride. It does "
                             + "not have to be a set that anyone sells."

@@ -64,9 +64,8 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
     gives a KICKR V5 gears anyway, in whichever app you ride with.
 
     Sit the app between your iPhone and the app you ride with on your computer, and
-    you get a full set of gears you can shift through mid-ride — either the 24 evenly
-    spaced virtual gears used by indoor riding apps, or an exact copy of the gears on
-    your real bike.
+    you get a full set of gears you can shift through mid-ride — either 24 very wide
+    virtual gears, or an exact copy of the gears on your real bike.
 
     NOTHING TO SET UP
     Open the app and it starts. It finds your trainer, connects to it, starts the
@@ -81,9 +80,9 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
     you would actually ride. Cross-chained and duplicate combinations are left out.
 
     BUILT FOR RIDING, NOT FOR READING
-    Two shift buttons fill most of the screen, so you can hit them without looking
-    down or sitting up. Hold one to keep shifting. The screen stays awake for the
-    whole ride.
+    Two large shift buttons stay easy to hit without looking down or sitting up,
+    while the current gear is the biggest thing on screen. Hold one to keep shifting.
+    The screen stays awake for the whole ride.
 
     WORKS WITH THE APPS YOU ALREADY USE
     VirtualShift appears as an ordinary indoor trainer, so any app that pairs with a
@@ -93,6 +92,11 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
     OPTIONAL SHIFT BUTTONS
     If you have a handlebar shift controller, VirtualShift will use it alongside the
     on-screen buttons. It is never required and the app never waits for it.
+
+    OPTIONAL HEADWIND CONTROL
+    If you have a Wahoo KICKR HEADWIND, VirtualShift can reconnect it automatically.
+    Leave fan speed with the Headwind's own sensor, or choose a manual speed from the
+    ride screen. The fan is optional and never blocks a ride.
 
     CAREFUL WITH YOUR TRAINER
     A gear is only shown after your trainer confirms it. Every gear stays inside a
@@ -124,22 +128,20 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 
 ### Screenshots
 
-Required: **6.9-inch iPhone**. The five portrait images in `docs/screenshots/`
+Required: **6.9-inch iPhone**. The six portrait images in `docs/screenshots/`
 are 1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
 uploaded as they are. Apple scales them down for smaller phones; one set is
-enough. `riding-landscape.png` is the 2868 × 1320 documentation view and is not
-part of the upload set below.
+enough. The two landscape images are 2868 × 1320 documentation views; they are
+not part of the portrait upload set below.
 
-Upload these three, in this order:
+Upload these six, in this order:
 
 1. `riding.png` — the ride screen, which is what the app is for.
 2. `gears.png` — the 24 virtual gears drawn as bars.
 3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
-
-Do **not** upload `settings.png` as it stands: it was captured with no trainer
-present and shows an orange "your trainer is not connected" warning. The updated
-`starting.png` is suitable for documentation and shows the named trainer and Click
-states, but the three images above still tell the App Store story more directly.
+4. `headwind-control.png` — optional Headwind sensor/manual fan control.
+5. `starting.png` — automatic reconnect for the trainer, Click and Headwind.
+6. `settings.png` — the three remembered equipment rows and gear choice.
 
 ### Privacy answers ("App Privacy" section)
 
@@ -177,6 +179,9 @@ you explain it. Paste this into **App Review Information → Notes**:
     trainer and relays the trainer's data back, while applying the rider's chosen gear
     by rescaling the trainer's wheel-circumference setting. This is what produces the
     virtual gears.
+
+    A Wahoo KICKR HEADWIND fan can optionally be paired for sensor or manual speed
+    control. It is not required to review the trainer and virtual-shifting features.
 
     No account, no login, no server. The app contains no networking code.
 

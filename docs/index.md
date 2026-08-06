@@ -44,7 +44,7 @@ required. A Wahoo Headwind can also be added, with a choice between its own
 sensor control and manual fan speed.
 
 <p align="center">
-  <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24">
+  <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
   <img src="screenshots/gears.png" width="30%" alt="The 24 virtual gears drawn as bars">
   <img src="screenshots/gears-real-bike.png" width="30%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
 </p>
@@ -75,6 +75,11 @@ An optional Wahoo Headwind can use its own paired sensor or a manual speed from
 the ride screen. Manual mode stays on the fan even after Bluetooth disconnects,
 so VirtualShift explicitly returns it to Sensors and waits for confirmation
 before forgetting or replacing it.
+
+<p align="center">
+  <img src="screenshots/headwind-control.png" width="30%" alt="Headwind manual fan control at 50 percent in portrait">
+  <img src="screenshots/headwind-control-landscape.png" width="60%" alt="Headwind manual fan control at 50 percent in landscape">
+</p>
 
 ### Nothing to set up
 
