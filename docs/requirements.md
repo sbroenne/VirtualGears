@@ -6,6 +6,7 @@
 | **Trainer** | Wahoo KICKR V5. Other KICKRs, [see below](#which-trainers-work) |
 | **Riding app** | Anything that supports FTMS trainers. Development is validated against RealVelo; Zwift, FulGaz and others use the same interface. |
 | **Shift buttons** | Optional. An original Zwift Click. |
+| **Fan** | Optional. A Wahoo KICKR HEADWIND. |
 
 ## Which trainers work
 
@@ -107,10 +108,20 @@ battery mid-ride costs you nothing but the buttons on the handlebar.
 The app shows the Click's battery level in Settings, and warns you on the ride
 screen if it drops below 20%.
 
+## Adding a Wahoo Headwind
+
+Open Settings, choose Wahoo Headwind, and select the nearby fan. During a ride,
+the fan button switches between the Headwind's own sensor control and a manual
+speed from 0–100%.
+
+Manual mode remains on the Headwind after Bluetooth disconnects. VirtualShift
+therefore sends an explicit Sensors command and waits for the fan to confirm it
+before removing or replacing a saved Headwind.
+
 ## Choosing your gears
 
-The starting choice is the 24 virtual gears that Zwift and Wahoo use, which suit
-any bike. If you would rather ride the gears of a real bike, describe it by its
+The starting choice is a 24-step virtual ladder with extra room for easy
+climbing. If you would rather ride the gears of a real bike, describe it by its
 chainrings and cassette and the app builds that instead.
 
 You can change this mid-ride. The trainer is always put back to normal before

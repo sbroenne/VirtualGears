@@ -18,6 +18,7 @@ riding app on your computer  <->  iPhone running VirtualShift  <->  KICKR V5
                                               ^
                                               |
                                      Zwift Click (optional)
+                                     Headwind fan (optional)
 ```
 
 Your riding app connects to the iPhone instead of to the trainer. VirtualShift
@@ -25,8 +26,8 @@ passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
 <p align="center">
-  <img src="docs/screenshots/starting.png" width="24%" alt="The saved trainer connecting while the Zwift Click is already connected">
-  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24">
+  <img src="docs/screenshots/starting.png" width="24%" alt="The saved trainer connecting while the Zwift Click and Headwind are connected">
+  <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24 with trainer, Click, Headwind and riding app connected">
   <img src="docs/screenshots/gears.png" width="24%" alt="The 24 virtual gears drawn as bars">
   <img src="docs/screenshots/gears-real-bike.png" width="24%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
 </p>
@@ -35,13 +36,18 @@ top. The riding app still controls the road: hills feel like hills.
   <img src="docs/screenshots/riding-landscape.png" width="80%" alt="The landscape ride screen, with gear 12 between large Easier and Harder buttons">
 </p>
 
+<p align="center">
+  <img src="docs/screenshots/headwind-control.png" width="24%" alt="Headwind manual fan control at 50 percent in portrait">
+  <img src="docs/screenshots/headwind-control-landscape.png" width="56%" alt="Headwind manual fan control at 50 percent in landscape">
+</p>
+
 ## What you get
 
-**Gears you can see.** Either the 24 virtual gears Zwift and Wahoo use, which suit any bike
-and are the starting choice, or a copy of a real bike described by its
-chainrings and cassette. A real 50/34 with an 11-34 cassette gives sixteen
-gears, running 34x34 up to 50x11 — the gears you would really ride, not every
-possible pairing of a ring with a cog.
+**Gears you can see.** Either a 24-step virtual ladder, tuned with extra room for
+easy climbing, or a copy of a real bike described by its chainrings and
+cassette. A real 50/34 with an 11-34 cassette gives sixteen gears, running 34x34
+up to 50x11 — the gears you would really ride, not every possible pairing of a
+ring with a cog.
 
 Whichever you choose is drawn rather than listed: one bar per gear, easiest to
 hardest, on a scale where a tall step is a jump the legs will notice. How far
@@ -51,6 +57,11 @@ list of tooth counts can tell you.
 **Shifting.** Two large buttons on the phone, placed for sweaty hands and a
 locked-out gaze. An original Zwift Click can be added and shifts the same
 gears, but it is never required and nothing ever waits for it.
+
+**Optional Headwind control.** Add a Wahoo Headwind and switch between its own
+sensor control and a manual fan speed from the ride screen. Returning to Sensors
+is explicitly confirmed before VirtualShift disconnects from the fan. The
+controls work in both portrait and landscape.
 
 **Nothing to set up.** Open the app. It looks for your trainer, connects to it,
 starts the session and appears to your riding app, all on its own. There is no
@@ -62,8 +73,8 @@ automatically when one is clearly closest. Bluetooth reaches through walls, and
 connecting to a neighbour's trainer would change their wheel size, so anything
 ambiguous is asked rather than guessed.
 
-**Everything changeable mid-ride.** Trainer, gears and Click can all be changed
-from the ride screen. Changing gears rebuilds them in place, without
+**Everything changeable mid-ride.** Trainer, gears, Click and Headwind can all be
+changed from the ride screen. Changing gears rebuilds them in place, without
 interrupting the ride, so the riding app on your PC never notices.
 
 **A ride survives an interruption.** Taking a call, tapping a notification or
@@ -146,6 +157,7 @@ shows it instead.
 - A riding app that supports FTMS trainers. Development is validated against
   RealVelo; Zwift, FulGaz and others use the same interface.
 - Optionally, an original Zwift Click
+- Optionally, a Wahoo KICKR HEADWIND
 
 ## Repository
 

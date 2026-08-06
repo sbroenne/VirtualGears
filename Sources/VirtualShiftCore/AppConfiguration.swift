@@ -8,6 +8,8 @@ public struct AppConfiguration: Codable, Equatable {
     public var kickrUUID = ""
     public var clickName = ""
     public var clickUUID = ""
+    public var headwindName: String?
+    public var headwindUUID: String?
     public var chainringID = DrivetrainCatalog.defaultChainringID
     public var cassetteID = DrivetrainCatalog.defaultCassetteID
     /// The gears Zwift and Wahoo hand out when the bike has none of its own.
@@ -55,6 +57,13 @@ public struct AppConfiguration: Codable, Equatable {
     public var usesClick: Bool {
         !clickName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && UUID(uuidString: clickUUID) != nil
+    }
+
+    /// A Headwind is optional and never gates a ride.
+    public var usesHeadwind: Bool {
+        !(headwindName ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && UUID(uuidString: headwindUUID ?? "") != nil
     }
 
     public var hasSafeCircumference: Bool {
@@ -118,6 +127,16 @@ public struct AppConfiguration: Codable, Equatable {
     public mutating func forgetClick() {
         clickName = ""
         clickUUID = ""
+    }
+
+    public mutating func rememberHeadwind(named name: String, id: UUID) {
+        headwindName = name
+        headwindUUID = id.uuidString
+    }
+
+    public mutating func forgetHeadwind() {
+        headwindName = nil
+        headwindUUID = nil
     }
 }
 

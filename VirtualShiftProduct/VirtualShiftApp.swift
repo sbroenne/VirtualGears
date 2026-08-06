@@ -8,6 +8,7 @@ struct VirtualShiftApp: App {
     @State private var diagnostics: ProductDiagnosticsStore
     @State private var kickr: KickrCentralService
     @State private var click: ClickCentralService
+    @State private var headwind: HeadwindCentralService
     @State private var coordinator: ProxyCoordinator
 
     init() {
@@ -15,8 +16,10 @@ struct VirtualShiftApp: App {
         _diagnostics = State(initialValue: diagnostics)
         let kickr = KickrCentralService(diagnostics: diagnostics)
         let click = ClickCentralService(diagnostics: diagnostics)
+        let headwind = HeadwindCentralService(diagnostics: diagnostics)
         _kickr = State(initialValue: kickr)
         _click = State(initialValue: click)
+        _headwind = State(initialValue: headwind)
         _coordinator = State(initialValue: ProxyCoordinator(
             kickr: kickr,
             click: click,
@@ -32,6 +35,7 @@ struct VirtualShiftApp: App {
                 store: configurationStore,
                 kickr: kickr,
                 click: click,
+                headwind: headwind,
                 coordinator: coordinator
             )
             .onChange(of: configurationStore.configuration.setupComplete) {
@@ -39,11 +43,19 @@ struct VirtualShiftApp: App {
                     Task { await coordinator.shutdown() }
                 }
             }
+            .onChange(of: headwind.hasSavedDevice) { _, saved in
+                if !saved, configurationStore.configuration.usesHeadwind {
+                    configurationStore.configuration.forgetHeadwind()
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active, !coordinator.isRidePresented else { return }
                 kickr.autoConnectSavedDevice()
                 if configurationStore.configuration.usesClick {
                     click.autoConnectSavedDevice()
+                }
+                if configurationStore.configuration.usesHeadwind {
+                    headwind.autoConnectSavedDevice()
                 }
                 coordinator.restoreInterruptedRideIfNeeded()
             }

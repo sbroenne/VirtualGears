@@ -123,6 +123,8 @@ public enum WakeInstruction {
     public static let click =
         "The Click sleeps to save its battery. Press either of its buttons "
             + "once. VirtualShift connects on its own as soon as it wakes up."
+    public static let headwind =
+        "Keep the Headwind plugged in. It advertises even when the fan is stopped."
 }
 
 public enum ProductBluetoothError: Error, LocalizedError {    case unavailable(String)
@@ -207,4 +209,3 @@ public final class ProductDiagnosticsStore {
         return String(singleLine.prefix(500))
     }
 }
-

@@ -6,6 +6,7 @@ struct VirtualShiftHomeView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
+    @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     /// Set once the rider stops a ride, so the app does not immediately start a
     /// new one. Reopening the app is the only way to ask for another ride.
@@ -17,6 +18,7 @@ struct VirtualShiftHomeView: View {
                 store: store,
                 kickr: kickr,
                 click: click,
+                headwind: headwind,
                 coordinator: coordinator,
                 onRiderStop: { riderStopped = true }
             )
@@ -25,6 +27,7 @@ struct VirtualShiftHomeView: View {
                 store: store,
                 kickr: kickr,
                 click: click,
+                headwind: headwind,
                 coordinator: coordinator,
                 autoStarts: !riderStopped
             )
@@ -41,6 +44,7 @@ private struct StartupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
+    @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
@@ -85,6 +89,7 @@ private struct StartupView: View {
                         store: store,
                         kickr: kickr,
                         click: click,
+                        headwind: headwind,
                         onFinish: { showsSettings = false }
                     )
                 }
@@ -100,6 +105,7 @@ private struct StartupView: View {
 
     private func begin() async {
         if store.configuration.usesClick { click.autoConnectSavedDevice() }
+        if store.configuration.usesHeadwind { headwind.autoConnectSavedDevice() }
         guard !store.configuration.hasValidKickr else {
             kickr.autoConnectSavedDevice()
             startIfReady()
@@ -265,6 +271,21 @@ private struct StartupView: View {
                 )
             )
         }
+        if store.configuration.usesHeadwind {
+            items.append(
+                ConnectionStatusItem(
+                    id: "headwind",
+                    name: store.configuration.headwindName ?? "Wahoo HEADWIND",
+                    role: "Fan",
+                    detail: connectionDetail(headwind.state),
+                    state: connectionState(
+                        headwind.state,
+                        isReady: headwind.isReady,
+                        isOptional: true
+                    )
+                )
+            )
+        }
         if includeRidingApp {
             let connected = coordinator.peripheral.subscribedAppCount > 0
             let steering = coordinator.peripheral.controllingAppID != nil
@@ -396,6 +417,7 @@ private struct ActiveRideView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
+    @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     /// Called only when the rider chooses to stop, so a ride that ends by
     /// itself is never mistaken for one they meant to end.
@@ -405,6 +427,7 @@ private struct ActiveRideView: View {
     @State private var confirmsStop = false
     @State private var showsSettings = false
     @State private var showsGears = false
+    @State private var showsFan = false
     /// Remembers the gears the ride started with, so the session is only rebuilt
     /// when the rider actually changed them.
     @State private var gearsWhenOpened: Drivetrain?
@@ -471,7 +494,7 @@ private struct ActiveRideView: View {
                 // Stopping virtual shifting changes the trainer setting, so it
                 // still asks for confirmation. It sits alone, far from the
                 // settings control, so a sweaty thumb cannot hit both.
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItemGroup(placement: .topBarLeading) {
                     // Everything on this screen is aimed at while pedalling, so
                     // the bar's controls are grown well past the size a phone
                     // held in a calm hand would need. The symbol is drawn
@@ -491,7 +514,21 @@ private struct ActiveRideView: View {
                     }
                     .controlSize(.large)
                     .accessibilityLabel("Settings")
-                    .accessibilityHint("Change your gears, trainer, or Zwift Click")
+                    .accessibilityHint(
+                        "Change your gears, trainer, Click, or Headwind"
+                    )
+                    if configuration.usesHeadwind {
+                        Button {
+                            showsFan = true
+                        } label: {
+                            Image(systemName: "fan.fill")
+                                .font(.title2.weight(.semibold))
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(.rect)
+                        }
+                        .controlSize(.large)
+                        .accessibilityLabel("Headwind controls")
+                    }
                 }
                 // The middle of the bar says what the ride is doing whenever it
                 // is doing anything other than simply running.
@@ -528,9 +565,18 @@ private struct ActiveRideView: View {
                     store: store,
                     kickr: kickr,
                     click: click,
+                    headwind: headwind,
                     onFinish: { showsSettings = false }
                 )
             }
+        }
+        .sheet(isPresented: $showsFan) {
+            NavigationStack {
+                HeadwindControlView(headwind: headwind) {
+                    showsFan = false
+                }
+            }
+            .presentationDetents([.medium])
         }
         // Asking for gears lands on the gears, not on a screen the rider then
         // has to navigate. Anything else would be a longer way round mid-ride.
@@ -680,7 +726,7 @@ private struct ActiveRideView: View {
     }
 
     private var hasEquipmentProblem: Bool {
-        equipmentItems.contains { $0.state != .ok }
+        equipmentItems.contains { !$0.isOptional && $0.state != .ok }
     }
 
     /// The one thing worth telling the rider about, if anything is wrong.
@@ -788,6 +834,17 @@ private struct ActiveRideView: View {
                     title: "Click",
                     state: click.isReady ? .ok : .pending,
                     detail: click.state.label
+                )
+            )
+        }
+        if configuration.usesHeadwind {
+            items.append(
+                EquipmentItem(
+                    isOptional: true,
+                    id: "headwind",
+                    title: "Fan",
+                    state: headwind.isReady ? .ok : .pending,
+                    detail: headwind.state.label
                 )
             )
         }
@@ -1198,10 +1255,12 @@ private struct GearPositionRail: View {
     let diagnostics = ProductDiagnosticsStore()
     let kickr = KickrCentralService(diagnostics: diagnostics)
     let click = ClickCentralService(diagnostics: diagnostics)
+    let headwind = HeadwindCentralService(diagnostics: diagnostics)
     VirtualShiftHomeView(
         store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.firstRun")!),
         kickr: kickr,
         click: click,
+        headwind: headwind,
         coordinator: ProxyCoordinator(
             kickr: kickr,
             click: click,

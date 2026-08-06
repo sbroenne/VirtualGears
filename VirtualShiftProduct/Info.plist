@@ -25,7 +25,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>VirtualShift uses Bluetooth to connect to your trainer and your shift buttons, and to appear as a trainer to the app you ride with.</string>
+	<string>VirtualShift uses Bluetooth to connect to your trainer, shift buttons and optional fan, and to appear as a trainer to the app you ride with.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>VirtualShift uses Bluetooth to appear as a trainer to the app you ride with.</string>
 	<key>UIApplicationSceneManifest</key>
