@@ -702,12 +702,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
             compatibility: TrainerModel
                 .compatibility(forAdvertisedName: name)
         )
-        if let index = candidates.firstIndex(where: { $0.id == item.id }) {
-            candidates[index] = item
-        } else {
-            candidates.append(item)
-        }
-        candidates.sort { $0.rssi > $1.rssi }
+        candidates.absorb(item)
     }
 
     func centralManager(
