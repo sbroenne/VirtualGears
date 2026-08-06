@@ -36,7 +36,7 @@ struct VirtualShiftApp: App {
             )
             .onChange(of: configurationStore.configuration.setupComplete) {
                 if !configurationStore.configuration.setupComplete {
-                    Task { await coordinator.stopRide() }
+                    Task { await coordinator.shutdown() }
                 }
             }
             .onChange(of: scenePhase) { _, phase in

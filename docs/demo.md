@@ -21,7 +21,7 @@
 ## What a ride looks like
 
 <figure markdown>
-  ![Looking for the trainer on launch](screenshots/starting.png){ width="280" }
+  ![The saved trainer connecting while the Zwift Click is already connected](screenshots/starting.png){ width="280" }
   <figcaption>Open the app and it goes looking for your trainer. There is
   nothing to press.</figcaption>
 </figure>

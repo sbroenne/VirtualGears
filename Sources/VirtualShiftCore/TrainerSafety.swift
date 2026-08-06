@@ -8,10 +8,10 @@ public enum TrainerSafety {
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
     /// Staged on a physical KICKR V5, every value acknowledged, with the
-    /// reference restored between each probe. Values outside this were never
-    /// confirmed, so VirtualShift never asks for them.
+    /// reference restored between each probe. This intentionally remains much
+    /// narrower than the command's encodable limits.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
-        646.9...4_800
+        500...4_800
 
     /// The trainer is told a wheel size in tenths of a millimetre, so what it
     /// receives is always rounded to the nearest tenth.

@@ -8,9 +8,10 @@
 
 VirtualShift gives you gears on an indoor trainer that has none.
 
-Your chain stays in one quiet, straight gear all ride. Shifting happens on your
-iPhone instead, which changes how hard the trainer feels. Nothing on the bike
-moves, so there is no chain noise, no dropped chain, and no wear.
+Use the smaller front ring if your bike has one, then pick a rear gear that keeps
+the chain straight and leave it there. Shifting happens on your iPhone instead,
+which changes how hard the trainer feels. Nothing on the bike moves, so there is
+no chain noise, no dropped chain, and no wear.
 
 ```text
 riding app on your computer  <->  iPhone running VirtualShift  <->  KICKR V5
@@ -24,10 +25,14 @@ passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
 <p align="center">
-  <img src="docs/screenshots/starting.png" width="24%" alt="Looking for the trainer on launch">
+  <img src="docs/screenshots/starting.png" width="24%" alt="The saved trainer connecting while the Zwift Click is already connected">
   <img src="docs/screenshots/riding.png" width="24%" alt="The ride screen, showing gear 12 of 24">
   <img src="docs/screenshots/gears.png" width="24%" alt="The 24 virtual gears drawn as bars">
   <img src="docs/screenshots/gears-real-bike.png" width="24%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/riding-landscape.png" width="80%" alt="The landscape ride screen, with gear 12 between large Easier and Harder buttons">
 </p>
 
 ## What you get
@@ -79,26 +84,32 @@ command that changes the trainer's idea of your wheel size: a smaller wheel
 covers less ground per pedal stroke, which feels like an easier gear. The riding
 app's own terrain command is left untouched, so the two never fight.
 
-Every gear is scaled away from a 2070 mm reference. The trainer accepts
-that scaling over a lopsided range — about 2.3 times harder but 3.2 times easier
-— so the starting gear is placed where the tighter end has the most room, rather
-than in the middle. A drivetrain too wide to fit is refused at setup rather than
+Every gear is scaled away from a 2070 mm reference. The default ladder reaches
+about four times easier and 2.3 times harder while keeping gear 12 as the
+starting point. A drivetrain too wide to fit is refused at setup rather than
 mid-ride.
 
-Some riding apps, FulGaz among them, set a wheel size of their own. VirtualShift
-honours it: that size becomes the new reference and every gear is rebuilt around
-it, so the gear you are in keeps feeling the way it did and the app's number is
-what the trainer is left sitting at. If the gears would no longer fit inside the
-proven range around that size, the request is declined and the ride carries on
-at the size it already had.
+Wheel size is part of the standard interface available to every riding app.
+Whenever one sets it, VirtualShift honours it: that size becomes the new
+reference and every gear is rebuilt around it, so the gear you are in keeps
+feeling the way it did. If virtual shifting stops while the riding app keeps
+running, its number is what the trainer is left sitting at. If the gears would no
+longer fit inside the proven range around that size, the request is declined and
+the ride carries on at the size it already had.
 
 ## Safety
 
-The 646.9-4800 mm range was confirmed on a physical KICKR V5, every value
-acknowledged by the trainer, with the reference restored between each probe.
-VirtualShift never asks for anything outside it, and every ride ends by putting
-the trainer back to where it started: 2070 mm, or the wheel size the riding app
-set if it set one.
+The selected 500-4800 mm operating range was confirmed on a physical KICKR V5,
+every value acknowledged by the trainer, with the reference restored between
+each probe. These are the edges we chose to test, not a claim that the KICKR
+rejects values outside them. VirtualShift never asks for anything outside the
+selected riding range. Ending virtual shifting removes VirtualShift's gear and
+returns to the riding app's latest wheel size, or to the trainer's starting size
+if the riding app did not set one.
+
+A later boundary search reached both ends of Wahoo's two-byte command, with
+samples throughout the range acknowledged by this KICKR. That proves broad
+command acceptance, not that every extreme value makes a useful riding gear.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 what the safety check judges.

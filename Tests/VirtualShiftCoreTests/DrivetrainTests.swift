@@ -112,7 +112,7 @@ final class DrivetrainTests: XCTestCase {
     }
 
     /// The trainer can be pushed about 2.3x harder than the starting gear but
-    /// 3.2x easier. There is more room downwards, so on a wide mountain setup
+    /// about 4.1x easier. There is more room downwards, so on a wide mountain setup
     /// the starting gear sits above the middle of the range, not on it.
     func testBuildPlacesStartingGearWhereBothEndsFit() throws {
         let drivetrain = try Drivetrain.build(
@@ -141,7 +141,8 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertThrowsError(
             try Drivetrain.build(
                 chainrings: [50, 34],
-                cassetteCogs: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 52]
+                cassetteCogs: [10, 12, 14, 16, 18, 21, 24, 28, 33, 39, 45, 52],
+                scaleRange: 0.5...2
             )
         ) {
             guard case .rangeTooWideForTrainer = $0 as? DrivetrainError else {
@@ -325,9 +326,30 @@ final class DrivetrainTests: XCTestCase {
         let drivetrain = try Drivetrain.virtualLadder()
 
         XCTAssertEqual(drivetrain.gears.count, 24)
+        XCTAssertEqual(drivetrain.referenceIndex, 11)
         // Judged on the value the trainer is actually sent, which is what any
         // claim about proven hardware limits can honestly cover.
         let reference = drivetrain.referenceGear.ratio
+        XCTAssertEqual(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference:
+                    TrainerSafety.referenceCircumferenceMillimeters,
+                referenceRatio: reference,
+                selectedRatio: drivetrain.gears.first!.ratio
+            ),
+            517.5,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            try WheelCircumferenceScaler.effectiveCircumference(
+                neutralCircumference:
+                    TrainerSafety.referenceCircumferenceMillimeters,
+                referenceRatio: reference,
+                selectedRatio: drivetrain.gears.last!.ratio
+            ),
+            4_735.125,
+            accuracy: 0.001
+        )
         for gear in drivetrain.gears {
             let circumference = try WheelCircumferenceScaler
                 .effectiveCircumference(

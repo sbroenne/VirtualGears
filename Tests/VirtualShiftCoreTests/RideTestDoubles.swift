@@ -19,9 +19,12 @@ final class FakeTrainer: TrainerLink {
 
     /// Every wheel size the trainer has been set to, in order. The last one is
     /// what a real KICKR would still be carrying.
-    private(set) var wheelSizeHistory: [Double] = []
+    private(set) var wheelSizeHistory: [Double] = [
+        TrainerSafety.referenceCircumferenceMillimeters
+    ]
     private(set) var didDisconnect = false
     private(set) var disconnectRestoreRequest: Double??
+    private(set) var ftmsRequests: [FitnessMachineControlPointRequest] = []
 
     /// What the trainer is left on. The whole point of the restore rules.
     var currentWheelSizeMillimeters: Double? { wheelSizeHistory.last }
@@ -43,6 +46,7 @@ final class FakeTrainer: TrainerLink {
     func execute(
         _ request: FitnessMachineControlPointRequest
     ) async throws -> FitnessMachineControlPointResponse {
+        ftmsRequests.append(request)
         if case .requestControl = request {
             if deniesFTMSControl {
                 return FitnessMachineControlPointResponse(
@@ -113,7 +117,7 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
     var latestEvent: FTMSPeripheralEvent?
     var commandHandler: ((
         FitnessMachineControlPointRequest,
-        UUID
+        RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)?
 
     /// How many times the riding app has had the trainer pulled out from under
@@ -121,9 +125,13 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
     /// this counts real interruptions, not cosmetic ones.
     private(set) var advertisingStopCount = 0
     private(set) var didStopAcceptingCommands = false
+    private(set) var acceptingCommands = false
+    private(set) var relayedBikeData: [Data] = []
+    private var controlSubscribers: [UUID: UUID] = [:]
 
     func startAdvertising() {
         isAdvertising = true
+        acceptingCommands = true
         latestEvent = .advertisingStarted
     }
 
@@ -131,9 +139,25 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
         if isAdvertising { advertisingStopCount += 1 }
         isAdvertising = false
         latestEvent = .advertisingStopped
+        controlSubscribers.removeAll()
     }
 
-    func stopAcceptingCommands() { didStopAcceptingCommands = true }
+    func stopAcceptingCommands() {
+        didStopAcceptingCommands = true
+        acceptingCommands = false
+    }
+
+    func isControlSubscriber(_ source: RidingAppCommandSource) -> Bool {
+        controlSubscribers[source.centralID] == source.subscriptionID
+    }
+
+    func disconnect(_ id: UUID) {
+        controlSubscribers.removeValue(forKey: id)
+    }
+
+    func subscribe(_ id: UUID) {
+        controlSubscribers[id] = UUID()
+    }
 
     /// Sends a command the way a connected riding app would, through the same
     /// handler the real link uses, so tests exercise the real wiring.
@@ -141,9 +165,17 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
         _ request: FitnessMachineControlPointRequest,
         from app: UUID = UUID()
     ) async -> FTMSPeripheralCommandResult? {
-        await commandHandler?(request, app)
+        if controlSubscribers[app] == nil { subscribe(app) }
+        guard acceptingCommands else {
+            return .init(result: .operationFailed, status: nil)
+        }
+        let source = RidingAppCommandSource(
+            centralID: app,
+            subscriptionID: controlSubscribers[app]!
+        )
+        return await commandHandler?(request, source)
     }
-    func relayIndoorBikeData(_ data: Data) {}
+    func relayIndoorBikeData(_ data: Data) { relayedBikeData.append(data) }
     func notifyControlLost() {}
 }
 

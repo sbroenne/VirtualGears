@@ -52,6 +52,19 @@ public final class ProxyCoordinator {
     /// changed, leaving the rider shown a gear the trainer is not on.
     private var baselineUpdateInProgress = false
     private var restoreTask: Task<Void, Never>?
+    /// A normal Stop has to restore VirtualShift's current gear without racing
+    /// the riding app's command queue. Commands already executing finish first;
+    /// new ones wait and continue transparently after the restore.
+    private var pcCommandGateDepth = 0
+    private var pcCommandsInFlight = 0
+    private var pcCommandGateWaiters: [CheckedContinuation<Void, Never>] = []
+    private var pcCommandIdleWaiters: [CheckedContinuation<Void, Never>] = []
+    private var stopCompletionWaiters: [CheckedContinuation<Void, Never>] = []
+    /// The riding app's current neutral size survives between VirtualShift gear
+    /// sessions. A retained PC connection is not required to resend it merely
+    /// because the rider stopped and restarted virtual shifting.
+    private var parkedBaselineMillimeters: Double?
+    private var parkedBaselineCameFromRidingApp = false
 
     /// The wheel size a ride borrowed, written down before the ride starts.
     /// A ride normally puts it back on Stop and clears this, so a value still
@@ -88,11 +101,11 @@ public final class ProxyCoordinator {
         self.diagnostics = diagnostics
         self.defaults = defaults
 
-        peripheral.commandHandler = { [weak self] request, centralID in
+        peripheral.commandHandler = { [weak self] request, source in
             guard let self else {
                 return .init(result: .operationFailed, status: nil)
             }
-            return await self.handle(request, from: centralID)
+            return await self.handle(request, from: source)
         }
         kickr.eventHandler = { [weak self] event in
             self?.handleKickrEvent(event)
@@ -128,9 +141,11 @@ public final class ProxyCoordinator {
         guard lifecycle.isBetweenRides else { return }
         let token = lifecycle.restoreToken
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
-        let baseline = defaults.double(forKey: unfinishedRideKey)
+        let baseline = parkedBaselineMillimeters
+            ?? defaults.double(forKey: unfinishedRideKey)
         guard baseline > 0 else {
             defaults.removeObject(forKey: unfinishedRideKey)
+            parkedBaselineMillimeters = baseline
             return
         }
         for _ in 0..<100 {
@@ -191,9 +206,17 @@ public final class ProxyCoordinator {
         }
         usesClick = configuration.usesClick
         let id = lifecycle.beginConnecting()
+        closePCCommandGate()
         startTask = Task { [weak self] in
-            await self?.runRide(configuration: configuration, sessionID: id)
-            self?.startTask = nil
+            guard let self else { return }
+            await self.waitForPCCommandsToFinish()
+            guard self.startMayProceed(id) else {
+                self.reopenPCCommandGate()
+                return
+            }
+            await self.runRide(configuration: configuration, sessionID: id)
+            self.reopenPCCommandGate()
+            self.startTask = nil
         }
     }
 
@@ -208,19 +231,20 @@ public final class ProxyCoordinator {
                     "These gears are outside the trainer's safe range"
                 )
             }
+            let baseline = parkedBaselineMillimeters
+                ?? Double(configuration.neutralCircumferenceMillimeters)
+            parkedBaselineMillimeters = baseline
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters:
-                    Double(configuration.neutralCircumferenceMillimeters)
+                baselineCircumferenceMillimeters: baseline
             )
             gearSequence = drivetrain.gears
             updateDisplayedGear()
-            sessionBaselineMillimeters =
-                Double(configuration.neutralCircumferenceMillimeters)
-            borrowedNeutralMillimeters =
-                Double(configuration.neutralCircumferenceMillimeters)
+            sessionBaselineMillimeters = baseline
+            borrowedNeutralMillimeters = baseline
+            ridingAppSetWheelSize = parkedBaselineCameFromRidingApp
             defaults.set(
-                Double(configuration.neutralCircumferenceMillimeters),
+                baseline,
                 forKey: unfinishedRideKey
             )
 
@@ -264,9 +288,36 @@ public final class ProxyCoordinator {
         }
     }
 
+    /// Ends VirtualShift's gear session without ending the riding app's session.
+    ///
+    /// The trainer's borrowed wheel size is restored before the active gear
+    /// session is cleared. VirtualShift does not send Stop for the riding app,
+    /// reject its commands, or remove the service it is connected to.
     public func stopRide() async {
-        guard let id = lifecycle.beginStopping() else { return }
-        peripheral.stopAcceptingCommands()
+        await stopRide(disconnectWhenFinished: false)
+    }
+
+    /// Ends any gear session and drops equipment VirtualShift owns. The riding
+    /// app's link is deliberately left alone; ending that app's session is the
+    /// riding app's job.
+    public func shutdown() async {
+        await stopRide(disconnectWhenFinished: true)
+    }
+
+    private func stopRide(disconnectWhenFinished: Bool) async {
+        closePCCommandGate()
+        defer { reopenPCCommandGate() }
+        await waitForPCCommandsToFinish()
+        if disconnectWhenFinished, lifecycle.isStopping {
+            await waitForCurrentStopToFinish()
+            disconnectOwnedEquipment()
+            return
+        }
+        guard let id = lifecycle.beginStopping() else {
+            if disconnectWhenFinished { disconnectOwnedEquipment() }
+            return
+        }
+        defer { signalStopFinished() }
         shiftTask?.cancel()
         recoveryTask?.cancel()
         // A ride that is still connecting has its own trainer writes to make.
@@ -307,26 +358,11 @@ public final class ProxyCoordinator {
             }
         }
 
-        if kickr.isReady, kickr.hasFTMSControl {
-            do {
-                let response = try await kickr.execute(.stopOrPause(.stop))
-                guard response.result == .success else {
-                    throw ProductBluetoothError.commandFailed(
-                        "KICKR rejected Stop"
-                    )
-                }
-            } catch {
-                failures.append("Trainer stop failed: \(error.localizedDescription)")
-            }
-        } else {
-            failures.append("Trainer stop could not be confirmed")
-        }
-
-        // The wheel size the trainer had before this ride, not whatever a
-        // riding app moved the gears onto. A trainer left sitting on a riding
-        // app's number works out speed and distance wrongly for everything
-        // that connects to it afterwards.
-        if let neutral = borrowedNeutralMillimeters, kickr.isReady {
+        // Ending VirtualShift is not ending the PC app's ride. Remove the
+        // virtual gear by returning to the latest baseline the riding app asked
+        // for. If it never supplied one, that is the trainer's original size.
+        let parkedBaseline = sessionBaselineMillimeters ?? borrowedNeutralMillimeters
+        if let neutral = parkedBaseline, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
                     millimeters: neutral
@@ -338,6 +374,7 @@ public final class ProxyCoordinator {
                     )
                 }
                 defaults.removeObject(forKey: unfinishedRideKey)
+                parkedBaselineMillimeters = neutral
             } catch {
                 failures.append(
                     "Baseline restoration failed: \(error.localizedDescription)"
@@ -347,9 +384,7 @@ public final class ProxyCoordinator {
             failures.append("Trainer starting state could not be restored")
         }
 
-        peripheral.stopAdvertising()
-        click.disconnect()
-        kickr.disconnect(restoringCircumferenceMillimeters: nil)
+        if disconnectWhenFinished { disconnectOwnedEquipment() }
         screen.keepAwake = false
         clearRideData()
         // The record is only removed once the trainer confirms the original
@@ -363,6 +398,55 @@ public final class ProxyCoordinator {
             trainerNeedsRestoring: stillSet
         )
         if failures.isEmpty { log("Ride session stopped") }
+    }
+
+    private func disconnectOwnedEquipment() {
+        parkedBaselineMillimeters = nil
+        parkedBaselineCameFromRidingApp = false
+        click.disconnect()
+        kickr.disconnect(restoringCircumferenceMillimeters: nil)
+    }
+
+    private func waitForPCCommandGate() async {
+        while pcCommandGateDepth > 0 {
+            await withCheckedContinuation { pcCommandGateWaiters.append($0) }
+        }
+    }
+
+    private func closePCCommandGate() {
+        pcCommandGateDepth += 1
+    }
+
+    private func waitForPCCommandsToFinish() async {
+        guard pcCommandsInFlight > 0 else { return }
+        await withCheckedContinuation { pcCommandIdleWaiters.append($0) }
+    }
+
+    private func finishPCCommand() {
+        pcCommandsInFlight -= 1
+        guard pcCommandsInFlight == 0 else { return }
+        let waiters = pcCommandIdleWaiters
+        pcCommandIdleWaiters.removeAll()
+        waiters.forEach { $0.resume() }
+    }
+
+    private func reopenPCCommandGate() {
+        pcCommandGateDepth -= 1
+        guard pcCommandGateDepth == 0 else { return }
+        let waiters = pcCommandGateWaiters
+        pcCommandGateWaiters.removeAll()
+        waiters.forEach { $0.resume() }
+    }
+
+    private func waitForCurrentStopToFinish() async {
+        guard lifecycle.isStopping else { return }
+        await withCheckedContinuation { stopCompletionWaiters.append($0) }
+    }
+
+    private func signalStopFinished() {
+        let waiters = stopCompletionWaiters
+        stopCompletionWaiters.removeAll()
+        waiters.forEach { $0.resume() }
     }
 
     private func clearRideData() {
@@ -529,9 +613,22 @@ public final class ProxyCoordinator {
 
     private func handle(
         _ request: FitnessMachineControlPointRequest,
-        from centralID: UUID
+        from source: RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult {
-        guard lifecycle.isRiding, kickr.isReady else {
+        await waitForPCCommandGate()
+        guard peripheral.isControlSubscriber(source) else {
+            return .init(result: .controlNotPermitted, status: nil)
+        }
+        pcCommandsInFlight += 1
+        defer { finishPCCommand() }
+        return await handleCommand(request, from: source)
+    }
+
+    private func handleCommand(
+        _ request: FitnessMachineControlPointRequest,
+        from source: RidingAppCommandSource
+    ) async -> FTMSPeripheralCommandResult {
+        guard kickr.isReady else {
             return .init(result: .operationFailed, status: nil)
         }
         guard VirtualTrainerFTMSProfile.supports(request) else {
@@ -539,6 +636,32 @@ public final class ProxyCoordinator {
             return .init(result: .opcodeNotSupported, status: nil)
         }
         do {
+            // Between VirtualShift rides this remains a transparent trainer
+            // proxy. Stopping the gear UI must not pause, stop, or otherwise
+            // take ownership of the PC riding app's session.
+            guard lifecycle.isRiding else {
+                if case let .setWheelCircumference(tenths) = request {
+                    let millimeters = Double(tenths) / 10
+                    let command = try WahooKickrCommand.setWheelCircumference(
+                        millimeters: millimeters
+                    )
+                    let response = try await kickr.executeWahoo(command)
+                    guard response.confirmsSuccess(for: command) else {
+                        return .init(result: .operationFailed, status: nil)
+                    }
+                    parkedBaselineMillimeters = millimeters
+                    parkedBaselineCameFromRidingApp = true
+                    return .success(status: .wheelCircumferenceChanged(
+                        tenthsOfMillimeter: tenths
+                    ))
+                }
+                let response = try await kickr.execute(request)
+                guard response.requestOpcode == request.opcode,
+                      response.result == .success else {
+                    return .init(result: response.result, status: nil)
+                }
+                return .success(status: status(for: request))
+            }
             if case let .setWheelCircumference(tenths) = request {
                 return try await setBaseline(
                     millimeters: Double(tenths) / 10
@@ -561,10 +684,10 @@ public final class ProxyCoordinator {
         }
     }
 
-    /// Some riding apps, FulGaz among them, set their own wheel size. That is
-    /// the size the rider's app believes the trainer is running, so VirtualShift
-    /// takes it as the new starting point and rebuilds every gear around it
-    /// rather than quietly overruling it.
+    /// Wheel circumference is part of the standard interface available to every
+    /// riding app. Whenever one sets it, that is the size the app believes the
+    /// trainer is running, so VirtualShift takes it as the new starting point
+    /// and rebuilds every gear around it rather than quietly overruling it.
     ///
     /// It is honoured only as far as it is safe: if the gears would no longer
     /// fit inside what the trainer was proven to accept, the request is refused
@@ -621,6 +744,8 @@ public final class ProxyCoordinator {
         }
         sessionBaselineMillimeters = millimeters
         ridingAppSetWheelSize = true
+        parkedBaselineMillimeters = millimeters
+        parkedBaselineCameFromRidingApp = true
         gearEngine = rebased
         updateDisplayedGear()
         return .success(status: .wheelCircumferenceChanged(
@@ -629,10 +754,12 @@ public final class ProxyCoordinator {
     }
 
     private func handleKickrEvent(_ event: KickrEvent) {
-        guard lifecycle.sessionID != nil else { return }
         if case let .rawBikeData(data) = event {
             peripheral.relayIndoorBikeData(data)
-        } else if event == .status(.controlPermissionLost) {
+            return
+        }
+        guard lifecycle.sessionID != nil else { return }
+        if event == .status(.controlPermissionLost) {
             beginRecovery()
         }
     }
@@ -845,8 +972,8 @@ public final class ProxyCoordinator {
     private func abortStart(_ error: Error) async {
         // The first gear's wheel size may already be on the trainer, and the
         // trainer works out speed and distance from it. Leaving it there would
-        // quietly distort any ride done without VirtualShift, so it goes back
-        // before the connection is dropped, while there is still one to use.
+        // quietly distort the PC ride that continues through the proxy, so it
+        // goes back while the trainer connection is still available.
         var trainerRestored = true
         if let neutral = borrowedNeutralMillimeters, kickr.isReady {
             do {
@@ -871,9 +998,6 @@ public final class ProxyCoordinator {
         } else if borrowedNeutralMillimeters != nil {
             trainerRestored = false
         }
-        peripheral.stopAdvertising()
-        click.disconnect()
-        kickr.disconnect(restoringCircumferenceMillimeters: nil)
         screen.keepAwake = false
         clearRideData()
         lifecycle.failStart(
