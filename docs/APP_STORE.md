@@ -77,7 +77,8 @@ the iPhone and when advertising itself as a trainer.
     Open the app and it starts. It finds your trainer, connects to it, starts the
     session and appears to your riding app on its own. One available original Zwift
     Click and Wahoo Headwind are found and remembered automatically too. If more than
-    one matching device is found, Virtual Gears asks rather than guessing.
+    one matching device is found, Virtual Gears asks rather than guessing. If Clicks
+    have identical names, pressing a button identifies the one you want.
 
     GEARS YOU CAN SEE
     Your gears are drawn, not listed as numbers — one bar per gear, short bars for

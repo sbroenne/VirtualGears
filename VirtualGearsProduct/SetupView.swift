@@ -48,8 +48,13 @@ struct SetupView: View {
                 SetupRow(
                     title: "Trainer",
                     value: store.configuration.hasValidKickr
-                        ? store.configuration.kickrName : "None yet",
-                    status: .init(state: kickr.state, isRequired: true)
+                        ? store.configuration.kickrName : nil,
+                    status: EquipmentDisplayState(
+                        isConfigured: store.configuration.hasValidKickr,
+                        connectionState: kickr.state,
+                        isRequired: true
+                    ),
+                    isRequired: true
                 )
             }
 
@@ -67,10 +72,13 @@ struct SetupView: View {
             } label: {
                 SetupRow(
                     title: "Zwift Click",
-                    value: shiftingValue,
-                    status: store.configuration.usesClick
-                        ? .init(state: click.state, isRequired: false)
-                        : .satisfied
+                    value: store.configuration.usesClick ? shiftingValue : nil,
+                    status: EquipmentDisplayState(
+                        isConfigured: store.configuration.usesClick,
+                        connectionState: click.state,
+                        isRequired: false
+                    ),
+                    isRequired: false
                 )
             }
 
@@ -79,19 +87,21 @@ struct SetupView: View {
             } label: {
                 SetupRow(
                     title: "Wahoo Headwind",
-                    value: store.configuration.headwindName ?? "Not added",
-                    status: store.configuration.usesHeadwind
-                        ? .init(state: headwind.state, isRequired: false)
-                        : .satisfied
+                    value: store.configuration.headwindName,
+                    status: EquipmentDisplayState(
+                        isConfigured: store.configuration.usesHeadwind,
+                        connectionState: headwind.state,
+                        isRequired: false
+                    ),
+                    isRequired: false
                 )
             }
         } header: {
             Text("Your equipment")
         } footer: {
             Text(
-                "Virtual Gears finds these by itself and reconnects to them "
-                    + "every time you ride. Change them here only if it picked "
-                    + "the wrong one."
+                "Equipment reconnects automatically. Open a device here to "
+                    + "replace it or fix a connection."
             )
         }
     }
@@ -180,46 +190,26 @@ private struct TrainerSetupView: View {
                 }
             }
 
-            Section {
-                Button {
-                    kickr.isScanning ? kickr.stopScanning() : kickr.startScanning()
-                } label: {
-                    Label(
-                        kickr.isScanning
-                            ? "Stop looking"
-                            : (store.configuration.hasValidKickr
-                                ? "Choose a different trainer" : "Find my trainer"),
-                        systemImage: kickr.isScanning
-                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(.borderedProminent)
-
-                if kickr.isScanning, kickr.candidates.isEmpty {
-                    SearchingRow(message: "Looking for trainers…")
-                }
-
-                ForEach(kickr.candidates) { candidate in
-                    CandidateRow(
-                        candidate: candidate,
-                        selected: candidate.id.uuidString
-                            == store.configuration.kickrUUID
-                    ) {
-                        guard candidate.compatibility.isUsable else { return }
-                        store.configuration.rememberKickr(
-                            named: candidate.name,
-                            id: candidate.id
-                        )
-                        kickr.selectAndConnect(candidate.id)
-                    }
-                }
-
-                BluetoothHelp(state: kickr.state)
-            } footer: {
-                Text(
-                    "Pick the trainer your bike is actually on. \(Self.wakeInstruction)"
+            DeviceDiscoverySection(
+                deviceName: "trainer",
+                searchMessage: "Looking for trainers…",
+                wakeInstruction: Self.wakeInstruction,
+                hasSavedDevice: store.configuration.hasValidKickr,
+                candidates: kickr.candidates,
+                selectedID: kickr.selectedID,
+                isScanning: kickr.isScanning,
+                connectionState: kickr.state,
+                startScanning: kickr.startScanning,
+                stopScanning: {
+                    kickr.stopScanning(reconnectSavedDevice: false)
+                },
+                cancelScanning: { kickr.stopScanning() }
+            ) { candidate in
+                store.configuration.rememberKickr(
+                    named: candidate.name,
+                    id: candidate.id
                 )
+                kickr.selectAndConnect(candidate.id)
             }
         }
         .navigationTitle("Trainer")
@@ -240,6 +230,9 @@ private struct TrainerSetupView: View {
 private struct ShiftingSetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var click: ClickCentralService
+    @State private var identificationCandidates: [BluetoothCandidate] = []
+    @State private var identificationIndex = 0
+    @State private var identificationTask: Task<Void, Never>?
 
     var body: some View {
         Form {
@@ -273,12 +266,6 @@ private struct ShiftingSetupView: View {
                         hasSavedDevice: click.hasSavedDevice,
                         wakeInstruction: WakeInstruction.click
                     )
-                    Button(role: .destructive) {
-                        click.forgetSelection()
-                        store.configuration.forgetClick()
-                    } label: {
-                        Text("Stop using this Click")
-                    }
                 } header: {
                     Text("Your Click")
                 } footer: {
@@ -289,54 +276,40 @@ private struct ShiftingSetupView: View {
                 }
             }
 
-            Section {
-                Button {
-                    click.isScanning ? click.stopScanning() : click.startScanning()
-                } label: {
-                    Label(
-                        click.isScanning
-                            ? "Stop looking"
-                            : (store.configuration.usesClick
-                                ? "Choose a different Click" : "Find my Click"),
-                        systemImage: click.isScanning
-                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(.borderedProminent)
+            DeviceDiscoverySection(
+                deviceName: "Zwift Click",
+                searchMessage: "Looking for a Zwift Click…",
+                wakeInstruction: WakeInstruction.click,
+                hasSavedDevice: store.configuration.usesClick,
+                candidates: click.candidates,
+                selectedID: click.selectedID,
+                isScanning: click.isScanning,
+                connectionState: click.state,
+                startScanning: click.startScanning,
+                stopScanning: {
+                    click.stopScanning(reconnectSavedDevice: false)
+                },
+                cancelScanning: { click.stopScanning() },
+                identifyDuplicates: beginClickIdentification,
+                identificationMessage: click.identificationCandidateID == nil
+                    ? nil
+                    : "Keep pressing either button on the Click you want.",
+                cancelIdentification: cancelClickIdentification
+            ) { candidate in
+                store.configuration.rememberClick(
+                    named: candidate.name,
+                    id: candidate.id
+                )
+                click.selectAndConnect(candidate.id)
+            }
 
-                if click.isScanning, click.candidates.isEmpty {
-                    SearchingRow(message: "Looking for your Click…")
-                }
-
-                ForEach(click.candidates) { candidate in
-                    CandidateRow(
-                        candidate: candidate,
-                        selected: candidate.id.uuidString
-                            == store.configuration.clickUUID
-                    ) {
-                        store.configuration.rememberClick(
-                            named: candidate.name,
-                            id: candidate.id
-                        )
-                        click.selectAndConnect(candidate.id)
+            if store.configuration.usesClick {
+                Section {
+                    Button("Remove this Click", role: .destructive) {
+                        click.forgetSelection()
+                        store.configuration.forgetClick()
                     }
                 }
-
-                BluetoothHelp(state: click.state)
-            } header: {
-                Text(
-                    store.configuration.usesClick
-                        ? "Change your Click" : "Add a Zwift Click"
-                )
-            } footer: {
-                Text(
-                    store.configuration.usesClick
-                        ? WakeInstruction.click
-                        : "Optional. If you have an original Zwift Click on your "
-                            + "handlebar, add it here to shift without reaching "
-                            + "for the screen."
-                )
             }
         }
         .navigationTitle("Zwift Click")
@@ -344,11 +317,66 @@ private struct ShiftingSetupView: View {
         .task {
             if store.configuration.usesClick {
                 click.autoConnectSavedDevice()
-            } else {
-                click.startScanning()
             }
         }
-        .onDisappear { click.stopScanning() }
+        .onChange(of: click.latestButtonEvent) { _, event in
+            guard click.identificationCandidateID != nil, let event else { return }
+            if case .pressed = event {
+                confirmClickIdentification()
+            }
+        }
+        .onDisappear {
+            identificationTask?.cancel()
+            if click.identificationCandidateID != nil {
+                click.cancelIdentification()
+            }
+        }
+    }
+
+    private func beginClickIdentification() {
+        identificationCandidates = click.candidates
+        identificationIndex = 0
+        connectToIdentificationCandidate()
+    }
+
+    private func connectToIdentificationCandidate() {
+        guard !identificationCandidates.isEmpty else { return }
+        identificationTask?.cancel()
+        let candidate = identificationCandidates[identificationIndex]
+        click.connectForIdentification(candidate.id)
+        identificationTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(8))
+            } catch {
+                return
+            }
+            guard !Task.isCancelled,
+                  click.identificationCandidateID != nil else { return }
+            identificationIndex =
+                (identificationIndex + 1) % identificationCandidates.count
+            connectToIdentificationCandidate()
+        }
+    }
+
+    private func confirmClickIdentification() {
+        guard let id = click.identificationCandidateID,
+              let candidate = identificationCandidates.first(where: {
+                  $0.id == id
+              })
+        else { return }
+        identificationTask?.cancel()
+        click.confirmIdentification()
+        store.configuration.rememberClick(
+            named: candidate.name,
+            id: candidate.id
+        )
+        identificationCandidates.removeAll()
+    }
+
+    private func cancelClickIdentification() {
+        identificationTask?.cancel()
+        identificationCandidates.removeAll()
+        click.cancelIdentification()
     }
 }
 
@@ -377,11 +405,6 @@ private struct HeadwindSetupView: View {
                         hasSavedDevice: headwind.hasSavedDevice,
                         wakeInstruction: WakeInstruction.headwind
                     )
-                    Button(role: .destructive) {
-                        headwind.stopUsing()
-                    } label: {
-                        Text("Stop using this Headwind")
-                    }
                 } header: {
                     Text("Your Headwind")
                 } footer: {
@@ -394,55 +417,34 @@ private struct HeadwindSetupView: View {
                 HeadwindControls(headwind: headwind)
             }
 
-            Section {
-                Button {
-                    headwind.isScanning
-                        ? headwind.stopScanning() : headwind.startScanning()
-                } label: {
-                    Label(
-                        headwind.isScanning
-                            ? "Stop looking"
-                            : (store.configuration.usesHeadwind
-                                ? "Choose a different Headwind"
-                                : "Find my Headwind"),
-                        systemImage: headwind.isScanning
-                            ? "stop.circle" : "antenna.radiowaves.left.and.right"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 50)
-                }
-                .buttonStyle(.borderedProminent)
+            DeviceDiscoverySection(
+                deviceName: "Wahoo Headwind",
+                searchMessage: "Looking for a Wahoo Headwind…",
+                wakeInstruction: WakeInstruction.headwind,
+                hasSavedDevice: store.configuration.usesHeadwind,
+                candidates: headwind.candidates,
+                selectedID: headwind.selectedID,
+                isScanning: headwind.state == .scanning,
+                connectionState: headwind.state,
+                startScanning: headwind.startScanning,
+                stopScanning: {
+                    headwind.stopScanning(reconnectSavedDevice: false)
+                },
+                cancelScanning: { headwind.stopScanning() }
+            ) { candidate in
+                store.configuration.rememberHeadwind(
+                    named: candidate.name,
+                    id: candidate.id
+                )
+                headwind.selectAndConnect(candidate.id)
+            }
 
-                if headwind.isScanning, headwind.candidates.isEmpty {
-                    SearchingRow(message: "Looking for your Headwind…")
-                }
-
-                ForEach(headwind.candidates) { candidate in
-                    CandidateRow(
-                        candidate: candidate,
-                        selected: candidate.id.uuidString
-                            == store.configuration.headwindUUID
-                    ) {
-                        store.configuration.rememberHeadwind(
-                            named: candidate.name,
-                            id: candidate.id
-                        )
-                        headwind.selectAndConnect(candidate.id)
+            if store.configuration.usesHeadwind {
+                Section {
+                    Button("Remove this Headwind", role: .destructive) {
+                        headwind.stopUsing()
                     }
                 }
-
-                BluetoothHelp(state: headwind.state)
-            } header: {
-                Text(
-                    store.configuration.usesHeadwind
-                        ? "Change your Headwind" : "Add a Wahoo Headwind"
-                )
-            } footer: {
-                Text(
-                    store.configuration.usesHeadwind
-                        ? WakeInstruction.headwind
-                        : "Optional. Add a Headwind to switch between its own "
-                            + "sensors and manual fan speed during a ride."
-                )
             }
         }
         .navigationTitle("Wahoo Headwind")
@@ -450,14 +452,11 @@ private struct HeadwindSetupView: View {
         .task {
             if store.configuration.usesHeadwind {
                 headwind.autoConnectSavedDevice()
-            } else {
-                headwind.startScanning()
             }
         }
         .onChange(of: headwind.hasSavedDevice) { _, saved in
             if !saved { store.configuration.forgetHeadwind() }
         }
-        .onDisappear { headwind.stopScanning() }
     }
 }
 
@@ -991,57 +990,57 @@ private struct ChoiceRow: View {
 /// A Settings-style row: what it is on the left, what it is set to on the
 /// right, and a badge saying whether it is actually connected.
 private struct SetupRow: View {
-    enum Status {
-        case satisfied
-        case working
-        case attention
-
-        init(state: ProductConnectionState, isRequired: Bool) {
-            switch state {
-            case .ready: self = .satisfied
-            case _ where state.isConnectionInProgress || state == .scanning:
-                self = .working
-            default: self = isRequired ? .attention : .satisfied
-            }
-        }
-    }
-
     let title: String
-    let value: String
-    let status: Status
+    let value: String?
+    let status: EquipmentDisplayState
+    let isRequired: Bool
 
     var body: some View {
-        LabeledContent {
-            HStack(spacing: 8) {
-                Text(value)
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                if let value {
+                    Text(value)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 8)
+            HStack(spacing: 6) {
+                Text(status.label)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 badge
             }
-        } label: {
-            Text(title)
         }
-        .accessibilityLabel("\(title), \(value), \(accessibilityStatus)")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityDescription)
     }
 
     @ViewBuilder
     private var badge: some View {
         switch status {
-        case .satisfied:
+        case .connected:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        case .working:
+        case .connecting:
             ProgressView().controlSize(.small)
-        case .attention:
-            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+        case .disconnected:
+            Image(
+                systemName: isRequired
+                    ? "exclamationmark.circle.fill" : "circle.dashed"
+            )
+            .foregroundStyle(isRequired ? Color.orange : Color.secondary)
+        case .notAdded:
+            EmptyView()
         }
     }
 
-    private var accessibilityStatus: String {
-        switch status {
-        case .satisfied: "connected"
-        case .working: "connecting"
-        case .attention: "needs attention"
-        }
+    private var accessibilityDescription: String {
+        [title, value, status.label]
+            .compactMap { $0 }
+            .joined(separator: ", ")
     }
 }
 
@@ -1089,6 +1088,244 @@ private struct SearchingRow: View {
     }
 }
 
+private struct DeviceDiscoverySection: View {
+    let deviceName: String
+    let searchMessage: String
+    let wakeInstruction: String
+    let hasSavedDevice: Bool
+    let candidates: [BluetoothCandidate]
+    let selectedID: UUID?
+    let isScanning: Bool
+    let connectionState: ProductConnectionState
+    let startScanning: () -> Void
+    let stopScanning: () -> Void
+    let cancelScanning: () -> Void
+    let identifyDuplicates: (() -> Void)?
+    let identificationMessage: String?
+    let cancelIdentification: (() -> Void)?
+    let select: (BluetoothCandidate) -> Void
+
+    @State private var discovery = DeviceDiscoveryState()
+    @State private var timeoutTask: Task<Void, Never>?
+    @State private var timeoutScheduled = false
+
+    private let searchDuration = DeviceDiscoveryPolicy.searchDuration
+
+    init(
+        deviceName: String,
+        searchMessage: String,
+        wakeInstruction: String,
+        hasSavedDevice: Bool,
+        candidates: [BluetoothCandidate],
+        selectedID: UUID?,
+        isScanning: Bool,
+        connectionState: ProductConnectionState,
+        startScanning: @escaping () -> Void,
+        stopScanning: @escaping () -> Void,
+        cancelScanning: @escaping () -> Void,
+        identifyDuplicates: (() -> Void)? = nil,
+        identificationMessage: String? = nil,
+        cancelIdentification: (() -> Void)? = nil,
+        select: @escaping (BluetoothCandidate) -> Void
+    ) {
+        self.deviceName = deviceName
+        self.searchMessage = searchMessage
+        self.wakeInstruction = wakeInstruction
+        self.hasSavedDevice = hasSavedDevice
+        self.candidates = candidates
+        self.selectedID = selectedID
+        self.isScanning = isScanning
+        self.connectionState = connectionState
+        self.startScanning = startScanning
+        self.stopScanning = stopScanning
+        self.cancelScanning = cancelScanning
+        self.identifyDuplicates = identifyDuplicates
+        self.identificationMessage = identificationMessage
+        self.cancelIdentification = cancelIdentification
+        self.select = select
+    }
+
+    var body: some View {
+        Section {
+            switch discovery.phase {
+            case .idle:
+                if hasSavedDevice {
+                    Button("Replace \(deviceName)") {
+                        beginSearch()
+                    }
+                }
+                BluetoothHelp(state: connectionState)
+
+            case .searching:
+                SearchingRow(message: progressMessage)
+                BluetoothHelp(state: connectionState)
+
+            case .showingResults:
+                if isScanning {
+                    SearchingRow(message: progressMessage)
+                } else {
+                    if hasDuplicateNames, let identifyDuplicates {
+                        if let identificationMessage {
+                            SearchingRow(message: identificationMessage)
+                            Button("Cancel identification", role: .cancel) {
+                                cancelIdentification?()
+                            }
+                        } else {
+                            Button {
+                                identifyDuplicates()
+                            } label: {
+                                Label(
+                                    "Identify by pressing a button",
+                                    systemImage: "hand.tap"
+                                )
+                            }
+                        }
+                    } else {
+                        ForEach(candidates) { candidate in
+                            CandidateRow(
+                                candidate: candidate,
+                                selected: candidate.id == selectedID
+                            ) {
+                                choose(candidate)
+                            }
+                        }
+                    }
+                    Button("Search Again") {
+                        beginSearch()
+                    }
+                }
+                BluetoothHelp(state: connectionState)
+
+            case .timedOut:
+                if !bluetoothUnavailable {
+                    Label(
+                        "No \(deviceName) found",
+                        systemImage: "questionmark.circle"
+                    )
+                    Text(wakeInstruction)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                Button("Try Again") {
+                    beginSearch()
+                }
+                .buttonStyle(.borderedProminent)
+                BluetoothHelp(state: connectionState)
+            }
+        } header: {
+            Text(hasSavedDevice ? "Device" : "Add \(deviceName)")
+        } footer: {
+            if discovery.phase == .showingResults, candidates.count > 1 {
+                Text("More than one was found. Choose yours by name.")
+            } else if !hasSavedDevice, discovery.phase == .idle {
+                Text("Optional equipment is found automatically.")
+            }
+        }
+        .task {
+            if !hasSavedDevice {
+                beginSearch()
+            }
+        }
+        .onChange(of: isScanning) { _, scanning in
+            if scanning { scheduleTimeoutIfNeeded() }
+        }
+        .onChange(of: candidates.count) { _, count in
+            discovery.observe(candidateCount: count)
+        }
+        .onChange(of: connectionState) { _, state in
+            handleConnectionState(state)
+        }
+        .onChange(of: hasSavedDevice) { _, saved in
+            if saved {
+                timeoutTask?.cancel()
+                timeoutScheduled = false
+                discovery.reset()
+            }
+        }
+        .onDisappear {
+            timeoutTask?.cancel()
+            if discovery.phase != .idle || isScanning {
+                cancelScanning()
+            }
+        }
+    }
+
+    private var progressMessage: String {
+        guard !candidates.isEmpty else { return searchMessage }
+        return candidates.count == 1
+            ? "Found one. Checking for others…"
+            : "Found \(candidates.count). Checking for others…"
+    }
+
+    private var hasDuplicateNames: Bool {
+        let names = candidates.map {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+        }
+        return Set(names).count < names.count
+    }
+
+    private var bluetoothUnavailable: Bool {
+        if case .unavailable = connectionState { return true }
+        return false
+    }
+
+    private func beginSearch() {
+        timeoutTask?.cancel()
+        timeoutScheduled = false
+        discovery.start()
+        startScanning()
+        if isScanning {
+            scheduleTimeoutIfNeeded()
+        } else {
+            handleConnectionState(connectionState)
+        }
+    }
+
+    private func scheduleTimeoutIfNeeded() {
+        guard !timeoutScheduled else { return }
+        timeoutScheduled = true
+        timeoutTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: searchDuration)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            finishSearch()
+        }
+    }
+
+    private func finishSearch() {
+        timeoutScheduled = false
+        stopScanning()
+        if candidates.count == 1, let candidate = candidates.first,
+           candidate.compatibility.isUsable {
+            choose(candidate)
+            return
+        }
+        discovery.finish(candidateCount: candidates.count)
+    }
+
+    private func handleConnectionState(_ state: ProductConnectionState) {
+        guard discovery.phase == .searching
+                || discovery.phase == .showingResults,
+              !isScanning else { return }
+        if case let .unavailable(reason) = state,
+           !reason.localizedCaseInsensitiveContains("starting") {
+            timeoutTask?.cancel()
+            timeoutScheduled = false
+            discovery.finish(candidateCount: candidates.count)
+        }
+    }
+
+    private func choose(_ candidate: BluetoothCandidate) {
+        timeoutTask?.cancel()
+        timeoutScheduled = false
+        select(candidate)
+    }
+}
+
 private struct CandidateRow: View {
     let candidate: BluetoothCandidate
     let selected: Bool
@@ -1124,7 +1361,7 @@ private struct CandidateRow: View {
 
     private var trailingSymbol: String {
         if !usable { return "exclamationmark.circle" }
-        return selected ? "checkmark.circle.fill" : "chevron.right"
+        return selected ? "checkmark.circle.fill" : "circle"
     }
 
     private var trailingColour: Color {
@@ -1145,6 +1382,9 @@ private struct BluetoothHelp: View {
 
     var body: some View {
         switch state {
+        case let .unavailable(reason)
+            where reason.localizedCaseInsensitiveContains("starting"):
+            EmptyView()
         case let .unavailable(reason), let .failed(reason):
             Label(reason, systemImage: "exclamationmark.triangle.fill")
                 .foregroundStyle(.orange)

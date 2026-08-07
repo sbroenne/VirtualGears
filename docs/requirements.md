@@ -108,7 +108,9 @@ on-screen buttons. Nothing ever waits for it, so a Click that runs out of
 battery mid-ride costs you nothing but the buttons on the handlebar.
 
 If the app finds more than one Click, choose yours in Settings rather than
-letting it guess.
+letting it guess. Some Clicks advertise the same name. In that case, keep
+pressing either button on the Click you want while Virtual Gears briefly tries
+each one; it confirms the Click whose connected button stream reports the press.
 
 The app shows the Click's battery level in Settings, and warns you on the ride
 screen if it drops below 20%.
@@ -120,7 +122,7 @@ remembers it automatically. During a ride, the fan button switches between
 Automatic control from the Headwind's paired sensor and a manual speed from
 0–100%. Manual has a slider and one-tap buttons for Off, 25%, 50%, 75% and 100%.
 
-If the app finds more than one Headwind, choose yours in Settings.
+If the app finds more than one Headwind, choose yours by name in Settings.
 
 Manual mode remains on the Headwind after Bluetooth disconnects. Virtual Gears
 therefore sends an explicit sensor-control command and waits for the fan to

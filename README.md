@@ -56,6 +56,9 @@ KICKR Snap, KICKR Bike and trainers from other brands are not supported.
 There is no start button and no setup wizard. If it finds more than one trainer,
 it asks you to choose yours by name.
 
+The same rule applies to optional equipment: one Click or Headwind is used
+automatically; if several are found, Virtual Gears asks instead of guessing.
+
 ## What it can do
 
 - **24 ready-made virtual gears**, with extra range for climbing.

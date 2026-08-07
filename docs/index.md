@@ -93,10 +93,10 @@ Open the app. It looks for your trainer, connects to it, starts the session and
 appears to your riding app, all on its own. There is no setup to complete and no
 button to press.
 
-The only question it ever asks is which trainer, and only when it finds more
-than one. A single trainer is simply used. Bluetooth signal strength does not
-measure distance reliably, so multiple trainers are listed by name rather than
-ranked or guessed.
+The only question it asks is which device, and only when it finds more than one
+trainer, Click or Headwind. A single device is simply used. Bluetooth signal
+strength does not measure distance reliably, so multiple devices are listed by
+name rather than ranked or guessed.
 
 ### Everything changeable mid-ride
 

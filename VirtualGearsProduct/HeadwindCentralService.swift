@@ -15,6 +15,7 @@ final class HeadwindCentralService: NSObject {
         didSet { updateStallWatch() }
     }
     private(set) var candidates: [BluetoothCandidate] = []
+    private(set) var scanGeneration = 0
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var mode: HeadwindMode?
@@ -96,9 +97,9 @@ final class HeadwindCentralService: NSObject {
     func startScanning() {
         if hasSavedDevice {
             guard isReady else {
-                commandError =
-                    "Reconnect the Headwind before choosing another one."
-                autoConnectSavedDevice()
+                deferredAction = .scan
+                commandError = nil
+                resumeSavedConnection()
                 return
             }
             restoreSensors(then: .scan)
@@ -109,6 +110,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     private func beginScanning() {
+        scanGeneration += 1
         desiredConnection = false
         reconnectTask?.cancel()
         guard central.state == .poweredOn else {
@@ -131,7 +133,7 @@ final class HeadwindCentralService: NSObject {
         log("Scanning for HEADWIND")
     }
 
-    func stopScanning() {
+    func stopScanning(reconnectSavedDevice: Bool = true) {
         scanWhenPoweredOn = false
         let cancelledReplacement =
             deferredAction == .scan || scansAfterDisconnect
@@ -141,13 +143,14 @@ final class HeadwindCentralService: NSObject {
         if state == .scanning { state = .disconnected }
         if cancelledReplacement { desiredConnection = hasSavedDevice }
         if state == .disconnecting { return }
-        autoConnectSavedDevice()
+        if reconnectSavedDevice { autoConnectSavedDevice() }
     }
 
     func autoConnectSavedDevice() {
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         resumeSavedConnection()
     }
 
@@ -173,7 +176,8 @@ final class HeadwindCentralService: NSObject {
         reconnectAttempt = 0
         guard central.state == .poweredOn else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         guard let restored = central.retrievePeripherals(
             withIdentifiers: [selectedID]
         ).first else {

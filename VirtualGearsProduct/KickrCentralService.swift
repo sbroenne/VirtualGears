@@ -13,6 +13,7 @@ final class KickrCentralService: NSObject {
         }
     }
     private(set) var candidates: [BluetoothCandidate] = []
+    private(set) var scanGeneration = 0
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var capabilities = KickrCapabilities()
@@ -147,6 +148,7 @@ final class KickrCentralService: NSObject {
     }
 
     private func beginScanning() {
+        scanGeneration += 1
         scanWhenPoweredOn = false
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
@@ -170,11 +172,11 @@ final class KickrCentralService: NSObject {
         log("Scanning for KICKR trainers")
     }
 
-    func stopScanning() {
+    func stopScanning(reconnectSavedDevice: Bool = true) {
         scanWhenPoweredOn = false
         central.stopScan()
         if state == .scanning { state = .disconnected }
-        autoConnectSavedDevice()
+        if reconnectSavedDevice { autoConnectSavedDevice() }
     }
 
     var hasSavedDevice: Bool { selectedID != nil }
@@ -186,7 +188,8 @@ final class KickrCentralService: NSObject {
     func autoConnectSavedDevice() {
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         resumeSavedConnection()
     }
 

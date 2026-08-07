@@ -57,6 +57,7 @@ public enum ProductConnectionState: Equatable {
         case .connecting, .reconnecting, .discovering, .preparing: true
         default: false
         }
+
     }
 
     /// What the rider sees. These reach the ride screen footer, so they say what
@@ -85,6 +86,81 @@ public enum ProductConnectionState: Equatable {
         case let .failed(message): message
         default: label
         }
+    }
+}
+
+public enum EquipmentDisplayState: Equatable, Sendable {
+    case connected
+    case connecting
+    case disconnected
+    case notAdded
+
+    public init(
+        isConfigured: Bool,
+        connectionState: ProductConnectionState,
+        isRequired: Bool
+    ) {
+        guard isConfigured else {
+            self = isRequired ? .disconnected : .notAdded
+            return
+        }
+        switch connectionState {
+        case .ready:
+            self = .connected
+        case _ where connectionState.isConnectionInProgress
+            || connectionState == .scanning:
+            self = .connecting
+        default:
+            self = .disconnected
+        }
+    }
+
+    public var label: String {
+        switch self {
+        case .connected: "Connected"
+        case .connecting: "Connecting"
+        case .disconnected: "Not connected"
+        case .notAdded: "Not added"
+        }
+    }
+}
+
+public struct DeviceDiscoveryState: Equatable, Sendable {
+    public enum Phase: Equatable, Sendable {
+        case idle
+        case searching
+        case showingResults
+        case timedOut
+    }
+
+    public enum DeviceDiscoveryPolicy {
+        public static let searchDuration = Duration.seconds(3)
+    }
+
+    public private(set) var phase: Phase = .idle
+
+    public init() {}
+
+    public mutating func start() {
+        phase = .searching
+    }
+
+    public mutating func observe(candidateCount: Int) {
+        guard phase == .searching || phase == .showingResults
+                || phase == .timedOut else { return }
+        if candidateCount > 0 {
+            phase = .showingResults
+        } else if phase != .timedOut {
+            phase = .searching
+        }
+    }
+
+    public mutating func finish(candidateCount: Int) {
+        phase = candidateCount > 0 ? .showingResults : .timedOut
+    }
+
+    public mutating func reset() {
+        phase = .idle
     }
 }
 

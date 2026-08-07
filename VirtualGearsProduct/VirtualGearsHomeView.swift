@@ -13,24 +13,85 @@ struct VirtualGearsHomeView: View {
     @State private var riderStopped = false
 
     var body: some View {
-        if coordinator.isRidePresented {
-            ActiveRideView(
-                store: store,
-                kickr: kickr,
-                click: click,
-                headwind: headwind,
-                coordinator: coordinator,
-                onRiderStop: { riderStopped = true }
-            )
-        } else {
-            StartupView(
-                store: store,
-                kickr: kickr,
-                click: click,
-                headwind: headwind,
-                coordinator: coordinator,
-                autoStarts: !riderStopped
-            )
+        Group {
+            if coordinator.isRidePresented {
+                ActiveRideView(
+                    store: store,
+                    kickr: kickr,
+                    click: click,
+                    headwind: headwind,
+                    coordinator: coordinator,
+                    onRiderStop: { riderStopped = true }
+                )
+            } else {
+                StartupView(
+                    store: store,
+                    kickr: kickr,
+                    click: click,
+                    headwind: headwind,
+                    coordinator: coordinator,
+                    autoStarts: !riderStopped
+                )
+            }
+        }
+        .task { await discoverOptionalEquipment() }
+    }
+
+    private func discoverOptionalEquipment() async {
+        let needsClick = !store.configuration.usesClick
+        let needsHeadwind = !store.configuration.usesHeadwind
+
+        needsClick ? click.startScanning() : click.autoConnectSavedDevice()
+        needsHeadwind
+            ? headwind.startScanning() : headwind.autoConnectSavedDevice()
+        guard needsClick || needsHeadwind else { return }
+
+        // The first Bluetooth permission prompt can outlive the view's initial
+        // task turn. Start the discovery window only after scanning really began.
+        for _ in 0..<300 {
+            let clickStarted = !needsClick || click.isScanning
+            let headwindStarted = !needsHeadwind || headwind.isScanning
+            if clickStarted && headwindStarted { break }
+            do {
+                try await Task.sleep(for: .milliseconds(100))
+            } catch {
+                return
+            }
+        }
+        guard !Task.isCancelled else { return }
+        let clickScanGeneration = click.scanGeneration
+        let headwindScanGeneration = headwind.scanGeneration
+        do {
+            try await Task.sleep(for: DeviceDiscoveryPolicy.searchDuration)
+        } catch {
+            return
+        }
+
+        if needsClick, !store.configuration.usesClick,
+           click.scanGeneration == clickScanGeneration {
+            if click.candidates.count == 1, let candidate = click.candidates.first {
+                store.configuration.rememberClick(
+                    named: candidate.name,
+                    id: candidate.id
+                )
+                click.selectAndConnect(candidate.id)
+            } else {
+                click.stopScanning(reconnectSavedDevice: false)
+            }
+        }
+
+        if needsHeadwind, !store.configuration.usesHeadwind,
+           headwind.scanGeneration == headwindScanGeneration {
+            if headwind.candidates.count == 1,
+               let candidate = headwind.candidates.first {
+                store.configuration.rememberHeadwind(
+                    named: candidate.name,
+                    id: candidate.id
+                )
+                headwind.selectAndConnect(candidate.id)
+            } else {
+                headwind.stopScanning(reconnectSavedDevice: false)
+            }
         }
     }
 }
@@ -98,12 +159,8 @@ private struct StartupView: View {
             .task { await begin() }
             .onChange(of: canStart) { _, _ in startIfReady() }
             .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
-            .onChange(of: click.candidates) { _, _ in considerClickCandidates() }
-            .onChange(of: headwind.candidates) { _, _ in considerHeadwindCandidates() }
             .onDisappear {
                 kickr.stopScanning()
-                if click.isScanning { click.stopScanning() }
-                if headwind.isScanning { headwind.stopScanning() }
             }
         }
     }
@@ -111,55 +168,20 @@ private struct StartupView: View {
     // MARK: - Finding a trainer
 
     private func begin() async {
-        discoverOptionalEquipment()
-        guard !store.configuration.hasValidKickr else {
+        if store.configuration.hasValidKickr {
             kickr.autoConnectSavedDevice()
             startIfReady()
-            return
+        } else {
+            trainerScanSettled = false
+            kickr.startScanning()
         }
-        trainerScanSettled = false
-        kickr.startScanning()
-        // Give every trainer one advertising interval before deciding whether
+        // Give every device one advertising interval before deciding whether
         // there is one result or a real choice.
-        try? await Task.sleep(for: .seconds(2.5))
+        try? await Task.sleep(for: DeviceDiscoveryPolicy.searchDuration)
         guard !Task.isCancelled else { return }
         trainerScanSettled = true
         considerCandidates()
-    }
-
-    private func discoverOptionalEquipment() {
-        if store.configuration.usesClick {
-            click.autoConnectSavedDevice()
-        } else {
-            click.startScanning()
-        }
-        if store.configuration.usesHeadwind {
-            headwind.autoConnectSavedDevice()
-        } else {
-            headwind.startScanning()
-        }
-    }
-
-    private func considerClickCandidates() {
-        guard autoStarts, !store.configuration.usesClick,
-              click.candidates.count == 1,
-              let candidate = click.candidates.first else { return }
-        store.configuration.rememberClick(
-            named: candidate.name,
-            id: candidate.id
-        )
-        click.selectAndConnect(candidate.id)
-    }
-
-    private func considerHeadwindCandidates() {
-        guard autoStarts, !store.configuration.usesHeadwind,
-              headwind.candidates.count == 1,
-              let candidate = headwind.candidates.first else { return }
-        store.configuration.rememberHeadwind(
-            named: candidate.name,
-            id: candidate.id
-        )
-        headwind.selectAndConnect(candidate.id)
+        startIfReady()
     }
 
     /// Never interrupts a connection already under way.

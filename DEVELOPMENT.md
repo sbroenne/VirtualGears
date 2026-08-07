@@ -152,6 +152,11 @@ Output therefore goes to `/tmp/click-trace.log`, which the script tails.
 
 `docs/zwift-click-button-trace.log` is a recording made this way. What it shows:
 
+- This Click advertised only the generic name `Zwift Click`; a unique suffix is
+  not guaranteed. Button state is available only after connection, not in the
+  advertisement. The duplicate-name setup flow therefore tries candidates one
+  at a time and confirms the one whose connected stream reports the rider's
+  press.
 - The Click streams its button state every 90-120 ms for about 1.3 seconds after
   anything changes, then goes quiet. It does not send an event per press.
 - A button reads `0` when pressed and `1` when released.
