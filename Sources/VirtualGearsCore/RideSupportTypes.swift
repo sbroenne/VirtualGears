@@ -133,10 +133,6 @@ public struct DeviceDiscoveryState: Equatable, Sendable {
         case timedOut
     }
 
-    public enum DeviceDiscoveryPolicy {
-        public static let searchDuration = Duration.seconds(3)
-    }
-
     public private(set) var phase: Phase = .idle
 
     public init() {}
@@ -162,6 +158,10 @@ public struct DeviceDiscoveryState: Equatable, Sendable {
     public mutating func reset() {
         phase = .idle
     }
+}
+
+public enum DeviceDiscoveryPolicy {
+    public static let searchDuration = Duration.seconds(3)
 }
 
 /// Both devices go to sleep on their own, and CoreBluetooth waits for them
