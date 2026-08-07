@@ -18,11 +18,13 @@ public final class ProxyCoordinator {
     /// The wheel size the gears are currently built around. A riding app can
     /// move it mid-ride, so it is not the size the trainer gets back on Stop.
     public private(set) var sessionBaselineMillimeters: Double?
-    /// The wheel size the trainer had before this ride borrowed it, and the one
-    /// value every exit path puts back. It is deliberately separate from
+    /// The baseline selected before the first virtual gear is applied. This is
+    /// either 2070 mm or the latest size supplied by the riding app; FTMS does
+    /// not expose the trainer's current wheel circumference for reading. It is
+    /// deliberately separate from
     /// `sessionBaselineMillimeters`: a riding app that sets its own wheel size
-    /// changes what the gears are scaled around, not what the trainer is owed.
-    public private(set) var borrowedNeutralMillimeters: Double?
+    /// changes what the gears are scaled around.
+    public private(set) var preGearBaselineMillimeters: Double?
     /// True once a riding app has set its own wheel size, so the ride screen can
     /// say whose number the gears are built around.
     public private(set) var ridingAppSetWheelSize = false
@@ -66,9 +68,9 @@ public final class ProxyCoordinator {
     private var parkedBaselineMillimeters: Double?
     private var parkedBaselineCameFromRidingApp = false
 
-    /// The wheel size a ride borrowed, written down before the ride starts.
-    /// A ride normally puts it back on Stop and clears this, so a value still
-    /// here at launch means the last ride never got to finish.
+    /// The baseline used to build a ride's gears, written down before the ride
+    /// starts. A ride normally sends it again on Stop and clears this, so a value
+    /// still here at launch means the last ride never got to remove its gear.
     private let unfinishedRideKey = "VirtualGears.unfinishedRideBaselineMillimeters"
 
     public var state: ProxySessionState { lifecycle.state }
@@ -241,7 +243,7 @@ public final class ProxyCoordinator {
             gearSequence = drivetrain.gears
             updateDisplayedGear()
             sessionBaselineMillimeters = baseline
-            borrowedNeutralMillimeters = baseline
+            preGearBaselineMillimeters = baseline
             ridingAppSetWheelSize = parkedBaselineCameFromRidingApp
             defaults.set(
                 baseline,
@@ -290,9 +292,9 @@ public final class ProxyCoordinator {
 
     /// Ends Virtual Gears' gear session without ending the riding app's session.
     ///
-    /// The trainer's borrowed wheel size is restored before the active gear
-    /// session is cleared. Virtual Gears does not send Stop for the riding app,
-    /// reject its commands, or remove the service it is connected to.
+    /// The virtual gear is removed before the active gear session is cleared.
+    /// Virtual Gears does not send Stop for the riding app, reject its commands,
+    /// or remove the service it is connected to.
     public func stopRide() async {
         await stopRide(disconnectWhenFinished: false)
     }
@@ -360,8 +362,9 @@ public final class ProxyCoordinator {
 
         // Ending Virtual Gears is not ending the PC app's ride. Remove the
         // virtual gear by returning to the latest baseline the riding app asked
-        // for. If it never supplied one, that is the trainer's original size.
-        let parkedBaseline = sessionBaselineMillimeters ?? borrowedNeutralMillimeters
+        // for. If it never supplied one, use the 2070 mm reference.
+        let parkedBaseline =
+            sessionBaselineMillimeters ?? preGearBaselineMillimeters
         if let neutral = parkedBaseline, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
@@ -458,7 +461,7 @@ public final class ProxyCoordinator {
         gearSequence = []
         feedback.clear()
         sessionBaselineMillimeters = nil
-        borrowedNeutralMillimeters = nil
+        preGearBaselineMillimeters = nil
         ridingAppSetWheelSize = false
     }
 
@@ -975,7 +978,7 @@ public final class ProxyCoordinator {
         // quietly distort the PC ride that continues through the proxy, so it
         // goes back while the trainer connection is still available.
         var trainerRestored = true
-        if let neutral = borrowedNeutralMillimeters, kickr.isReady {
+        if let neutral = preGearBaselineMillimeters, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
                     millimeters: neutral
@@ -995,7 +998,7 @@ public final class ProxyCoordinator {
                     .error
                 )
             }
-        } else if borrowedNeutralMillimeters != nil {
+        } else if preGearBaselineMillimeters != nil {
             trainerRestored = false
         }
         screen.keepAwake = false

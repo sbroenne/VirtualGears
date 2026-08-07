@@ -24,15 +24,15 @@ ride-tested.
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
 
-## The trainer is always put back
+## How a virtual gear is removed
 
-Ending virtual shifting returns the trainer to the riding app's latest wheel
-size, or to the size Virtual Gears borrowed if the riding app did not set one.
+The KICKR does not expose its current wheel circumference through FTMS, so
+Virtual Gears cannot read that setting when it connects. It starts from a
+2070 mm reference unless the riding app supplies a different wheel size.
 
-This matters because the trainer works out its speed from that setting. A
-virtual gear left behind would quietly distort speed and distance. A wheel size
-set by the riding app is different: that app still owns the ride, so its latest
-number remains the baseline when virtual shifting ends.
+Ending virtual shifting sends that baseline again, removing the scale applied
+for the selected gear. This matters because leaving a virtual gear's wheel size
+behind would distort speed and distance.
 
 Wheel size is part of the standard interface available to every riding app.
 Whenever one sets it, Virtual Gears rebuilds every gear around it. That number
@@ -42,8 +42,8 @@ ride, so the trainer returns to that number when virtual shifting ends.
 !!! info "If the app is interrupted"
 
     If iOS ends Virtual Gears, the riding app's Bluetooth link cannot survive.
-    The size Virtual Gears originally borrowed is still written down, so the next
-    launch puts the trainer back without saying anything about it.
+    The baseline used for that ride is still written down, so the next launch
+    can remove the virtual gear left on the trainer.
 
 ## What it is not
 

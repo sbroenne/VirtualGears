@@ -1,19 +1,18 @@
 <p align="center">
-  <img src="docs/banner.png" alt="Virtual Gears — virtual shifting for KICKR V5">
+  <img src="docs/banner.png" alt="Virtual Gears — virtual shifting for Wahoo KICKR">
 </p>
 
 # Virtual Gears
 
-**Virtual shifting for the Wahoo KICKR V5 — even in riding apps that do not
+**Virtual shifting for Wahoo KICKR trainers — even in riding apps that do not
 offer it.**
 
 Virtual Gears puts an iPhone between your trainer and the app you ride with.
 Your riding app still controls the route and its hills; Virtual Gears adds the
 gears. Because it appears as a normal FTMS trainer, the riding app does not need
-to know anything about virtual shifting. That brings virtual gears to apps such
-as RealVelo and FulGaz, not only apps with their own shifting system.
+to know anything about virtual shifting.
 
-![Your riding app connects to Virtual Gears, which connects to the KICKR V5 and optional accessories](docs/how-it-works.svg)
+![Your riding app connects to Virtual Gears, which connects to a Wahoo KICKR and optional accessories](docs/how-it-works.svg)
 
 Leave the bike in a quiet, straight chain line and shift virtually instead.
 Nothing moves on the bike, so shifting is silent and cannot drop the chain.
@@ -24,8 +23,8 @@ Nothing moves on the bike, so shifting is silent and cannot drop the chain.
 
 Wahoo brought native virtual shifting to newer trainers but has said the KICKR
 V5 will not receive it. Native shifting also depends on support inside the
-riding app. Virtual Gears fills both gaps: it gives the KICKR V5 gears and makes
-them available to ordinary FTMS riding apps without changing their route data.
+riding app. Virtual Gears fills both gaps: it gives a KICKR gears and makes them
+available to ordinary FTMS riding apps without changing their route data.
 
 [Read Wahoo's compatibility statement](https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers)
 
@@ -34,14 +33,15 @@ them available to ordinary FTMS riding apps without changing their route data.
 | | Requirement |
 |---|---|
 | **iPhone** | iOS 17 or later |
-| **Trainer** | Wahoo KICKR V5 |
-| **Riding app** | An app that can connect to an FTMS trainer; validated against RealVelo |
-| **Shift buttons** | Optional original Zwift Click |
+| **Trainer** | A compatible direct-drive Wahoo KICKR |
+| **Riding app** | An app that can connect to an FTMS trainer |
+| **Shifting** | Large iPhone buttons; optional original Zwift Click |
 | **Fan** | Optional Wahoo KICKR HEADWIND |
 
-The KICKR V5 is the trainer Virtual Gears was built and physically tested
-against. Other direct-drive KICKR models may work but are not yet proven. The
-KICKR Snap, KICKR Bike and trainers from other brands are not supported.
+Virtual Gears was built and physically tested with a KICKR V5. Other
+direct-drive KICKR models are expected to work but have not yet been physically
+tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
+supported.
 
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
 
@@ -68,7 +68,7 @@ automatically; if several are found, Virtual Gears asks instead of guessing.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Automatic optional-equipment discovery** for an original Zwift Click and
   Wahoo KICKR HEADWIND.
-- **Zwift Click shifting** from the handlebar.
+- **Optional Zwift Click shifting** from the handlebar.
 - **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
@@ -117,8 +117,7 @@ controller for the real KICKR. It passes the riding app's commands and trainer
 data through, then applies the selected gear by changing the wheel
 circumference configured on the KICKR.
 
-Every change waits for confirmation from the trainer. Ending a ride restores
-the wheel circumference that was in use before Virtual Gears applied its gear.
+Every gear change waits for confirmation from the trainer.
 
 [How the gears work](https://sbroenne.github.io/VirtualGears/how-it-works/) ·
 [Safety details](https://sbroenne.github.io/VirtualGears/safety/)
@@ -130,7 +129,7 @@ the wheel circumference that was in use before Virtual Gears applied its gear.
 - **The riding app cannot display the selected gear.** Bluetooth FTMS has no
   message for reporting it, so the gear is shown on the iPhone.
 - **This is not Zwift's native virtual shifting.** It works independently of the
-  riding app.
+  riding app. Virtual Gears supplies and displays the gears itself.
 
 ## Independent project
 

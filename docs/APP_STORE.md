@@ -49,11 +49,11 @@ the iPhone and when advertising itself as a trainer.
 
 ### Subtitle (30 characters max)
 
-    Virtual shifting for KICKR V5
+    Virtual shifting for KICKR
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Adds virtual gears to a Wahoo KICKR V5 in riding apps that do not offer shifting, including RealVelo and FulGaz. Open the app and ride.
+    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or your real-bike gearing.
 
 ### Description
 
@@ -64,21 +64,27 @@ the iPhone and when advertising itself as a trainer.
     Wahoo has confirmed it never will — the older hardware cannot support it. Many
     riding apps do not provide virtual shifting either.
 
-    Virtual Gears sits between both. It appears to RealVelo, FulGaz and other compatible
-    riding apps as a normal FTMS trainer, so they need no special virtual-shifting
-    support. Your riding app still controls the route and its hills; Virtual Gears adds
-    the gears. RealVelo has been physically validated; the others use the same standard
-    FTMS interface.
+    Virtual Gears was built and physically tested with a KICKR V5. Other direct-drive
+    KICKR models are expected to work but have not yet been physically tested. KICKR
+    SNAP and KICKR BIKE are not supported.
+
+    Virtual Gears sits between both. It appears to compatible riding apps as a normal
+    FTMS trainer, so they need no special virtual-shifting support. Your riding app still
+    controls the route and its hills; Virtual Gears adds the gears.
+
+    NOT ZWIFT-NATIVE VIRTUAL SHIFTING
+    Virtual Gears supplies and displays its own gears on the iPhone through an ordinary
+    FTMS trainer connection; it does not support Zwift's native gear system.
 
     You get a full set of gears you can shift through mid-ride — either 24 very wide
     virtual gears or an exact copy of the gears on your real bike.
 
     NOTHING TO SET UP
     Open the app and it starts. It finds your trainer, connects to it, starts the
-    session and appears to your riding app on its own. One available original Zwift
-    Click and Wahoo Headwind are found and remembered automatically too. If more than
-    one matching device is found, Virtual Gears asks rather than guessing. If Clicks
-    have identical names, pressing a button identifies the one you want.
+    session and appears to your riding app on its own. Optional original Zwift Click and
+    Wahoo Headwind accessories are found and remembered automatically too. If more than
+    one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
+    identical names, pressing a button identifies the one you want.
 
     GEARS YOU CAN SEE
     Your gears are drawn, not listed as numbers — one bar per gear, short bars for
@@ -108,15 +114,14 @@ the iPhone and when advertising itself as a trainer.
 
     CAREFUL WITH YOUR TRAINER
     A gear is only shown after your trainer confirms it. Every gear stays inside a
-    range tested on a real trainer. When you stop, your trainer is put back exactly
-    as it was found, and the app tells you if anything could not be restored.
+    range tested on a real trainer.
 
     NO ACCOUNTS, NO INTERNET, NO TRACKING
     The app has no networking code in it at all. Nothing about your ride leaves your
     iPhone.
 
-    Requires a Wahoo KICKR V5. Virtual Gears is not made by, endorsed by or affiliated
-    with Wahoo Fitness.
+    Requires a compatible Wahoo KICKR. Built and physically tested with KICKR V5.
+    Virtual Gears is not made by, endorsed by or affiliated with Wahoo Fitness.
 
 ### Keywords (100 characters max, comma separated, no spaces)
 
@@ -176,9 +181,10 @@ The reviewer will not have a smart trainer. Without one the app shows "Looking f
 your trainer" and nothing else, and the review will be rejected as untestable unless
 you explain it. Paste this into **App Review Information → Notes**:
 
-    This app controls a Wahoo KICKR V5 indoor bicycle trainer over Bluetooth. Without
-    that hardware present the app stays on its "looking for your trainer" screen,
-    because there is nothing for it to connect to.
+    This app controls a compatible Wahoo KICKR indoor bicycle trainer over Bluetooth.
+    It was built and physically tested with a KICKR V5. Without a KICKR present the app
+    stays on its "looking for your trainer" screen because there is nothing to connect
+    to.
 
     A video showing the full app in use on real hardware is here: <ADD LINK>
 
@@ -188,6 +194,9 @@ you explain it. Paste this into **App Review Information → Notes**:
     trainer and relays the trainer's data back, while applying the rider's chosen gear
     by rescaling the trainer's wheel-circumference setting. This is what produces the
     virtual gears.
+
+    Virtual Gears supplies and displays these gears itself over ordinary FTMS. It does
+    not support Zwift-native virtual shifting.
 
     A Wahoo KICKR HEADWIND fan can optionally be paired for sensor or manual speed
     control. It is not required to review the trainer and virtual-shifting features.
@@ -209,7 +218,7 @@ needs to see, and where to host the file so it opens without an account.
 | "We were unable to review because we don't have the hardware" | The notes and video above. If it happens anyway, reply in Resolution Center with the video timestamped. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
-| Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware, and restores it when the ride ends. |
+| Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware. |
 
 ## Later versions
 

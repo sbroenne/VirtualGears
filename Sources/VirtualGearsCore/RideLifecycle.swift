@@ -192,8 +192,8 @@ public struct RideLifecycle: Sendable {
     }
 
     /// Ends the stop. `trainerNeedsRestoring` should come from whether the
-    /// record of the borrowed wheel size is still there, because that record is
-    /// only removed once the trainer confirms the original size is back, and so
+    /// record of the pre-gear baseline is still there, because that record is
+    /// only removed once the trainer confirms the virtual gear is cleared, and so
     /// is the honest answer.
     public mutating func finishStop(
         failures: [String],

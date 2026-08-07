@@ -110,7 +110,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             self.coordinator.sessionBaselineMillimeters == ridingAppWheelSize
         }
 
-        XCTAssertEqual(coordinator.borrowedNeutralMillimeters, neutral)
+        XCTAssertEqual(coordinator.preGearBaselineMillimeters, neutral)
 
         await coordinator.stopRide()
 

@@ -277,16 +277,8 @@ private struct StartupView: View {
 
     private var stoppedCard: some View {
         VStack(spacing: 16) {
-            VStack(spacing: 8) {
-                Text("Virtual shifting stopped")
-                    .font(.title3.weight(.semibold))
-                Text(
-                    "Virtual shifting is off and your trainer setting is restored."
-                )
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .accessibilityElement(children: .combine)
+            Text("Virtual shifting stopped")
+                .font(.title3.weight(.semibold))
             connectionList(includeRidingApp: false)
         }
         .frame(maxWidth: .infinity)
@@ -667,11 +659,6 @@ private struct ActiveRideView: View {
                 Task { await coordinator.stopRide() }
             }
             Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "Virtual Gears will stop virtual shifting and restore the trainer "
-                    + "setting it borrowed."
-            )
         }
     }
 

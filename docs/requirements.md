@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **iPhone** | Running iOS 17 or later — any iPhone from the XS onwards |
-| **Trainer** | Wahoo KICKR V5. Other KICKRs, [see below](#which-trainers-work) |
-| **Riding app** | An app that supports FTMS trainers. RealVelo is physically validated; FulGaz, Zwift and others use the same standard interface. |
-| **Shift buttons** | Optional. An original Zwift Click. |
+| **Trainer** | A compatible direct-drive Wahoo KICKR. [See below](#which-trainers-work). |
+| **Riding app** | An app that can connect to an FTMS trainer. |
+| **Shifting** | Large buttons on the iPhone. An original Zwift Click is optional. |
 | **Fan** | Optional. A Wahoo KICKR HEADWIND. |
 
 ## Which trainers work
@@ -16,8 +16,9 @@ matters.
 
 | Trainer | Works? |
 |---|---|
-| **KICKR V5** | **Yes** — the trainer the app was built and measured against |
-| Other **Wahoo KICKR** models, including the Core | Should work. Not tested, and the app will say so |
+| **KICKR V5** | **Yes** — the trainer the app was built and physically tested with |
+| Other direct-drive **Wahoo KICKR** models, including CORE and MOVE | Expected to work, but not yet physically tested |
+| **KICKR ROLLR** | Unknown. The app allows you to try it but does not claim support |
 | **KICKR Snap** | No. It changes gear a different way |
 | **KICKR Bike** | No. It has its own gear levers already |
 | Tacx, Elite, Saris, Zwift Hub, anything else | No |
@@ -47,16 +48,17 @@ KICKR CORE 1 and 2 — and then answers the obvious question directly:
 > support the required protocols for virtual shifting using the Zwift protocol
 > and will not be receiving a future update for this functionality."
 
-That is the gap Virtual Gears fills. Two differences worth knowing:
+That is the gap Virtual Gears fills. Three differences worth knowing:
 
 - **Your riding app will not display the gear.** Zwift can show it because Zwift
   decides it. Virtual Gears decides it, and there is no way to tell a riding app
   what gear you are in — the Bluetooth standard has no such message. The gear is
   shown large on the phone instead.
 - **Virtual Gears does not require virtual-shifting support in the riding app.**
-  It appears as an ordinary FTMS trainer, bringing gears to compatible apps such
-  as RealVelo and FulGaz that do not provide their own. RealVelo is physically
-  validated; other FTMS apps are expected from the shared standard interface.
+  It appears as an ordinary FTMS trainer, bringing gears to compatible apps that
+  do not provide their own.
+- **Virtual Gears does not support Zwift-native virtual shifting.** It supplies
+  and displays its own gears on the iPhone.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -134,5 +136,5 @@ The starting choice is a 24-step virtual ladder with extra room for easy
 climbing. If you would rather ride the gears of a real bike, describe it by its
 chainrings and cassette and the app builds that instead.
 
-You can change this mid-ride. The trainer is always put back to normal before
-the new gears are applied.
+You can change this mid-ride without interrupting the riding app. The trainer
+must confirm the newly selected gear before the app shows it.

@@ -1,7 +1,7 @@
 # Virtual Gears
 
 <p align="center">
-  <img src="banner.png" alt="Virtual Gears — virtual shifting for KICKR V5">
+  <img src="banner.png" alt="Virtual Gears — virtual shifting for Wahoo KICKR">
 </p>
 
 **Virtual Gears gives you gears on a trainer — and in a riding app — that has
@@ -24,8 +24,11 @@ no chain noise, no dropped chain, and no wear.
     > functionality."
 
     Virtual Gears gives a KICKR V5 gears anyway. Because it appears as a normal
-    FTMS trainer, it also brings virtual shifting to riding apps such as RealVelo
-    and FulGaz that do not provide their own.
+    FTMS trainer, it also brings virtual shifting to riding apps that do not
+    provide their own.
+
+    The app was built and physically tested with a KICKR V5. Other direct-drive
+    KICKR models are expected to work but have not yet been physically tested.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -112,6 +115,9 @@ your ride. The trainer stays connected and your riding app stays paired, so you
 can come back to the same gear.
 
 ## What it does not do
+
+**Zwift-native virtual shifting.** Virtual Gears supplies and displays its own
+gears over ordinary FTMS; it does not support Zwift's native gear system.
 
 **ERG mode.** A workout that sets a target power is refused, because holding a
 power target and holding a gear are two different ideas of what the trainer
