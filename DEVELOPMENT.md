@@ -1,30 +1,80 @@
-# Mac setup
+# Developing Virtual Gears
 
-The iPhone app and the hardware proofs must be built and run on macOS.
+This document covers building, testing and working on the source, including the
+physical hardware measurements behind it. Rider instructions live in the
+[README](README.md) and on the
+[Virtual Gears website](https://sbroenne.github.io/VirtualGears/).
 
-Riding needs only the `VirtualGears` scheme.
+## Requirements
 
-Some of what follows is a record rather than a procedure. Before the proxy
-existed, the trainer and the controller were proven with a scratch diagnostic
-app that was installed on the phone alongside nothing else. That app has been
-removed, because the shipping app now does the same conversations for real and
-keeps its own diagnostic log. Those findings are written down below as history,
-and the Mac tools under `Tools/` are what is still runnable today.
+- macOS
+- Xcode 26 or later
+- Swift 6
+- An iPhone running iOS 17 or later for Bluetooth and trainer testing
 
-1. Install the current stable Xcode release.
-2. Sign in to Xcode with the Apple ID used for device development.
-3. Clone or copy this repository to the Mac.
-4. Run the platform-independent tests:
+The simulator can build and display the app, but it cannot prove Bluetooth
+behavior with a trainer, controller or fan.
 
-   ```bash
-   swift test
-   ```
+## Build and test
 
-5. Open `VirtualGears.xcodeproj`.
-6. Select the `VirtualGears` target, open Signing & Capabilities, and choose the
-   development team for the connected iPhone.
-7. Select the physical iPhone as the run destination and run the app. The
-   simulator cannot perform the required hardware proof.
+Run the hardware-independent test suite:
+
+```bash
+swift test
+```
+
+Open the iPhone project:
+
+```bash
+open VirtualGears.xcodeproj
+```
+
+Select the `VirtualGears` scheme. To run on an iPhone:
+
+1. Sign in to Xcode with the Apple ID used for device development.
+2. Select the `VirtualGears` target.
+3. Open **Signing & Capabilities** and choose the development team.
+4. Select the physical iPhone as the run destination.
+5. Run the app.
+
+CI performs the same package tests and builds the app for an iPhone simulator
+without code signing.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `Sources/VirtualGearsCore` | Gear calculations, trainer commands, ride coordination and other hardware-independent logic |
+| `VirtualGearsProduct` | SwiftUI screens and the real Bluetooth services |
+| `Tests/VirtualGearsCoreTests` | Hardware-independent unit and ride-lifecycle tests |
+| `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
+| `docs` | MkDocs website, screenshots and hardware findings |
+| `VirtualGears.xcodeproj` | iPhone app project |
+
+## Documentation website
+
+Install the pinned dependencies and start the local site:
+
+```bash
+python3 -m pip install -r docs/requirements.txt
+mkdocs serve
+```
+
+Build it with the same strict checks used by CI:
+
+```bash
+mkdocs build --strict
+```
+
+## Hardware measurements and tools
+
+Close Virtual Gears on the iPhone before connecting a Mac tool. The trainer and
+Zwift Click accept limited simultaneous Bluetooth connections.
+
+Some of what follows is a historical record rather than a procedure. Before the
+proxy existed, the trainer and controller were proven with a scratch diagnostic
+app. The shipping app now performs those conversations and keeps its own
+diagnostic log. The Mac tools under `Tools/` remain runnable.
 
 ## What the KICKR V5 range validation found
 
