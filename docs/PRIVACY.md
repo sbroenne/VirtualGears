@@ -1,6 +1,6 @@
 # Privacy Policy for Virtual Gears
 
-Last updated: 4 August 2026
+Last updated: 7 August 2026
 
 ## The short version
 
