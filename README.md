@@ -122,24 +122,6 @@ the wheel circumference that was in use before Virtual Gears applied its gear.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app.
 
-## Development
-
-The app uses Swift 6 and requires Xcode 26 or later.
-
-```bash
-swift test
-open VirtualGears.xcodeproj
-```
-
-- `Sources/VirtualGearsCore` contains the gear, trainer and ride logic.
-- `VirtualGearsProduct` contains the iPhone UI and Bluetooth services.
-- `Tests/VirtualGearsCoreTests` contains the hardware-independent test suite.
-- `Tools` contains the macOS hardware diagnostics used during development.
-- `docs` contains the MkDocs website.
-
-See [MAC_SETUP.md](MAC_SETUP.md) for development and hardware-testing
-instructions.
-
 ## Independent project
 
 Virtual Gears is not affiliated with Wahoo Fitness or Zwift. Wahoo, KICKR,
@@ -152,3 +134,5 @@ Copyright &copy; 2026 Stefan Broenner. All rights reserved.
 The source is public so it can be read and checked, but it is not open source.
 Redistribution and publishing derived applications are not permitted. See
 [LICENSE](LICENSE) for the exact terms.
+
+[Development and hardware-testing documentation](DEVELOPMENT.md)
