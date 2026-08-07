@@ -281,14 +281,13 @@ private struct StartupView: View {
                 Text("Virtual shifting stopped")
                     .font(.title3.weight(.semibold))
                 Text(
-                    "Virtual shifting is off. Your trainer setting is restored, "
-                        + "and your riding app keeps running."
+                    "Virtual shifting is off and your trainer setting is restored."
                 )
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)
-            connectionList(includeRidingApp: true)
+            connectionList(includeRidingApp: false)
         }
         .frame(maxWidth: .infinity)
     }
@@ -667,11 +666,11 @@ private struct ActiveRideView: View {
                 onRiderStop()
                 Task { await coordinator.stopRide() }
             }
-            Button("Keep Riding", role: .cancel) {}
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(
                 "Virtual Gears will stop virtual shifting and restore the trainer "
-                    + "setting it borrowed. Your riding app keeps running."
+                    + "setting it borrowed."
             )
         }
     }
