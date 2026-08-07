@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import OSLog
 
 /// How a list of found devices takes in a fresh sighting.
 ///
@@ -194,61 +195,38 @@ public enum ProductBluetoothError: Error, LocalizedError {    case unavailable(S
     }
 }
 
-public enum ProductDiagnosticLevel: String, Sendable {
+public enum ProductLogLevel: Sendable {
     case info
     case warning
     case error
 }
 
-public struct ProductDiagnosticEntry: Identifiable, Sendable {
-    public let id = UUID()
-    public let date = Date()
-    public let source: String
-    public let level: ProductDiagnosticLevel
-    public let message: String
-}
+public enum ProductLogger {
+    private static let logger = Logger(
+        subsystem: "com.sbroenne.VirtualGears",
+        category: "Product"
+    )
 
-@MainActor
-@Observable
-public final class ProductDiagnosticsStore {
-    public private(set) var entries: [ProductDiagnosticEntry] = []
-    public let capacity: Int
-
-    public init(capacity: Int = 200) {
-        self.capacity = max(1, capacity)
-    }
-
-    public func record(
+    public static func record(
         _ message: String,
         source: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        entries.append(.init(
-            source: source,
-            level: level,
-            message: Self.sanitized(message)
-        ))
-        if entries.count > capacity {
-            entries.removeFirst(entries.count - capacity)
+        let safeMessage = sanitized(message)
+        switch level {
+        case .info:
+            logger.info(
+                "\(source, privacy: .public): \(safeMessage, privacy: .public)"
+            )
+        case .warning:
+            logger.notice(
+                "\(source, privacy: .public): \(safeMessage, privacy: .public)"
+            )
+        case .error:
+            logger.error(
+                "\(source, privacy: .public): \(safeMessage, privacy: .public)"
+            )
         }
-    }
-
-    public func exportText(
-        appVersion: String,
-        deviceDescription: String
-    ) -> String {
-        let formatter = ISO8601DateFormatter()
-        let lines = entries.map {
-            "\(formatter.string(from: $0.date)) [\($0.level.rawValue.uppercased())] "
-                + "\($0.source): \($0.message)"
-        }
-        return ([
-            "Virtual Gears diagnostics",
-            "App: \(appVersion)",
-            "Device: \(deviceDescription)",
-            "Events retained: \(entries.count)/\(capacity)",
-            "---",
-        ] + lines).joined(separator: "\n")
     }
 
     private static func sanitized(_ value: String) -> String {

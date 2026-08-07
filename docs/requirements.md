@@ -26,6 +26,14 @@ matters.
 The app lists every KICKR it can see and tells you plainly if yours is one it
 cannot work with, rather than leaving you to wonder why nothing happens.
 
+### If you set a custom wheel circumference
+
+Virtual Gears cannot read the wheel circumference previously set through the
+Wahoo app. It replaces that value while making gears and uses 2070 mm as its
+reference unless the riding app supplies another size. If you use a custom
+value, write it down and set it again in the Wahoo app after using Virtual
+Gears. Most riders never change this setting.
+
 ### If your KICKR is not the V5
 
 Try it. Nothing bad happens if it turns out not to work: every gear change has

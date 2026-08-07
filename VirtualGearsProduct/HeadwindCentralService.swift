@@ -35,7 +35,6 @@ final class HeadwindCentralService: NSObject {
     var isManual: Bool { mode == .manual }
     var hasSavedDevice: Bool { selectedID != nil }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.headwindIdentity"
     private let speedKey = "VirtualGears.headwindManualSpeed"
@@ -69,11 +68,7 @@ final class HeadwindCentralService: NSObject {
 
     private(set) var connectionIsStalled = false
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let storedPreference = defaults.object(
             forKey: "VirtualGears.headwindManualControl"
@@ -524,9 +519,9 @@ final class HeadwindCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "Headwind", level: level)
+        ProductLogger.record(message, source: "Headwind", level: level)
     }
 
 }

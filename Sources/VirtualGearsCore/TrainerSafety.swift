@@ -8,7 +8,7 @@ public enum TrainerSafety {
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
     /// Staged on a physical KICKR V5, every value acknowledged, with the
-    /// reference restored between each probe. This intentionally remains much
+    /// reference reset between each probe. This intentionally remains much
     /// narrower than the command's encodable limits.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
         500...4_800

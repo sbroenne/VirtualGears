@@ -34,7 +34,6 @@ public final class ProxyCoordinator {
     private let click: any ShifterLink
     private let screen: any ScreenWake
     private let defaults: UserDefaults
-    private let diagnostics: ProductDiagnosticsStore
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
     /// The run of a ride that is still getting going. A stop waits for this to
@@ -53,10 +52,10 @@ public final class ProxyCoordinator {
     /// would each be working from a picture of the gears the other had already
     /// changed, leaving the rider shown a gear the trainer is not on.
     private var baselineUpdateInProgress = false
-    private var restoreTask: Task<Void, Never>?
-    /// A normal Stop has to restore Virtual Gears' current gear without racing
+    private var baselineResetTask: Task<Void, Never>?
+    /// A normal Stop has to reset Virtual Gears' current gear without racing
     /// the riding app's command queue. Commands already executing finish first;
-    /// new ones wait and continue transparently after the restore.
+    /// new ones wait and continue transparently after the reset.
     private var pcCommandGateDepth = 0
     private var pcCommandsInFlight = 0
     private var pcCommandGateWaiters: [CheckedContinuation<Void, Never>] = []
@@ -93,14 +92,12 @@ public final class ProxyCoordinator {
         click: any ShifterLink,
         peripheral: any FitnessMachineBroadcast,
         screen: any ScreenWake,
-        diagnostics: ProductDiagnosticsStore,
         defaults: UserDefaults = .standard
     ) {
         self.kickr = kickr
         self.click = click
         self.peripheral = peripheral
         self.screen = screen
-        self.diagnostics = diagnostics
         self.defaults = defaults
 
         peripheral.commandHandler = { [weak self] request, source in
@@ -120,28 +117,28 @@ public final class ProxyCoordinator {
         }
     }
 
-    /// Puts the trainer back after a ride that never got to stop.
+    /// Resets the baseline after a ride that never got to stop.
     ///
-    /// A ride normally restores the wheel size on Stop. If iOS ends the app
+    /// A ride normally resets to its baseline on Stop. If iOS ends the app
     /// first, that never runs and the trainer keeps the last gear's wheel size,
     /// which would quietly distort its speed and distance for anything else that
-    /// connects to it. The size a ride borrows is written down before the ride
-    /// starts, so the next launch can finish the job.
+    /// connects to it. The ride's baseline is written down before the ride
+    /// starts, so the next launch can finish the reset.
     ///
     /// Nothing is reported to the rider. This is tidying up after an interruption
     /// they did not cause and cannot act on, and the ride they are about to start
     /// sets its own gear regardless.
-    public func restoreInterruptedRideIfNeeded() {
-        guard restoreTask == nil, lifecycle.isBetweenRides else { return }
-        restoreTask = Task { [weak self] in
-            await self?.restoreInterruptedRide()
-            self?.restoreTask = nil
+    public func resetInterruptedRideBaselineIfNeeded() {
+        guard baselineResetTask == nil, lifecycle.isBetweenRides else { return }
+        baselineResetTask = Task { [weak self] in
+            await self?.resetInterruptedRideBaseline()
+            self?.baselineResetTask = nil
         }
     }
 
-    private func restoreInterruptedRide() async {
+    private func resetInterruptedRideBaseline() async {
         guard lifecycle.isBetweenRides else { return }
-        let token = lifecycle.restoreToken
+        let token = lifecycle.baselineResetToken
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
         let baseline = parkedBaselineMillimeters
             ?? defaults.double(forKey: unfinishedRideKey)
@@ -163,7 +160,7 @@ public final class ProxyCoordinator {
             }
             // A ride can have started while control was being asked for. Its
             // own gear is the wheel size that should win, and it owns the
-            // record below, so the restore stands down rather than overwrite
+            // record below, so the reset stands down rather than overwrite
             // either.
             guard isStillWanted(token) else { return }
             let command = try WahooKickrCommand.setWheelCircumference(
@@ -173,10 +170,10 @@ public final class ProxyCoordinator {
             guard response.confirmsSuccess(for: command) else { return }
             guard isStillWanted(token) else { return }
             defaults.removeObject(forKey: unfinishedRideKey)
-            log("Restored the wheel size left behind by an interrupted ride")
+            log("Reset the baseline after an interrupted ride")
         } catch {
             log(
-                "Could not yet restore the wheel size from an interrupted ride: "
+                "Could not yet reset the baseline after an interrupted ride: "
                     + error.localizedDescription,
                 .warning
             )
@@ -184,7 +181,7 @@ public final class ProxyCoordinator {
     }
 
     private func isStillWanted(_ token: UUID) -> Bool {
-        !Task.isCancelled && lifecycle.isRestoreWanted(token)
+        !Task.isCancelled && lifecycle.isBaselineResetWanted(token)
     }
 
     /// Starts a ride immediately so the UI can switch to the ride screen in the
@@ -195,9 +192,9 @@ public final class ProxyCoordinator {
         // A ride sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
         // gear they did not choose.
-        restoreTask?.cancel()
-        restoreTask = nil
-        lifecycle.abandonRestore()
+        baselineResetTask?.cancel()
+        baselineResetTask = nil
+        lifecycle.abandonBaselineReset()
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
@@ -323,7 +320,7 @@ public final class ProxyCoordinator {
         shiftTask?.cancel()
         recoveryTask?.cancel()
         // A ride that is still connecting has its own trainer writes to make.
-        // Letting them run alongside the restore below is how a trainer ends up
+        // Letting them run alongside the reset below is how a trainer ends up
         // left on a gear's wheel size with the recovery record already deleted,
         // so the stop waits for the start to notice it has been called off.
         startTask?.cancel()
@@ -332,7 +329,7 @@ public final class ProxyCoordinator {
         // it has already put the trainer back, said so honestly, and torn the
         // session down while this waited. Carrying on would walk the whole stop
         // through a ride that no longer exists and end by telling the rider the
-        // trainer could not be restored when it just was - on the one message
+        // baseline could not be reset when it just was - on the one message
         // in this app that has to be believable.
         guard lifecycle.owns(id) else { return }
         var failures: [String] = []
@@ -373,18 +370,18 @@ public final class ProxyCoordinator {
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
                     throw ProductBluetoothError.commandFailed(
-                        "KICKR did not confirm baseline restoration"
+                        "KICKR did not confirm the baseline reset"
                     )
                 }
                 defaults.removeObject(forKey: unfinishedRideKey)
                 parkedBaselineMillimeters = neutral
             } catch {
                 failures.append(
-                    "Baseline restoration failed: \(error.localizedDescription)"
+                    "Baseline reset failed: \(error.localizedDescription)"
                 )
             }
         } else {
-            failures.append("Trainer starting state could not be restored")
+            failures.append("Trainer baseline could not be reset")
         }
 
         if disconnectWhenFinished { disconnectOwnedEquipment() }
@@ -398,7 +395,7 @@ public final class ProxyCoordinator {
         failures.forEach { log($0, .error) }
         lifecycle.finishStop(
             failures: failures,
-            trainerNeedsRestoring: stillSet
+            trainerNeedsBaselineReset: stillSet
         )
         if failures.isEmpty { log("Ride session stopped") }
     }
@@ -407,7 +404,7 @@ public final class ProxyCoordinator {
         parkedBaselineMillimeters = nil
         parkedBaselineCameFromRidingApp = false
         click.disconnect()
-        kickr.disconnect(restoringCircumferenceMillimeters: nil)
+        kickr.disconnect(resettingCircumferenceMillimeters: nil)
     }
 
     private func waitForPCCommandGate() async {
@@ -793,7 +790,7 @@ public final class ProxyCoordinator {
                       wahoo.confirmsSuccess(for: command),
                       id.map(self.lifecycle.owns) == true else {
                     throw ProductBluetoothError.commandFailed(
-                        "Could not restore current virtual gear"
+                        "Could not reapply current virtual gear"
                     )
                 }
                 self.lifecycle.markActive()
@@ -977,7 +974,7 @@ public final class ProxyCoordinator {
         // trainer works out speed and distance from it. Leaving it there would
         // quietly distort the PC ride that continues through the proxy, so it
         // goes back while the trainer connection is still available.
-        var trainerRestored = true
+        var baselineReset = true
         if let neutral = preGearBaselineMillimeters, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
@@ -986,12 +983,12 @@ public final class ProxyCoordinator {
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
                     throw ProductBluetoothError.commandFailed(
-                        "KICKR did not confirm baseline restoration"
+                        "KICKR did not confirm the baseline reset"
                     )
                 }
                 defaults.removeObject(forKey: unfinishedRideKey)
             } catch {
-                trainerRestored = false
+                baselineReset = false
                 log(
                     "Could not put the wheel size back after a failed start: "
                         + error.localizedDescription,
@@ -999,21 +996,21 @@ public final class ProxyCoordinator {
                 )
             }
         } else if preGearBaselineMillimeters != nil {
-            trainerRestored = false
+            baselineReset = false
         }
         screen.keepAwake = false
         clearRideData()
         lifecycle.failStart(
             error.localizedDescription,
-            trainerNeedsRestoring: !trainerRestored
+            trainerNeedsBaselineReset: !baselineReset
         )
         log("Ride start failed: \(error.localizedDescription)", .error)
     }
 
     private func log(
         _ message: String,
-        _ level: ProductDiagnosticLevel = .info
+        _ level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "Proxy", level: level)
+        ProductLogger.record(message, source: "Proxy", level: level)
     }
 }

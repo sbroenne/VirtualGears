@@ -51,7 +51,6 @@ final class KickrCentralService: NSObject {
         }
     }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.kickrIdentity"
     private let timeoutNanoseconds: UInt64 = 5_000_000_000
@@ -118,11 +117,7 @@ final class KickrCentralService: NSObject {
     private var disconnectOnCommandFailure = false
     private var activeResult: KickrCommandResult?
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         super.init()
         loadIdentity()
@@ -297,7 +292,7 @@ final class KickrCentralService: NSObject {
     }
 
     func disconnect(
-        restoringCircumferenceMillimeters: Double? = nil
+        resettingCircumferenceMillimeters: Double? = nil
     ) {
         desiredConnection = false
         reconnectTask?.cancel()
@@ -315,7 +310,7 @@ final class KickrCentralService: NSObject {
             command.continuation?.resume(throwing: cancellation)
         }
         queue.removeAll()
-        guard let value = restoringCircumferenceMillimeters, controlsAreReady else {
+        guard let value = resettingCircumferenceMillimeters, controlsAreReady else {
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
             return
@@ -328,11 +323,11 @@ final class KickrCentralService: NSObject {
             disconnectOnCommandFailure = true
             enqueue(
                 .wahoo(data: data, circumference: value),
-                name: "Restore neutral circumference",
+                name: "Reset baseline circumference",
                 disconnectAfterCompletion: true
             )
         } catch {
-            log("Could not restore neutral circumference: \(error)", level: .error)
+            log("Could not reset baseline circumference: \(error)", level: .error)
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
         }
@@ -686,9 +681,9 @@ final class KickrCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "KICKR", level: level)
+        ProductLogger.record(message, source: "KICKR", level: level)
     }
 }
 

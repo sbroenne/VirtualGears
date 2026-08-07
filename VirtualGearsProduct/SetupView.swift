@@ -1462,13 +1462,12 @@ private struct EquipmentSummary: View {
 }
 
 #Preview("Setup") {
-    let diagnostics = ProductDiagnosticsStore()
     NavigationStack {
         SetupView(
             store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!),
-            kickr: KickrCentralService(diagnostics: diagnostics),
-            click: ClickCentralService(diagnostics: diagnostics),
-            headwind: HeadwindCentralService(diagnostics: diagnostics)
+            kickr: KickrCentralService(),
+            click: ClickCentralService(),
+            headwind: HeadwindCentralService()
         )
     }
 }

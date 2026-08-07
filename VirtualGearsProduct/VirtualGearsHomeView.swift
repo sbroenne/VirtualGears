@@ -363,25 +363,19 @@ private struct StartupView: View {
     }
 
     private func failureCard(_ message: String) -> some View {
-        let failure = coordinator.failure ?? .starting(trainerNeedsRestoring: false)
+        let failure =
+            coordinator.failure ?? .starting(trainerNeedsBaselineReset: false)
         let heading = failure.happenedWhileStopping
-            ? "Ride could not be ended cleanly"
+            ? "Virtual shifting stopped"
             : "Ride could not start"
-        // Being told to check Bluetooth is useless when the problem is that
-        // the trainer is still carrying a gear's wheel size. That distorts the
-        // speed and distance it reports to anything else, so the rider is told
-        // what actually puts it right.
-        let advice = failure.trainerNeedsRestoring
-            ? "Your trainer is still set to a gear's wheel size, so it will "
-                + "report the wrong speed and distance to other apps. Bring "
-                + "your phone near the trainer and open Virtual Gears again, "
-                + "and it will put the setting back on its own."
-            : "Check that Bluetooth is on and your trainer is awake."
+        let detail = failure.happenedWhileStopping
+            ? "Your trainer stopped responding before Virtual Gears finished."
+            : plainEnglish(message)
         return VStack(alignment: .leading, spacing: 10) {
             Label(heading, systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
-            Text(plainEnglish(message))
-            Text(advice)
+            Text(detail)
+            Text("Check that Bluetooth is on and your trainer is awake.")
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -530,9 +524,9 @@ private struct ActiveRideView: View {
             .navigationTitle(configuration.drivetrainName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Stopping virtual shifting changes the trainer setting, so it
-                // still asks for confirmation. It sits alone, far from the
-                // settings control, so a sweaty thumb cannot hit both.
+                // Stopping is deliberate and still asks for confirmation. It
+                // sits alone, far from the settings control, so a sweaty thumb
+                // cannot hit both.
                 ToolbarItemGroup(placement: .topBarLeading) {
                     // Everything on this screen is aimed at while pedalling, so
                     // the bar's controls are grown well past the size a phone
@@ -1286,10 +1280,9 @@ private struct GearPositionRail: View {
 }
 
 #Preview("First run") {
-    let diagnostics = ProductDiagnosticsStore()
-    let kickr = KickrCentralService(diagnostics: diagnostics)
-    let click = ClickCentralService(diagnostics: diagnostics)
-    let headwind = HeadwindCentralService(diagnostics: diagnostics)
+    let kickr = KickrCentralService()
+    let click = ClickCentralService()
+    let headwind = HeadwindCentralService()
     VirtualGearsHomeView(
         store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.firstRun")!),
         kickr: kickr,
@@ -1298,9 +1291,8 @@ private struct GearPositionRail: View {
         coordinator: ProxyCoordinator(
             kickr: kickr,
             click: click,
-            peripheral: FTMSPeripheral(diagnostics: diagnostics),
-            screen: DeviceScreenWake(),
-            diagnostics: diagnostics
+            peripheral: FTMSPeripheral(),
+            screen: DeviceScreenWake()
         )
     )
 }

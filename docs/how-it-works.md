@@ -28,11 +28,6 @@ feeling the way it did. If the gears would no longer fit inside the proven range
 around that size, the request is declined and the ride carries on at the size it
 already had.
 
-That number belongs to the riding app. Stopping virtual shifting does not stop
-that app's ride, so Virtual Gears removes its gear and leaves the trainer on the
-riding app's latest size. If the app never set one, the trainer returns to the
-2070 mm reference used to build the gears.
-
 ## Shifting waits for the trainer
 
 Asking for a gear and getting it are not the same thing. Virtual Gears asks for

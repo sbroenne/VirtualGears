@@ -57,7 +57,6 @@ final class ClickCentralService: NSObject {
         }
     }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.clickIdentity"
     private let reconnectDelays: [UInt64] = [1, 2, 4, 8, 15]
@@ -94,11 +93,7 @@ final class ClickCentralService: NSObject {
     private var heldButton: ZwiftClickButton?
     private var isHolding = false
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         super.init()
         loadIdentity()
@@ -481,9 +476,9 @@ final class ClickCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "Click", level: level)
+        ProductLogger.record(message, source: "Click", level: level)
     }
 }
 
