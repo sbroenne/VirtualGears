@@ -53,19 +53,25 @@ the iPhone and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Adds 24 virtual gears to a Wahoo KICKR V5 — the trainer Wahoo confirmed will never get virtual shifting of its own. Open the app and ride.
+    Adds virtual gears to a Wahoo KICKR V5 in riding apps that do not offer shifting, including RealVelo and FulGaz. Open the app and ride.
 
 ### Description
 
-    Your smart trainer has no gears. Virtual Gears gives it some.
+    Your trainer has no gears. Your riding app may not offer virtual shifting.
+    Virtual Gears fixes both.
 
     Newer trainers gained virtual shifting in 2024. The Wahoo KICKR V5 did not, and
-    Wahoo has confirmed it never will — the older hardware cannot support it. This app
-    gives a KICKR V5 gears anyway, in whichever app you ride with.
+    Wahoo has confirmed it never will — the older hardware cannot support it. Many
+    riding apps do not provide virtual shifting either.
 
-    Sit the app between your iPhone and the app you ride with on your computer, and
-    you get a full set of gears you can shift through mid-ride — either 24 very wide
-    virtual gears, or an exact copy of the gears on your real bike.
+    Virtual Gears sits between both. It appears to RealVelo, FulGaz and other compatible
+    riding apps as a normal FTMS trainer, so they need no special virtual-shifting
+    support. Your riding app still controls the route and its hills; Virtual Gears adds
+    the gears. RealVelo has been physically validated; the others use the same standard
+    FTMS interface.
+
+    You get a full set of gears you can shift through mid-ride — either 24 very wide
+    virtual gears or an exact copy of the gears on your real bike.
 
     NOTHING TO SET UP
     Open the app and it starts. It finds your trainer, connects to it, starts the
@@ -85,9 +91,10 @@ the iPhone and when advertising itself as a trainer.
     The screen stays awake for the whole ride.
 
     WORKS WITH THE APPS YOU ALREADY USE
-    Virtual Gears appears as an ordinary indoor trainer, so any app that pairs with a
-    standard trainer can use it. Apps that set their own wheel size are honoured — the
-    gears are rebuilt around whatever size the app asks for.
+    Virtual Gears appears as an ordinary FTMS indoor trainer. That adds virtual shifting
+    to compatible apps that have none of their own, without requiring a plugin or
+    account. Apps that set their own wheel size are honoured — the gears are rebuilt
+    around whatever size the app asks for.
 
     OPTIONAL SHIFT BUTTONS
     If you have a handlebar shift controller, Virtual Gears will use it alongside the
