@@ -4,11 +4,14 @@
 
 # Virtual Gears
 
-**Virtual shifting for the Wahoo KICKR V5, controlled from your iPhone.**
+**Virtual shifting for the Wahoo KICKR V5 — even in riding apps that do not
+offer it.**
 
 Virtual Gears puts an iPhone between your trainer and the app you ride with.
 Your riding app still controls the route and its hills; Virtual Gears adds the
-gears.
+gears. Because it appears as a normal FTMS trainer, the riding app does not need
+to know anything about virtual shifting. That brings virtual gears to apps such
+as RealVelo and FulGaz, not only apps with their own shifting system.
 
 ![Your riding app connects to Virtual Gears, which connects to the KICKR V5 and optional accessories](docs/how-it-works.svg)
 
@@ -20,8 +23,9 @@ Nothing moves on the bike, so shifting is silent and cannot drop the chain.
 ## Why it exists
 
 Wahoo brought native virtual shifting to newer trainers but has said the KICKR
-V5 will not receive it. Virtual Gears fills that gap without changing the route
-data from your riding app.
+V5 will not receive it. Native shifting also depends on support inside the
+riding app. Virtual Gears fills both gaps: it gives the KICKR V5 gears and makes
+them available to ordinary FTMS riding apps without changing their route data.
 
 [Read Wahoo's compatibility statement](https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers)
 
@@ -55,6 +59,8 @@ and Virtual Gears cannot safely choose one, it asks you.
 ## What it can do
 
 - **24 ready-made virtual gears**, with extra range for climbing.
+- **App-independent shifting** for FTMS riding apps that have no virtual gears
+  of their own.
 - **Real-bike gearing**, built from your chainrings and cassette.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Optional Zwift Click shifting** from the handlebar.
