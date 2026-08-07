@@ -526,6 +526,23 @@ final class HeadwindCentralService: NSObject {
 
 }
 
+#if DEBUG
+extension HeadwindCentralService {
+    func stageScreenshot(name: String, speed: Int) {
+        selectedID = ScreenshotFixture.headwindID
+        selectedName = name
+        state = .ready
+        mode = .manual
+        manualSpeed = speed
+        desiredManualSpeed = speed
+        requestedManual = true
+        lastSensorMode = .heartRate
+        commandError = nil
+        isCommandPending = false
+    }
+}
+#endif
+
 extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {

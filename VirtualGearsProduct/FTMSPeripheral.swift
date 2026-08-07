@@ -372,6 +372,16 @@ final class FTMSPeripheral: NSObject {
     }
 }
 
+#if DEBUG
+extension FTMSPeripheral {
+    func stageScreenshotConnection() {
+        isAdvertising = true
+        subscribedAppCount = 1
+        controllingAppID = ScreenshotFixture.ridingAppID
+    }
+}
+#endif
+
 extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         if peripheral.state != .poweredOn {

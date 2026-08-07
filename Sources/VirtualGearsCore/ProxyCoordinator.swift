@@ -1014,3 +1014,28 @@ public final class ProxyCoordinator {
         ProductLogger.record(message, source: "Proxy", level: level)
     }
 }
+
+#if DEBUG
+extension ProxyCoordinator {
+    public func stageScreenshotRide(configuration: AppConfiguration) {
+        guard let drivetrain = configuration.drivetrain,
+              let engine = try? ConfirmedGearEngine(
+                  drivetrain: drivetrain,
+                  baselineCircumferenceMillimeters:
+                      TrainerSafety.referenceCircumferenceMillimeters
+              )
+        else { return }
+
+        lifecycle = RideLifecycle()
+        _ = lifecycle.beginConnecting()
+        lifecycle.markActive()
+        gearEngine = engine
+        gearSequence = drivetrain.gears
+        sessionBaselineMillimeters =
+            TrainerSafety.referenceCircumferenceMillimeters
+        preGearBaselineMillimeters =
+            TrainerSafety.referenceCircumferenceMillimeters
+        updateDisplayedGear()
+    }
+}
+#endif

@@ -101,7 +101,7 @@ struct VirtualGearsHomeView: View {
 /// remembering and gears the trainer can copy are all a ride needs, and the
 /// only question ever asked is which trainer, only when that is genuinely
 /// unclear.
-private struct StartupView: View {
+struct StartupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
@@ -109,6 +109,7 @@ private struct StartupView: View {
     @Bindable var coordinator: ProxyCoordinator
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
+    var beginsDiscovery = true
     @State private var showsSettings = false
     /// Set when more than one trainer is found, which is the one situation
     /// where the rider has to say which is theirs.
@@ -156,7 +157,11 @@ private struct StartupView: View {
                     )
                 }
             }
-            .task { await begin() }
+            .task {
+                if beginsDiscovery {
+                    await begin()
+                }
+            }
             .onChange(of: canStart) { _, _ in startIfReady() }
             .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
             .onDisappear {
@@ -446,7 +451,7 @@ private struct StartupView: View {
 }
 
 
-private struct ActiveRideView: View {
+struct ActiveRideView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService

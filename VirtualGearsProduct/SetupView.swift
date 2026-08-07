@@ -11,6 +11,7 @@ struct SetupView: View {
     @Bindable var click: ClickCentralService
     @Bindable var headwind: HeadwindCentralService
     var onFinish: (() -> Void)?
+    var autoConnectsOnAppear = true
 
     var body: some View {
         Form {
@@ -21,7 +22,9 @@ struct SetupView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            autoConnectSavedEquipment()
+            if autoConnectsOnAppear {
+                autoConnectSavedEquipment()
+            }
         }
         .onChange(of: store.configuration.usesClick) { _, enabled in
             if enabled { click.autoConnectSavedDevice() }

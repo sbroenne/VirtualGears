@@ -482,6 +482,17 @@ final class ClickCentralService: NSObject {
     }
 }
 
+#if DEBUG
+extension ClickCentralService {
+    func stageScreenshot(name: String, batteryLevel: Int) {
+        selectedID = ScreenshotFixture.clickID
+        selectedName = name
+        self.batteryLevel = batteryLevel
+        state = .ready
+    }
+}
+#endif
+
 extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {

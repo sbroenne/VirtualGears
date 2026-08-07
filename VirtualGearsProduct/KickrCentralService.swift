@@ -687,6 +687,17 @@ final class KickrCentralService: NSObject {
     }
 }
 
+#if DEBUG
+extension KickrCentralService {
+    func stageScreenshot(name: String, state: ProductConnectionState) {
+        selectedID = ScreenshotFixture.kickrID
+        selectedName = name
+        hasFTMSControl = state == .ready
+        self.state = state
+    }
+}
+#endif
+
 extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
