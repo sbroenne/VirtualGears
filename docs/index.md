@@ -43,9 +43,10 @@ need special virtual-shifting support; ordinary FTMS trainer support is enough.
 
 ![How Virtual Gears sits between your riding app and your trainer](how-it-works.svg)
 
-A Zwift Click can be added to shift from the handlebar, but it is never
-required. A Wahoo Headwind can also be added, with a choice between its own
-sensor control and manual fan speed.
+Wake an original Zwift Click or Wahoo Headwind before opening Virtual Gears and
+the app finds and remembers it automatically. The Click shifts from the
+handlebar. The Headwind can stay with its own sensor control or use a manual fan
+speed. Both remain optional and never hold up a ride.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
@@ -92,11 +93,10 @@ Open the app. It looks for your trainer, connects to it, starts the session and
 appears to your riding app, all on its own. There is no setup to complete and no
 button to press.
 
-The only question it ever asks is which trainer, and only when it genuinely
-cannot tell: one trainer nearby is simply used, several are only chosen
-automatically when one is clearly closest. Bluetooth reaches through walls, and
-connecting to a neighbour's trainer would change their wheel size, so anything
-ambiguous is asked rather than guessed.
+The only question it ever asks is which trainer, and only when it finds more
+than one. A single trainer is simply used. Bluetooth signal strength does not
+measure distance reliably, so multiple trainers are listed by name rather than
+ranked or guessed.
 
 ### Everything changeable mid-ride
 

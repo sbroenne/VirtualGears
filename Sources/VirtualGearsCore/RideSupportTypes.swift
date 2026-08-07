@@ -3,26 +3,10 @@ import Observation
 
 /// How a list of found devices takes in a fresh sighting.
 ///
-/// Bluetooth reports the same device many times a second, and each report
-/// carries a slightly different signal reading. Two rules follow from that,
-/// and both exist for the rider rather than the radio.
-///
-/// The list never reorders. Sorting by signal meant rows traded places while
-/// somebody was reaching for one, because a couple of decibels of drift was
-/// enough to swap them - a device that moves out from under a finger is the
-/// worst thing a picker can do. Devices keep the order they were found in.
-/// Nothing depends on the stored order: `TrainerPicker` sorts its own copy
-/// when it decides whether an answer is obvious.
-///
-/// A sighting that changes nothing worth showing is dropped. Without that,
-/// every advertisement rewrote the list and redrew the screen roughly ten
-/// times a second per device, to move an icon that has only three positions.
-/// The tolerance stays far below `TrainerPicker.clearlyCloser`, so the
-/// readings the automatic choice is made from are still good ones.
+/// Bluetooth reports the same device many times a second. Devices keep the
+/// order they were first found so rows cannot move while somebody reaches for
+/// one, and repeated advertisements are ignored unless visible details change.
 extension Array where Element == BluetoothCandidate {
-    /// The most a stored signal reading may lag the latest one, in decibels.
-    public static var signalTolerance: Int { 3 }
-
     /// Returns whether the list changed.
     @discardableResult
     public mutating func absorb(_ sighting: BluetoothCandidate) -> Bool {
@@ -33,7 +17,6 @@ extension Array where Element == BluetoothCandidate {
         let known = self[index]
         guard known.name != sighting.name
                 || known.compatibility != sighting.compatibility
-                || abs(known.rssi - sighting.rssi) >= Self.signalTolerance
         else { return false }
         self[index] = sighting
         return true
@@ -43,18 +26,15 @@ extension Array where Element == BluetoothCandidate {
 public struct BluetoothCandidate: Identifiable, Equatable {
     public let id: UUID
     public let name: String
-    public let rssi: Int
     public var compatibility: TrainerCompatibility = .untested
 
     public init(
         id: UUID,
         name: String,
-        rssi: Int,
         compatibility: TrainerCompatibility = .untested
     ) {
         self.id = id
         self.name = name
-        self.rssi = rssi
         self.compatibility = compatibility
     }
 }

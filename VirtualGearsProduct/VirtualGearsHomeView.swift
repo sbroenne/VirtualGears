@@ -49,9 +49,10 @@ private struct StartupView: View {
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
     @State private var showsSettings = false
-    /// Set when the trainers in range are too alike to choose between, which is
-    /// the one situation where the rider has to say which is theirs.
+    /// Set when more than one trainer is found, which is the one situation
+    /// where the rider has to say which is theirs.
     @State private var mustChoose = false
+    @State private var trainerScanSettled = false
 
     var body: some View {
         NavigationStack {
@@ -97,35 +98,76 @@ private struct StartupView: View {
             .task { await begin() }
             .onChange(of: canStart) { _, _ in startIfReady() }
             .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
-            .onDisappear { kickr.stopScanning() }
+            .onChange(of: click.candidates) { _, _ in considerClickCandidates() }
+            .onChange(of: headwind.candidates) { _, _ in considerHeadwindCandidates() }
+            .onDisappear {
+                kickr.stopScanning()
+                if click.isScanning { click.stopScanning() }
+                if headwind.isScanning { headwind.stopScanning() }
+            }
         }
     }
 
     // MARK: - Finding a trainer
 
     private func begin() async {
-        if store.configuration.usesClick { click.autoConnectSavedDevice() }
-        if store.configuration.usesHeadwind { headwind.autoConnectSavedDevice() }
+        discoverOptionalEquipment()
         guard !store.configuration.hasValidKickr else {
             kickr.autoConnectSavedDevice()
             startIfReady()
             return
         }
+        trainerScanSettled = false
         kickr.startScanning()
-        // A moment for a second trainer to announce itself, so a room with two
-        // in it is recognised as a choice rather than raced into.
+        // Give every trainer one advertising interval before deciding whether
+        // there is one result or a real choice.
         try? await Task.sleep(for: .seconds(2.5))
+        guard !Task.isCancelled else { return }
+        trainerScanSettled = true
         considerCandidates()
     }
 
-    /// Never interrupts a connection already under way, so a slow first reply
-    /// from the right trainer cannot be overtaken by a louder neighbour.
-    private func considerCandidates() {
-        guard autoStarts, !store.configuration.hasValidKickr,
-              kickr.selectedID == nil, !mustChoose else { return }
-        let seen = kickr.candidates.map {
-            DiscoveredTrainer(id: $0.id, signalStrength: $0.rssi)
+    private func discoverOptionalEquipment() {
+        if store.configuration.usesClick {
+            click.autoConnectSavedDevice()
+        } else {
+            click.startScanning()
         }
+        if store.configuration.usesHeadwind {
+            headwind.autoConnectSavedDevice()
+        } else {
+            headwind.startScanning()
+        }
+    }
+
+    private func considerClickCandidates() {
+        guard autoStarts, !store.configuration.usesClick,
+              click.candidates.count == 1,
+              let candidate = click.candidates.first else { return }
+        store.configuration.rememberClick(
+            named: candidate.name,
+            id: candidate.id
+        )
+        click.selectAndConnect(candidate.id)
+    }
+
+    private func considerHeadwindCandidates() {
+        guard autoStarts, !store.configuration.usesHeadwind,
+              headwind.candidates.count == 1,
+              let candidate = headwind.candidates.first else { return }
+        store.configuration.rememberHeadwind(
+            named: candidate.name,
+            id: candidate.id
+        )
+        headwind.selectAndConnect(candidate.id)
+    }
+
+    /// Never interrupts a connection already under way.
+    private func considerCandidates() {
+        guard trainerScanSettled, autoStarts,
+              !store.configuration.hasValidKickr,
+              kickr.selectedID == nil, !mustChoose else { return }
+        let seen = kickr.candidates.map { DiscoveredTrainer(id: $0.id) }
         guard !seen.isEmpty else { return }
         switch TrainerPicker.choice(from: seen) {
         case let .connect(id): adopt(id)
@@ -176,7 +218,7 @@ private struct StartupView: View {
             Text("Which one is yours?")
                 .font(.title3.weight(.semibold))
             Text(
-                "More than one trainer is switched on nearby. Pick yours and "
+                "Virtual Gears found more than one trainer. Pick yours and "
                     + "Virtual Gears will remember it."
             )
             .font(.subheadline)
@@ -186,31 +228,15 @@ private struct StartupView: View {
                     mustChoose = false
                     adopt(candidate.id)
                 } label: {
-                    HStack {
-                        Text(candidate.name)
-                        Spacer()
-                        Image(systemName: signalSymbol(candidate.rssi))
-                            .foregroundStyle(.secondary)
-                    }
+                    Text(candidate.name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
-                .accessibilityLabel("\(candidate.name), \(signalWords(candidate.rssi))")
             }
             chainReminder
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func signalSymbol(_ rssi: Int) -> String {
-        rssi >= TrainerPicker.closeBy
-            ? "wifi" : (rssi >= TrainerPicker.inTheRoom ? "wifi.medium" : "wifi.low")
-    }
-
-    private func signalWords(_ rssi: Int) -> String {
-        rssi >= TrainerPicker.closeBy
-            ? "close by"
-            : (rssi >= TrainerPicker.inTheRoom ? "further away" : "a long way off")
     }
 
     /// The one thing the app cannot do for the rider.

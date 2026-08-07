@@ -49,6 +49,7 @@ final class HeadwindCentralService: NSObject {
     )
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var controlCharacteristic: CBCharacteristic?
@@ -103,6 +104,7 @@ final class HeadwindCentralService: NSObject {
             restoreSensors(then: .scan)
             return
         }
+        scanWhenPoweredOn = true
         beginScanning()
     }
 
@@ -110,9 +112,10 @@ final class HeadwindCentralService: NSObject {
         desiredConnection = false
         reconnectTask?.cancel()
         guard central.state == .poweredOn else {
-            failConnection("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        scanWhenPoweredOn = false
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
@@ -129,6 +132,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     func stopScanning() {
+        scanWhenPoweredOn = false
         let cancelledReplacement =
             deferredAction == .scan || scansAfterDisconnect
         if deferredAction == .scan { deferredAction = nil }
@@ -526,6 +530,10 @@ final class HeadwindCentralService: NSObject {
 extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -538,7 +546,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -548,8 +556,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         discovered[peripheral.identifier] = peripheral
         candidates.absorb(.init(
             id: peripheral.identifier,
-            name: name,
-            rssi: RSSI.intValue
+            name: name
         ))
     }
 

@@ -78,8 +78,7 @@ idea of the bike and leaves the road alone.
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.
 2. Open Virtual Gears on your iPhone. It finds the trainer and connects on its
-   own. If more than one trainer is nearby and none is clearly closest, it asks
-   you which one.
+   own. If it finds more than one trainer, it asks you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
    That will be your iPhone, appearing as a trainer.
 4. Ride. Shift with the two large buttons on the phone.
@@ -103,19 +102,25 @@ About → Name — but that changes its name everywhere else too.
 
 ## Adding a Zwift Click
 
-Open Settings in the app and add the Click there. It shifts the same gears as
-the on-screen buttons. Nothing ever waits for it, so a Click that runs out of
+Wake the Click by pressing a button before opening Virtual Gears. The app finds,
+connects and remembers it automatically. It shifts the same gears as the
+on-screen buttons. Nothing ever waits for it, so a Click that runs out of
 battery mid-ride costs you nothing but the buttons on the handlebar.
+
+If the app finds more than one Click, choose yours in Settings rather than
+letting it guess.
 
 The app shows the Click's battery level in Settings, and warns you on the ride
 screen if it drops below 20%.
 
 ## Adding a Wahoo Headwind
 
-Open Settings, choose Wahoo Headwind, and select the nearby fan. During a ride,
-the fan button switches between Automatic control from the Headwind's paired
-sensor and a manual speed from 0–100%. Manual has a slider and one-tap buttons
-for Off, 25%, 50%, 75% and 100%.
+Turn on the Headwind before opening Virtual Gears. The app finds, connects and
+remembers it automatically. During a ride, the fan button switches between
+Automatic control from the Headwind's paired sensor and a manual speed from
+0–100%. Manual has a slider and one-tap buttons for Off, 25%, 50%, 75% and 100%.
+
+If the app finds more than one Headwind, choose yours in Settings.
 
 Manual mode remains on the Headwind after Bluetooth disconnects. Virtual Gears
 therefore sends an explicit sensor-control command and waits for the fan to

@@ -72,6 +72,7 @@ final class ClickCentralService: NSObject {
     private let batteryUUID = CBUUID(string: "2A19")
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var asyncCharacteristic: CBCharacteristic?
@@ -109,10 +110,16 @@ final class ClickCentralService: NSObject {
     func startScanning() {
         desiredConnection = false
         reconnectTask?.cancel()
+        scanWhenPoweredOn = true
         guard central.state == .poweredOn else {
-            fail("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        beginScanning()
+    }
+
+    private func beginScanning() {
+        scanWhenPoweredOn = false
         if let peripheral { central.cancelPeripheralConnection(peripheral) }
         candidates.removeAll()
         discovered.removeAll()
@@ -125,6 +132,7 @@ final class ClickCentralService: NSObject {
     }
 
     func stopScanning() {
+        scanWhenPoweredOn = false
         central.stopScan()
         if state == .scanning { state = .disconnected }
         autoConnectSavedDevice()
@@ -443,6 +451,10 @@ final class ClickCentralService: NSObject {
 extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -455,7 +467,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -464,8 +476,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         discovered[peripheral.identifier] = peripheral
         let item = BluetoothCandidate(
             id: peripheral.identifier,
-            name: name,
-            rssi: RSSI.intValue
+            name: name
         )
         candidates.absorb(item)
     }

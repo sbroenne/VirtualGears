@@ -2,17 +2,16 @@ import XCTest
 @testable import VirtualGearsCore
 
 final class TrainerPickerTests: XCTestCase {
-    private func trainer(_ strength: Int) -> DiscoveredTrainer {
-        DiscoveredTrainer(id: UUID(), signalStrength: strength)
+    private func trainer() -> DiscoveredTrainer {
+        DiscoveredTrainer(id: UUID())
     }
 
     func testNothingFoundAsks() {
         XCTAssertEqual(TrainerPicker.choice(from: []), .ask)
     }
 
-    /// The rider with one trainer in the room, which is the whole point.
-    func testASingleTrainerInTheRoomIsConnectedWithoutAsking() {
-        let only = trainer(-58)
+    func testASingleTrainerIsConnectedWithoutAsking() {
+        let only = trainer()
 
         XCTAssertEqual(
             TrainerPicker.choice(from: [only]),
@@ -20,45 +19,17 @@ final class TrainerPickerTests: XCTestCase {
         )
     }
 
-    /// One faint trainer is far more likely to be a neighbour's than the one
-    /// the rider is sitting on.
-    func testASingleDistantTrainerAsks() {
-        XCTAssertEqual(TrainerPicker.choice(from: [trainer(-92)]), .ask)
-    }
-
-    func testTheNearTrainerWinsWhenTheOtherIsFarAway() {
-        let mine = trainer(-52)
-        let neighbour = trainer(-88)
-
+    func testTwoTrainersAlwaysAsk() {
         XCTAssertEqual(
-            TrainerPicker.choice(from: [neighbour, mine]),
-            .connect(mine.id)
-        )
-    }
-
-    /// Two trainers at similar strength could be two bikes in one room, and
-    /// choosing wrongly would change someone else's trainer.
-    func testTwoSimilarTrainersAsk() {
-        XCTAssertEqual(
-            TrainerPicker.choice(from: [trainer(-55), trainer(-60)]),
+            TrainerPicker.choice(from: [trainer(), trainer()]),
             .ask
         )
     }
 
-    /// Being the nearest is not enough when nothing is actually near.
-    func testTheNearestIsNotTrustedWhenItIsStillFarAway() {
+    func testThreeTrainersAlwaysAsk() {
         XCTAssertEqual(
-            TrainerPicker.choice(from: [trainer(-78), trainer(-95)]),
+            TrainerPicker.choice(from: [trainer(), trainer(), trainer()]),
             .ask
-        )
-    }
-
-    func testTheGapIsMeasuredAgainstTheSecondNearest() {
-        let mine = trainer(-45)
-
-        XCTAssertEqual(
-            TrainerPicker.choice(from: [trainer(-90), mine, trainer(-80)]),
-            .connect(mine.id)
         )
     }
 }

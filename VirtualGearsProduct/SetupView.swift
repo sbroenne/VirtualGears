@@ -197,7 +197,7 @@ private struct TrainerSetupView: View {
                 .buttonStyle(.borderedProminent)
 
                 if kickr.isScanning, kickr.candidates.isEmpty {
-                    SearchingRow(message: "Looking for nearby trainers…")
+                    SearchingRow(message: "Looking for trainers…")
                 }
 
                 ForEach(kickr.candidates) { candidate in
@@ -306,7 +306,7 @@ private struct ShiftingSetupView: View {
                 .buttonStyle(.borderedProminent)
 
                 if click.isScanning, click.candidates.isEmpty {
-                    SearchingRow(message: "Looking for a nearby Click…")
+                    SearchingRow(message: "Looking for your Click…")
                 }
 
                 ForEach(click.candidates) { candidate in
@@ -413,7 +413,7 @@ private struct HeadwindSetupView: View {
                 .buttonStyle(.borderedProminent)
 
                 if headwind.isScanning, headwind.candidates.isEmpty {
-                    SearchingRow(message: "Looking for a nearby Headwind…")
+                    SearchingRow(message: "Looking for your Headwind…")
                 }
 
                 ForEach(headwind.candidates) { candidate in
@@ -1101,9 +1101,6 @@ private struct CandidateRow: View {
                     Text(candidate.name)
                         .font(.headline)
                         .foregroundStyle(usable ? .primary : .secondary)
-                    Text(signalDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                     if case let .unsupported(_, reason) = candidate.compatibility {
                         Text(reason)
                             .font(.caption)
@@ -1137,19 +1134,9 @@ private struct CandidateRow: View {
 
     private var accessibilityDescription: String {
         if case let .unsupported(_, reason) = candidate.compatibility {
-            return "\(candidate.name), \(signalDescription). \(reason)"
+            return "\(candidate.name). \(reason)"
         }
-        return "\(candidate.name), \(signalDescription)"
-    }
-
-    /// Riders do not read dBm; they want to know whether it is the device in
-    /// front of them.
-    private var signalDescription: String {
-        switch candidate.rssi {
-        case (-55)...: "Very close by"
-        case (-70)..<(-55): "Nearby"
-        default: "Further away"
-        }
+        return candidate.name
     }
 }
 

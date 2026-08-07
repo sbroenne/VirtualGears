@@ -53,8 +53,8 @@ KICKR Snap, KICKR Bike and trainers from other brands are not supported.
    may show the iPhone's name instead.
 4. Ride and shift with the large **Easier** and **Harder** buttons.
 
-There is no start button and no setup wizard. If several trainers are nearby
-and Virtual Gears cannot safely choose one, it asks you.
+There is no start button and no setup wizard. If it finds more than one trainer,
+it asks you to choose yours by name.
 
 ## What it can do
 
@@ -63,9 +63,10 @@ and Virtual Gears cannot safely choose one, it asks you.
   of their own.
 - **Real-bike gearing**, built from your chainrings and cassette.
 - **On-phone shifting** with large controls in portrait and landscape.
-- **Optional Zwift Click shifting** from the handlebar.
-- **Optional Headwind control** with Automatic, Off, 25%, 50%, 75% and 100%
-  settings.
+- **Automatic optional-equipment discovery** for an original Zwift Click and
+  Wahoo KICKR HEADWIND.
+- **Zwift Click shifting** from the handlebar.
+- **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
 

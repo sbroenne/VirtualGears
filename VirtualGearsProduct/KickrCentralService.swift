@@ -68,6 +68,7 @@ final class KickrCentralService: NSObject {
     private let wahooUUID = CBUUID(string: WahooKickrProtocol.controlCharacteristicUUID)
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
@@ -137,10 +138,16 @@ final class KickrCentralService: NSObject {
     func startScanning() {
         desiredConnection = false
         reconnectTask?.cancel()
+        scanWhenPoweredOn = true
         guard central.state == .poweredOn else {
-            fail("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        beginScanning()
+    }
+
+    private func beginScanning() {
+        scanWhenPoweredOn = false
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
@@ -164,6 +171,7 @@ final class KickrCentralService: NSObject {
     }
 
     func stopScanning() {
+        scanWhenPoweredOn = false
         central.stopScan()
         if state == .scanning { state = .disconnected }
         autoConnectSavedDevice()
@@ -684,6 +692,10 @@ final class KickrCentralService: NSObject {
 extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -696,7 +708,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -707,7 +719,6 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         let item = BluetoothCandidate(
             id: peripheral.identifier,
             name: name,
-            rssi: RSSI.intValue,
             compatibility: TrainerModel
                 .compatibility(forAdvertisedName: name)
         )

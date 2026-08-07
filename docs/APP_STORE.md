@@ -75,9 +75,9 @@ the iPhone and when advertising itself as a trainer.
 
     NOTHING TO SET UP
     Open the app and it starts. It finds your trainer, connects to it, starts the
-    session and appears to your riding app on its own. If more than one trainer is
-    nearby it asks which is yours, because connecting to your neighbour's trainer
-    would change their settings, not yours.
+    session and appears to your riding app on its own. One available original Zwift
+    Click and Wahoo Headwind are found and remembered automatically too. If more than
+    one matching device is found, Virtual Gears asks rather than guessing.
 
     GEARS YOU CAN SEE
     Your gears are drawn, not listed as numbers — one bar per gear, short bars for
@@ -97,13 +97,13 @@ the iPhone and when advertising itself as a trainer.
     around whatever size the app asks for.
 
     OPTIONAL SHIFT BUTTONS
-    If you have a handlebar shift controller, Virtual Gears will use it alongside the
-    on-screen buttons. It is never required and the app never waits for it.
+    Wake an original Zwift Click before opening Virtual Gears and it connects
+    automatically. It shifts alongside the on-screen buttons, but is never required.
 
     OPTIONAL HEADWIND CONTROL
-    If you have a Wahoo KICKR HEADWIND, Virtual Gears can reconnect it automatically.
-    Leave fan speed with the Headwind's own sensor, or choose a manual speed from the
-    ride screen. The fan is optional and never blocks a ride.
+    Turn on a Wahoo KICKR HEADWIND before opening Virtual Gears and it connects
+    automatically. Leave fan speed with the Headwind's own sensor, or choose a manual
+    speed from the ride screen. The fan is optional and never blocks a ride.
 
     CAREFUL WITH YOUR TRAINER
     A gear is only shown after your trainer confirms it. Every gear stays inside a
