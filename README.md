@@ -63,15 +63,42 @@ and Virtual Gears cannot safely choose one, it asks you.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
 
-<p align="center">
-  <img src="docs/screenshots/riding.png" width="24%" alt="Virtual Gears ride screen">
-  <img src="docs/screenshots/gears.png" width="24%" alt="The 24-step virtual gear ladder">
-  <img src="docs/screenshots/gears-real-bike.png" width="24%" alt="Virtual gears based on a real drivetrain">
-</p>
+## Screenshots
 
-<p align="center">
-  <img src="docs/screenshots/riding-landscape.png" width="76%" alt="Virtual Gears in landscape">
-</p>
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <a href="docs/screenshots/riding-landscape.png">
+        <img src="docs/screenshots/riding-landscape.png" width="100%" alt="Virtual Gears ride controls in landscape">
+      </a>
+      <br>
+      <strong>Ride and shift</strong>
+    </td>
+    <td width="50%" align="center">
+      <a href="docs/screenshots/headwind-control-landscape.png">
+        <img src="docs/screenshots/headwind-control-landscape.png" width="100%" alt="Wahoo Headwind manual control in landscape">
+      </a>
+      <br>
+      <strong>Control the Headwind</strong>
+    </td>
+  </tr>
+</table>
+
+<details>
+  <summary><strong>More screenshots</strong></summary>
+  <br>
+  <p align="center">
+    <a href="docs/screenshots/riding.png">
+      <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen">
+    </a>
+    <a href="docs/screenshots/gears.png">
+      <img src="docs/screenshots/gears.png" width="28%" alt="The 24-step virtual gear ladder">
+    </a>
+    <a href="docs/screenshots/gears-real-bike.png">
+      <img src="docs/screenshots/gears-real-bike.png" width="28%" alt="Virtual gears based on a real drivetrain">
+    </a>
+  </p>
+</details>
 
 ## How it works
 
