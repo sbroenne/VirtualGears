@@ -2,7 +2,7 @@
 
 The iPhone app and the hardware proofs must be built and run on macOS.
 
-Riding needs only the `VirtualShift` scheme.
+Riding needs only the `VirtualGears` scheme.
 
 Some of what follows is a record rather than a procedure. Before the proxy
 existed, the trainer and the controller were proven with a scratch diagnostic
@@ -20,8 +20,8 @@ and the Mac tools under `Tools/` are what is still runnable today.
    swift test
    ```
 
-5. Open `VirtualShift.xcodeproj`.
-6. Select the `VirtualShift` target, open Signing & Capabilities, and choose the
+5. Open `VirtualGears.xcodeproj`.
+6. Select the `VirtualGears` target, open Signing & Capabilities, and choose the
    development team for the connected iPhone.
 7. Select the physical iPhone as the run destination and run the app. The
    simulator cannot perform the required hardware proof.
@@ -90,7 +90,7 @@ has already been turned into one.
 ./Tools/ClickTrace/run.sh
 ```
 
-Close VirtualShift on the iPhone first. The Click accepts one connection at a
+Close Virtual Gears on the iPhone first. The Click accepts one connection at a
 time, so the phone and the Mac cannot both hold it. Wake the Click by pressing a
 button, then allow the Bluetooth prompt the first time.
 
@@ -153,10 +153,10 @@ The trainer also kept control through an FTMS Stop: a Wahoo write immediately
 afterwards was still accepted. Refusing to re-take control during a stop is
 therefore precautionary on this trainer rather than a fix for something it does.
 
-### Why VirtualShift uses Wahoo's command and not the standard one
+### Why Virtual Gears uses Wahoo's command and not the standard one
 
 The Bluetooth fitness-machine standard has a wheel-size command of its own
-(opcode `0x12`, in tenths of a millimetre). VirtualShift does not use it on the
+(opcode `0x12`, in tenths of a millimetre). Virtual Gears does not use it on the
 trainer. This mode asks the trainer directly:
 
 ```bash
@@ -183,7 +183,7 @@ command proves nothing. It may work, it may be discarded; the reply cannot tell
 them apart, and there is no way to read the wheel size back to check.
 
 Wahoo's own command does not have this problem. It replies with the wheel size
-it actually applied, which VirtualShift compares against what it asked for
+it actually applied, which Virtual Gears compares against what it asked for
 before reporting the gear as changed. Two further reasons to prefer it:
 
 - It is a **separate channel**. The riding app's terrain commands occupy the
@@ -210,14 +210,14 @@ before requesting control, and after a disconnect and reconnect it found the
 probe again and repeated the same subscriptions and control request.
 
 That is the shape the shipping app presents today, and it is why the proxy works
-at all. If a riding app stops seeing VirtualShift, the app's own diagnostic log
+at all. If a riding app stops seeing Virtual Gears, the app's own diagnostic log
 records the same writes in the same order, so read that before changing the FTMS
 service shape on a hunch.
 
-## What name a riding app shows for VirtualShift
+## What name a riding app shows for Virtual Gears
 
-A rider reported that MyWhoosh listed VirtualShift as "iPhone sbroenne 17 D345"
-rather than "VirtualShift". A name can reach a riding app by two routes, so
+A rider reported that MyWhoosh listed the app as "iPhone sbroenne 17 D345"
+rather than "Virtual Gears". A name can reach a riding app by two routes, so
 `Tools/NameScan` reads both and tells them apart:
 
 ```
@@ -228,7 +228,7 @@ Start a ride on the phone while it runs. Measured on 2026-08-05:
 
 ```
 Found a fitness machine at -55 dBm.
-  In the advertisement: local name "VirtualShift"; services 1826
+  In the advertisement: local name "Virtual Gears"; services 1826
   CBPeripheral.name reads: iPhone sbroenne 17
 ```
 

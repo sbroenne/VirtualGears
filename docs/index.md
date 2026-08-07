@@ -1,10 +1,10 @@
-# VirtualShift
+# Virtual Gears
 
 <p align="center">
-  <img src="banner.png" alt="VirtualShift — virtual gears for your smart trainer">
+  <img src="banner.png" alt="Virtual Gears — virtual shifting for KICKR V5">
 </p>
 
-**VirtualShift gives you gears on an indoor trainer that has none.**
+**Virtual Gears gives you gears on an indoor trainer that has none.**
 
 Use the smaller front ring if your bike has one, then pick a rear gear that keeps
 the chain straight and leave it there. Shifting happens on your iPhone instead,
@@ -22,7 +22,7 @@ no chain noise, no dropped chain, and no wear.
     > the Zwift protocol and will not be receiving a future update for this
     > functionality."
 
-    VirtualShift gives a KICKR V5 gears anyway, in any riding app.
+    Virtual Gears gives a KICKR V5 gears anyway, in any riding app.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -33,11 +33,11 @@ no chain noise, no dropped chain, and no wear.
 
 ## What it is
 
-Your riding app connects to the iPhone instead of to the trainer. VirtualShift
+Your riding app connects to the iPhone instead of to the trainer. Virtual Gears
 passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
-![How VirtualShift sits between your riding app and your trainer](how-it-works.svg)
+![How Virtual Gears sits between your riding app and your trainer](how-it-works.svg)
 
 A Zwift Click can be added to shift from the handlebar, but it is never
 required. A Wahoo Headwind can also be added, with a choice between its own
@@ -73,7 +73,7 @@ required and nothing ever waits for it.
 
 An optional Wahoo Headwind can use Automatic control from its paired sensor or a
 manual speed from the ride screen. Manual offers a slider and one-tap common
-speeds. It stays on the fan even after Bluetooth disconnects, so VirtualShift
+speeds. It stays on the fan even after Bluetooth disconnects, so Virtual Gears
 explicitly returns control to the sensor and waits for confirmation before
 forgetting or replacing it.
 
@@ -111,16 +111,16 @@ can come back to the same gear.
 
 **ERG mode.** A workout that sets a target power is refused, because holding a
 power target and holding a gear are two different ideas of what the trainer
-should feel like. VirtualShift still tells riding apps it is a trainer they can
+should feel like. Virtual Gears still tells riding apps it is a trainer they can
 steer, so it appears in their trainer list rather than as a bare power sensor.
 
-**Trainers other than a Wahoo KICKR.** The way VirtualShift makes gears is not
+**Trainers other than a Wahoo KICKR.** The way Virtual Gears makes gears is not
 something every trainer can do, and the KICKR Snap and KICKR Bike cannot do it
 either. [Which trainers work](requirements.md#which-trainers-work) has the
 detail.
 
 !!! note "Not affiliated with Wahoo or Zwift"
 
-    VirtualShift is an independent app. Wahoo, KICKR, Zwift and Zwift Click are
+    Virtual Gears is an independent app. Wahoo, KICKR, Zwift and Zwift Click are
     the trademarks of their respective owners, named here only to say which
     hardware the app works with.

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualShift.NameScan</string>
+	<string>com.sbroenne.VirtualGears.NameScan</string>
 	<key>CFBundleName</key>
 	<string>name-scan</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

@@ -23,7 +23,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleExecutable</key>
 	<string>click-trace</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualShift.ClickTrace</string>
+	<string>com.sbroenne.VirtualGears.ClickTrace</string>
 	<key>CFBundleName</key>
 	<string>ClickTrace</string>
 	<key>CFBundlePackageType</key>

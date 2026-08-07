@@ -1,6 +1,6 @@
 import CoreBluetooth
 import Foundation
-import VirtualShiftCore
+import VirtualGearsCore
 
 /// Measures how a real KICKR behaves, so the app's timing and lifecycle rules
 /// can be checked against the trainer instead of assumed.
@@ -503,7 +503,7 @@ final class KickrProbe: NSObject {
 
                 Wahoo's own command is not affected: it answers with the wheel
                 size it actually applied, so a change can be checked rather than
-                assumed. That is why VirtualShift uses it.
+                assumed. That is why Virtual Gears uses it.
                 """)
         } else if accepted {
             say("""
@@ -517,7 +517,7 @@ final class KickrProbe: NSObject {
                 The trainer discriminates between commands and refused this one.
                 The standard wheel-size command is not supported here. Wahoo's
                 own command is the only way to shift this trainer, which is what
-                VirtualShift uses.
+                Virtual Gears uses.
                 """)
         }
         if claimsWheelSize && !discriminates {
@@ -648,7 +648,7 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         rssi RSSI: NSNumber
     ) {
         guard kickr == nil else { return }
-        // The iPhone running VirtualShift also advertises as a fitness machine,
+        // The iPhone running Virtual Gears also advertises as a fitness machine,
         // so the trainer has to be picked by name rather than by service.
         let name = peripheral.name ?? ""
         guard name.uppercased().contains("KICKR") else {

@@ -10,7 +10,7 @@
 
 ## Which trainers work
 
-VirtualShift shifts gears by changing the wheel size the trainer is set up for.
+Virtual Gears shifts gears by changing the wheel size the trainer is set up for.
 That is not how every trainer with KICKR written on it works, so the model
 matters.
 
@@ -47,13 +47,13 @@ KICKR CORE 1 and 2 — and then answers the obvious question directly:
 > support the required protocols for virtual shifting using the Zwift protocol
 > and will not be receiving a future update for this functionality."
 
-That is the gap VirtualShift fills. Two differences worth knowing:
+That is the gap Virtual Gears fills. Two differences worth knowing:
 
 - **Your riding app will not display the gear.** Zwift can show it because Zwift
-  decides it. VirtualShift decides it, and there is no way to tell a riding app
+  decides it. Virtual Gears decides it, and there is no way to tell a riding app
   what gear you are in — the Bluetooth standard has no such message. The gear is
   shown large on the phone instead.
-- **VirtualShift works in every riding app.** Zwift's virtual shifting works in
+- **Virtual Gears works in every riding app.** Zwift's virtual shifting works in
   Zwift and Rouvy only, by Wahoo's own account.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
@@ -69,13 +69,13 @@ asking politely proves nothing.
 Other apps get around this by lying about the hill instead: you ask for a harder
 gear and they tell the trainer the road is steeper than it is. That works
 anywhere, but your riding app then has the wrong gradient, so your speed and the
-course profile drift away from the truth. VirtualShift changes the trainer's own
+course profile drift away from the truth. Virtual Gears changes the trainer's own
 idea of the bike and leaves the road alone.
 
 ## Your first ride
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.
-2. Open VirtualShift on your iPhone. It finds the trainer and connects on its
+2. Open Virtual Gears on your iPhone. It finds the trainer and connects on its
    own. If more than one trainer is nearby and none is clearly closest, it asks
    you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
@@ -86,16 +86,16 @@ There is no setup screen to complete first and no start button to press.
 
 ### What name to look for
 
-VirtualShift tells your riding app it is called **VirtualShift**, and most apps
+Virtual Gears tells your riding app it is called **Virtual Gears**, and most apps
 show that. Some show your iPhone's own name instead — "iPhone Anna", say —
 and a few add a short code after it.
 
 Either name is the right one to pick. There is only ever one of them in the
-list, because your trainer itself is already busy talking to VirtualShift and
+list, because your trainer itself is already busy talking to Virtual Gears and
 so does not appear.
 
 This is not something the app can fix. iPhones report their own name over
-Bluetooth, and Apple does not let an app change it. If seeing "VirtualShift"
+Bluetooth, and Apple does not let an app change it. If seeing "Virtual Gears"
 in the list matters to you, rename the phone itself in Settings → General →
 About → Name — but that changes its name everywhere else too.
 
@@ -115,7 +115,7 @@ the fan button switches between Automatic control from the Headwind's paired
 sensor and a manual speed from 0–100%. Manual has a slider and one-tap buttons
 for Off, 25%, 50%, 75% and 100%.
 
-Manual mode remains on the Headwind after Bluetooth disconnects. VirtualShift
+Manual mode remains on the Headwind after Bluetooth disconnects. Virtual Gears
 therefore sends an explicit sensor-control command and waits for the fan to
 confirm it before removing or replacing a saved Headwind.
 

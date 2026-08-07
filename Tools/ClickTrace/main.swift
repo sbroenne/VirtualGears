@@ -1,6 +1,6 @@
 import CoreBluetooth
 import Foundation
-import VirtualShiftCore
+import VirtualGearsCore
 
 /// Everything is written to a file as well as to the console.
 ///

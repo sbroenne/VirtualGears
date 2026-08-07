@@ -1,4 +1,4 @@
-# Putting VirtualShift on the App Store
+# Putting Virtual Gears on the App Store
 
 Everything Apple will ask you for, written out so you can copy and paste it.
 Work top to bottom.
@@ -24,7 +24,7 @@ collects nothing.
 
 This is already done. The policy is published as part of the project website:
 
-    https://sbroenne.github.io/VirtualShift/PRIVACY/
+    https://sbroenne.github.io/VirtualGears/PRIVACY/
 
 The site is built from `docs/` by `.github/workflows/docs.yml` and republishes
 itself whenever `main` changes, so the policy cannot drift out of date.
@@ -36,20 +36,20 @@ itself whenever `main` changes, so the policy cannot drift out of date.
 | Field | Value |
 |---|---|
 | Platform | iOS |
-| Name | `VirtualShift` |
+| Name | `Virtual Gears` |
 | Primary language | English (U.S.) |
-| Bundle ID | `com.sbroenne.VirtualShift` |
-| SKU | `virtualshift-001` (any private string; never shown to anyone) |
+| Bundle ID | `com.sbroenne.VirtualGears` |
+| SKU | `virtualgears-001` (any private string; never shown to anyone) |
 | User access | Full Access |
 
-If the name `VirtualShift` is taken, App Store Connect says so immediately. A
-fallback such as `VirtualShift Gears` keeps the app's own name intact.
+Apple accepted `Virtual Gears` as the public name. The app uses the same name on
+the iPhone and when advertising itself as a trainer.
 
 ## Stage 4 — Fill in the listing
 
 ### Subtitle (30 characters max)
 
-    Gears for your smart trainer
+    Virtual shifting for KICKR V5
 
 ### Promotional text (170 characters max, editable any time without review)
 
@@ -57,7 +57,7 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 
 ### Description
 
-    Your smart trainer has no gears. VirtualShift gives it some.
+    Your smart trainer has no gears. Virtual Gears gives it some.
 
     Newer trainers gained virtual shifting in 2024. The Wahoo KICKR V5 did not, and
     Wahoo has confirmed it never will — the older hardware cannot support it. This app
@@ -85,16 +85,16 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
     The screen stays awake for the whole ride.
 
     WORKS WITH THE APPS YOU ALREADY USE
-    VirtualShift appears as an ordinary indoor trainer, so any app that pairs with a
+    Virtual Gears appears as an ordinary indoor trainer, so any app that pairs with a
     standard trainer can use it. Apps that set their own wheel size are honoured — the
     gears are rebuilt around whatever size the app asks for.
 
     OPTIONAL SHIFT BUTTONS
-    If you have a handlebar shift controller, VirtualShift will use it alongside the
+    If you have a handlebar shift controller, Virtual Gears will use it alongside the
     on-screen buttons. It is never required and the app never waits for it.
 
     OPTIONAL HEADWIND CONTROL
-    If you have a Wahoo KICKR HEADWIND, VirtualShift can reconnect it automatically.
+    If you have a Wahoo KICKR HEADWIND, Virtual Gears can reconnect it automatically.
     Leave fan speed with the Headwind's own sensor, or choose a manual speed from the
     ride screen. The fan is optional and never blocks a ride.
 
@@ -107,7 +107,7 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
     The app has no networking code in it at all. Nothing about your ride leaves your
     iPhone.
 
-    Requires a Wahoo KICKR V5. VirtualShift is not made by, endorsed by or affiliated
+    Requires a Wahoo KICKR V5. Virtual Gears is not made by, endorsed by or affiliated
     with Wahoo Fitness.
 
 ### Keywords (100 characters max, comma separated, no spaces)
@@ -116,9 +116,9 @@ fallback such as `VirtualShift Gears` keeps the app's own name intact.
 
 ### URLs
 
-- Support URL: `https://github.com/sbroenne/VirtualShift/issues`
-- Marketing URL: `https://sbroenne.github.io/VirtualShift/`
-- Privacy Policy URL: `https://sbroenne.github.io/VirtualShift/PRIVACY/`
+- Support URL: `https://github.com/sbroenne/VirtualGears/issues`
+- Marketing URL: `https://sbroenne.github.io/VirtualGears/`
+- Privacy Policy URL: `https://sbroenne.github.io/VirtualGears/PRIVACY/`
 
 ### Category and rating
 

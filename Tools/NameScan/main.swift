@@ -1,9 +1,9 @@
 import CoreBluetooth
 import Foundation
-import VirtualShiftCore
+import VirtualGearsCore
 
-// A riding app picks a trainer out of a list of names. VirtualShift asks to be
-// called "VirtualShift", but a rider reported seeing their iPhone's own name
+// A riding app picks a trainer out of a list of names. Virtual Gears asks to be
+// called "Virtual Gears", but a rider reported seeing their iPhone's own name
 // instead. A name can reach a riding app by two different routes, and this tool
 // reads both so the two can be told apart:
 //
@@ -12,7 +12,7 @@ import VirtualShiftCore
 //   2. The Device Name characteristic (0x2A00), read after connecting. On iOS
 //      this is the name of the phone itself and an app cannot change it.
 //
-// If the advertisement says "VirtualShift" but the riding app shows the phone's
+// If the advertisement says "Virtual Gears" but the riding app shows the phone's
 // name, the app is reading the second one and no change to advertising fixes it.
 
 let logPath = ProcessInfo.processInfo.environment["NAME_SCAN_LOG"]
@@ -86,9 +86,9 @@ final class NameScan: NSObject {
         say("")
         say("What this means")
         switch advertisedName {
-        case let name? where name == "VirtualShift":
+        case let name? where name == "Virtual Gears":
             say(
-                "  The advertisement carries \"VirtualShift\" correctly. A"
+                "  The advertisement carries \"Virtual Gears\" correctly. A"
                     + " riding app showing the phone's own name instead is"
                     + " reading the connected name (0x2A00), which iOS fixes to"
                     + " the name of the phone. An app cannot change that;"
@@ -98,7 +98,7 @@ final class NameScan: NSObject {
             say("  The advertisement carries \"\(name)\", which was not expected.")
         case nil:
             say(
-                "  No local name was advertised at all. Either VirtualShift was"
+                "  No local name was advertised at all. Either Virtual Gears was"
                     + " in the background when it started advertising, or the"
                     + " name was never set."
             )
@@ -118,7 +118,7 @@ extension NameScan: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         guard central.state == .poweredOn else { return }
         say("Looking for anything advertising as a fitness machine.")
-        say("Start a ride in VirtualShift so that it begins advertising.")
+        say("Start a ride in Virtual Gears so that it begins advertising.")
         central.scanForPeripherals(withServices: [ftmsService])
     }
 

@@ -23,7 +23,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleExecutable</key>
 	<string>kickr-probe</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualShift.KickrProbe</string>
+	<string>com.sbroenne.VirtualGears.KickrProbe</string>
 	<key>CFBundleName</key>
 	<string>KickrProbe</string>
 	<key>CFBundlePackageType</key>
