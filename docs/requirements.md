@@ -126,7 +126,7 @@ If the app finds more than one Headwind, choose yours by name in Settings.
 
 Manual mode remains on the Headwind after Bluetooth disconnects. Virtual Gears
 therefore sends an explicit sensor-control command and waits for the fan to
-confirm it before removing or replacing a saved Headwind.
+confirm it before switching to another Headwind.
 
 ## Choosing your gears
 

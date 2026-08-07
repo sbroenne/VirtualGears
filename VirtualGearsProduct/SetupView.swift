@@ -303,14 +303,6 @@ private struct ShiftingSetupView: View {
                 click.selectAndConnect(candidate.id)
             }
 
-            if store.configuration.usesClick {
-                Section {
-                    Button("Remove this Click", role: .destructive) {
-                        click.forgetSelection()
-                        store.configuration.forgetClick()
-                    }
-                }
-            }
         }
         .navigationTitle("Zwift Click")
         .navigationBarTitleDisplayMode(.inline)
@@ -439,13 +431,6 @@ private struct HeadwindSetupView: View {
                 headwind.selectAndConnect(candidate.id)
             }
 
-            if store.configuration.usesHeadwind {
-                Section {
-                    Button("Remove this Headwind", role: .destructive) {
-                        headwind.stopUsing()
-                    }
-                }
-            }
         }
         .navigationTitle("Wahoo Headwind")
         .navigationBarTitleDisplayMode(.inline)
