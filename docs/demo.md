@@ -13,7 +13,7 @@
      point src at wherever the file is hosted:
 
 <video controls preload="metadata" poster="screenshots/riding.png" width="100%">
-  <source src="https://github.com/sbroenne/VirtualShift/releases/download/demo/virtualshift-demo.mp4" type="video/mp4">
+  <source src="https://github.com/sbroenne/VirtualGears/releases/download/demo/virtual-gears-demo.mp4" type="video/mp4">
   Your browser cannot play this video.
 </video>
 -->

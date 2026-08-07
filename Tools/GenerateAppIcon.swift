@@ -1,4 +1,4 @@
-// Regenerates the VirtualShift app icons and the repository logo.
+// Regenerates the Virtual Gears app icon, repository logo, and banner.
 //
 //   swift Tools/GenerateAppIcon.swift .
 //
@@ -124,10 +124,10 @@ func banner(to url: URL) {
     }
 
     let left = 120 + markSize + 70.0
-    text("VirtualShift", size: 104, weight: "HelveticaNeue-Bold",
+    text("Virtual Gears", size: 104, weight: "HelveticaNeue-Bold",
          color: CGColor(red: 1, green: 1, blue: 1, alpha: 1),
          at: CGPoint(x: left, y: height / 2 + 24))
-    text("Virtual gears for your smart trainer", size: 42,
+    text("Virtual shifting for KICKR V5", size: 42,
          weight: "HelveticaNeue", color: rgb(150, 180, 225),
          at: CGPoint(x: left, y: height / 2 - 54))
 
@@ -170,12 +170,9 @@ func mark(top: CGColor, bottom: CGColor, tint: CGColor, rounded: Bool, path: Str
 }
 
 let blueTop = rgb(64, 156, 255), blueBottom = rgb(10, 74, 214)
-let labTop = rgb(116, 124, 138), labBottom = rgb(42, 46, 54)
 
 mark(top: blueTop, bottom: blueBottom, tint: white, rounded: false,
-     path: "VirtualShiftProduct/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png")
-mark(top: labTop, bottom: labBottom, tint: rgb(255, 159, 10), rounded: false,
-     path: "VirtualShift/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png")
+     path: "VirtualGearsProduct/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png")
 mark(top: blueTop, bottom: blueBottom, tint: white, rounded: true, path: "docs/logo.png")
 
 banner(to: repo.appendingPathComponent("docs/banner.png"))

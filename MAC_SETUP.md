@@ -2,7 +2,7 @@
 
 The iPhone app and the hardware proofs must be built and run on macOS.
 
-Riding needs only the `VirtualShift` scheme.
+Riding needs only the `VirtualGears` scheme.
 
 Some of what follows is a record rather than a procedure. Before the proxy
 existed, the trainer and the controller were proven with a scratch diagnostic
@@ -20,8 +20,8 @@ and the Mac tools under `Tools/` are what is still runnable today.
    swift test
    ```
 
-5. Open `VirtualShift.xcodeproj`.
-6. Select the `VirtualShift` target, open Signing & Capabilities, and choose the
+5. Open `VirtualGears.xcodeproj`.
+6. Select the `VirtualGears` target, open Signing & Capabilities, and choose the
    development team for the connected iPhone.
 7. Select the physical iPhone as the run destination and run the app. The
    simulator cannot perform the required hardware proof.

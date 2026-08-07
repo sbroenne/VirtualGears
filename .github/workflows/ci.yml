@@ -31,7 +31,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scheme: [VirtualShift]
+        scheme: [VirtualGears]
     steps:
       - uses: actions/checkout@v7
 
@@ -40,7 +40,7 @@ jobs:
       - name: Build ${{ matrix.scheme }}
         run: |
           xcodebuild build \
-            -project VirtualShift.xcodeproj \
+            -project VirtualGears.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
             -destination 'platform=iOS Simulator,name=iPhone 17' \
             CODE_SIGNING_ALLOWED=NO

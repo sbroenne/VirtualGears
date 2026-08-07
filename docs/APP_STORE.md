@@ -24,7 +24,7 @@ collects nothing.
 
 This is already done. The policy is published as part of the project website:
 
-    https://sbroenne.github.io/VirtualShift/PRIVACY/
+    https://sbroenne.github.io/VirtualGears/PRIVACY/
 
 The site is built from `docs/` by `.github/workflows/docs.yml` and republishes
 itself whenever `main` changes, so the policy cannot drift out of date.
@@ -38,8 +38,8 @@ itself whenever `main` changes, so the policy cannot drift out of date.
 | Platform | iOS |
 | Name | `Virtual Gears` |
 | Primary language | English (U.S.) |
-| Bundle ID | `com.sbroenne.VirtualShift` |
-| SKU | `virtualshift-001` (any private string; never shown to anyone) |
+| Bundle ID | `com.sbroenne.VirtualGears` |
+| SKU | `virtualgears-001` (any private string; never shown to anyone) |
 | User access | Full Access |
 
 Apple accepted `Virtual Gears` as the public name. The app uses the same name on
@@ -116,9 +116,9 @@ the iPhone and when advertising itself as a trainer.
 
 ### URLs
 
-- Support URL: `https://github.com/sbroenne/VirtualShift/issues`
-- Marketing URL: `https://sbroenne.github.io/VirtualShift/`
-- Privacy Policy URL: `https://sbroenne.github.io/VirtualShift/PRIVACY/`
+- Support URL: `https://github.com/sbroenne/VirtualGears/issues`
+- Marketing URL: `https://sbroenne.github.io/VirtualGears/`
+- Privacy Policy URL: `https://sbroenne.github.io/VirtualGears/PRIVACY/`
 
 ### Category and rating
 

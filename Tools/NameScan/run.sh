@@ -23,7 +23,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundleExecutable</key>
 	<string>name-scan</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualShift.NameScan</string>
+	<string>com.sbroenne.VirtualGears.NameScan</string>
 	<key>CFBundleName</key>
 	<string>NameScan</string>
 	<key>CFBundlePackageType</key>

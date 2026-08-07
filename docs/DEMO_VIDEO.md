@@ -69,7 +69,7 @@ forever and makes every clone slow. Instead:
 1. Create a release on GitHub tagged `demo`.
 2. Attach the MP4 to it as a release asset.
 3. The public link is then
-   `https://github.com/sbroenne/VirtualShift/releases/download/demo/virtualshift-demo.mp4`
+   `https://github.com/sbroenne/VirtualGears/releases/download/demo/virtual-gears-demo.mp4`
 
 That link needs no account to open, which is exactly what Apple requires.
 

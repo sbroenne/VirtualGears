@@ -47,4 +47,4 @@ If this policy ever changes, the updated version will be published on this page.
 ## Contact
 
 Questions about this policy can be raised at
-<https://github.com/sbroenne/VirtualShift/issues>.
+<https://github.com/sbroenne/VirtualGears/issues>.

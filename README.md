@@ -4,7 +4,7 @@
 
 # Virtual Gears
 
-**[Read the full Virtual Gears documentation](https://sbroenne.github.io/VirtualShift/)**
+**[Read the full Virtual Gears documentation](https://sbroenne.github.io/VirtualGears/)**
 
 Virtual Gears gives you gears on an indoor trainer that has none.
 
@@ -154,7 +154,7 @@ shows it instead.
 - iPhone running iOS 17 or later, which is any iPhone from the XS onwards
 - Wahoo KICKR V5. Other Wahoo KICKR models should work but are untested; the
   KICKR Snap and KICKR Bike do not, because they change gear other ways. See
-  [Which trainers work](https://sbroenne.github.io/VirtualShift/requirements/#which-trainers-work).
+  [Which trainers work](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work).
 - A riding app that supports FTMS trainers. Development is validated against
   RealVelo; Zwift, FulGaz and others use the same interface.
 - Optionally, an original Zwift Click
@@ -162,12 +162,12 @@ shows it instead.
 
 ## Repository
 
-- `Sources/VirtualShiftCore` — the parts with no iPhone in them: command
+- `Sources/VirtualGearsCore` — the parts with no iPhone in them: command
   encoding, gear ratios, drivetrain building, trainer limits, and the ride
   itself. This is where the tests live. The ride reaches the trainer, the
   riding app and the Click through narrow protocols, so a whole session can be
   run against stand-ins with no hardware in the room.
-- `VirtualShiftProduct` — the app you ride with: the screens, and the real
+- `VirtualGearsProduct` — the app you ride with: the screens, and the real
   Bluetooth behind those protocols.
 - `docs/screenshots` — the screens above, captured from the simulator.
 - `docs/` — also the source of the website, built with MkDocs Material.
@@ -190,8 +190,8 @@ own. That app has since been removed: the shipping app is the proxy now and
 keeps its own diagnostic log, and the remaining Mac tools under `Tools/` cover
 what is left. The measurements it produced still stand.
 
-The app itself must be built and signed in Xcode. Open `VirtualShift.xcodeproj`,
-choose the `VirtualShift` scheme and a physical iPhone, and select your
+The app itself must be built and signed in Xcode. Open `VirtualGears.xcodeproj`,
+choose the `VirtualGears` scheme and a physical iPhone, and select your
 development team under Signing & Capabilities. See `MAC_SETUP.md` for the
 hardware procedures.
 

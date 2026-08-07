@@ -2,9 +2,9 @@ site_name: Virtual Gears
 site_description: >-
   Virtual gears for a smart trainer. An iPhone app that sits between your
   riding app and a Wahoo KICKR V5 and gives you gears the trainer does not have.
-site_url: https://sbroenne.github.io/VirtualShift/
-repo_url: https://github.com/sbroenne/VirtualShift
-repo_name: sbroenne/VirtualShift
+site_url: https://sbroenne.github.io/VirtualGears/
+repo_url: https://github.com/sbroenne/VirtualGears
+repo_name: sbroenne/VirtualGears
 copyright: Copyright &copy; 2026 Stefan Broenner. All rights reserved.
 
 docs_dir: docs
@@ -64,6 +64,6 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/sbroenne/VirtualShift
+      link: https://github.com/sbroenne/VirtualGears
 
 strict: true
