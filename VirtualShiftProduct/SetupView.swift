@@ -89,7 +89,7 @@ struct SetupView: View {
             Text("Your equipment")
         } footer: {
             Text(
-                "VirtualShift finds these by itself and reconnects to them "
+                "Virtual Gears finds these by itself and reconnects to them "
                     + "every time you ride. Change them here only if it picked "
                     + "the wrong one."
             )
@@ -132,7 +132,7 @@ struct SetupView: View {
             Label(
                 "Use the smaller front ring if your bike has one. Pick a rear gear "
                     + "that keeps the chain straight, and leave it there. "
-                    + "VirtualShift does all the shifting from now on.",
+                    + "Virtual Gears does all the shifting from now on.",
                 systemImage: "link"
             )
             .font(.callout)
@@ -386,7 +386,7 @@ private struct HeadwindSetupView: View {
                     Text("Your Headwind")
                 } footer: {
                     Text(
-                        "If the fan is in Manual, VirtualShift returns it to "
+                        "If the fan is in Manual, Virtual Gears returns it to "
                             + "Sensors before forgetting it."
                     )
                 }

@@ -118,11 +118,11 @@ public enum ProductConnectionState: Equatable {
 /// do, so that is the only thing we ask for.
 public enum WakeInstruction {
     public static let trainer =
-        "Turn the trainer on and give the pedals half a turn. VirtualShift "
+        "Turn the trainer on and give the pedals half a turn. Virtual Gears "
             + "connects on its own as soon as it wakes up."
     public static let click =
         "The Click sleeps to save its battery. Press either of its buttons "
-            + "once. VirtualShift connects on its own as soon as it wakes up."
+            + "once. Virtual Gears connects on its own as soon as it wakes up."
     public static let headwind =
         "Keep the Headwind plugged in. It advertises even when the fan is stopped."
 }
@@ -187,7 +187,7 @@ public final class ProductDiagnosticsStore {
                 + "\($0.source): \($0.message)"
         }
         return ([
-            "VirtualShift diagnostics",
+            "Virtual Gears diagnostics",
             "App: \(appVersion)",
             "Device: \(deviceDescription)",
             "Events retained: \(entries.count)/\(capacity)",

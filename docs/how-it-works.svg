@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420"
      role="img" aria-labelledby="title desc">
-  <title id="title">How VirtualShift works</title>
+  <title id="title">How Virtual Gears works</title>
   <desc id="desc">Your riding app talks to the iPhone, the iPhone talks to the
     trainer, and shifting on the phone changes how hard the trainer feels
     without anything on the bike moving.</desc>
@@ -90,7 +90,7 @@
     <text class="sub" x="148" y="310">on your computer</text>
   </g>
 
-  <!-- The iPhone running VirtualShift -->
+  <!-- The iPhone running Virtual Gears -->
   <g>
     <rect class="card" x="400" y="66" width="160" height="266" rx="26"/>
     <text class="gearof" x="480" y="118">GEAR</text>
@@ -112,7 +112,7 @@
       <rect class="bar" x="532" y="203" width="8" height="57"/>
     </g>
 
-    <text class="label" x="480" y="300">VirtualShift</text>
+    <text class="label" x="480" y="300">Virtual Gears</text>
     <text class="sub" x="480" y="322">on your iPhone</text>
   </g>
 

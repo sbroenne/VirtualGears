@@ -229,7 +229,7 @@ final class HeadwindCentralService: NSObject {
     func stopUsing() {
         guard isReady else {
             commandError =
-                "Reconnect the Headwind so VirtualShift can return it to Sensors."
+                "Reconnect the Headwind so Virtual Gears can return it to Sensors."
             autoConnectSavedDevice()
             return
         }

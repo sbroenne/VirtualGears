@@ -37,7 +37,7 @@ them in.
 
 | # | Shot | What to say |
 |---|---|---|
-| 1 | Home screen, tap VirtualShift | "This is VirtualShift. It gives an indoor trainer gears it doesn't have." |
+| 1 | Home screen, tap Virtual Gears | "This is Virtual Gears. It gives an indoor trainer gears it doesn't have." |
 | 2 | The app finds and connects to the trainer on its own | "It finds my trainer and connects by itself. There's nothing to set up." |
 | 3 | Cut to the computer: the riding app's pairing list, showing the iPhone offered as a trainer. Pair it. | "On the computer, my riding app sees the iPhone as a trainer, and pairs with it." |
 | 4 | Back to the phone: the ride screen, power and cadence moving as you pedal | "Now I'm riding. Power and cadence come from the trainer, through the phone, to the riding app." |

@@ -74,7 +74,7 @@ private struct StartupView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("VirtualShift")
+            .navigationTitle("Virtual Gears")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Settings", systemImage: "gearshape") {
@@ -153,7 +153,7 @@ private struct StartupView: View {
                 .multilineTextAlignment(.center)
             Text(
                 "Turn the pedals if your trainer is asleep. Virtual shifting starts "
-                    + "by itself, and your riding app will find VirtualShift."
+                    + "by itself, and your riding app will find Virtual Gears."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
@@ -167,7 +167,7 @@ private struct StartupView: View {
 
     private var searchingTitle: String {
         store.configuration.hasValidKickr
-            ? "Getting VirtualShift ready"
+            ? "Getting Virtual Gears ready"
             : "Looking for your trainer"
     }
 
@@ -177,7 +177,7 @@ private struct StartupView: View {
                 .font(.title3.weight(.semibold))
             Text(
                 "More than one trainer is switched on nearby. Pick yours and "
-                    + "VirtualShift will remember it."
+                    + "Virtual Gears will remember it."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
@@ -335,7 +335,7 @@ private struct StartupView: View {
         let advice = failure.trainerNeedsRestoring
             ? "Your trainer is still set to a gear's wheel size, so it will "
                 + "report the wrong speed and distance to other apps. Bring "
-                + "your phone near the trainer and open VirtualShift again, "
+                + "your phone near the trainer and open Virtual Gears again, "
                 + "and it will put the setting back on its own."
             : "Check that Bluetooth is on and your trainer is awake."
         return VStack(alignment: .leading, spacing: 10) {
@@ -622,7 +622,7 @@ private struct ActiveRideView: View {
             Button("Keep Riding", role: .cancel) {}
         } message: {
             Text(
-                "VirtualShift will stop virtual shifting and restore the trainer "
+                "Virtual Gears will stop virtual shifting and restore the trainer "
                     + "setting it borrowed. Your riding app keeps running."
             )
         }
@@ -754,9 +754,9 @@ private struct ActiveRideView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(equipmentProblem ?? "")
             } else {
-                // The KICKR and the Click are grouped because VirtualShift is
+                // The KICKR and the Click are grouped because Virtual Gears is
                 // the one connecting to them. The riding app is set apart
-                // because it connects to VirtualShift instead.
+                // because it connects to Virtual Gears instead.
                 HStack(spacing: 26) {
                     equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
                     equipmentGroup(items: [ridingAppEquipment])
@@ -815,7 +815,7 @@ private struct ActiveRideView: View {
         ownedEquipment + [ridingAppEquipment]
     }
 
-    /// Everything VirtualShift connects out to.
+    /// Everything Virtual Gears connects out to.
     private var ownedEquipment: [EquipmentItem] {
         var items = [
             EquipmentItem(
@@ -851,7 +851,7 @@ private struct ActiveRideView: View {
         return items
     }
 
-    /// The riding app connects in to VirtualShift, so it is reported apart.
+    /// The riding app connects in to Virtual Gears, so it is reported apart.
     private var ridingAppEquipment: EquipmentItem {
         let isConnected = coordinator.peripheral.subscribedAppCount > 0
         let isSteering = coordinator.peripheral.controllingAppID != nil
@@ -862,11 +862,11 @@ private struct ActiveRideView: View {
         } else if isConnected {
             detail = "Connected"
         } else if isAdvertising {
-            // VirtualShift broadcasts its own name, but iOS also reports the
+            // Virtual Gears broadcasts its own name, but iOS also reports the
             // phone's name and will not let an app change it, so some riding
             // apps list the phone instead. A rider hunting a name that is not
             // there assumes it is broken, so name both before they look.
-            detail = "Pick VirtualShift or your iPhone's name"
+            detail = "Pick Virtual Gears or your iPhone's name"
         } else {
             detail = "Not advertising"
         }

@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="docs/banner.png" alt="VirtualShift — virtual gears for your smart trainer">
+  <img src="docs/banner.png" alt="Virtual Gears — virtual shifting for KICKR V5">
 </p>
 
-# VirtualShift
+# Virtual Gears
 
-**[Read the full documentation at sbroenne.github.io/VirtualShift](https://sbroenne.github.io/VirtualShift/)**
+**[Read the full Virtual Gears documentation](https://sbroenne.github.io/VirtualShift/)**
 
-VirtualShift gives you gears on an indoor trainer that has none.
+Virtual Gears gives you gears on an indoor trainer that has none.
 
 Use the smaller front ring if your bike has one, then pick a rear gear that keeps
 the chain straight and leave it there. Shifting happens on your iPhone instead,
@@ -14,14 +14,14 @@ which changes how hard the trainer feels. Nothing on the bike moves, so there is
 no chain noise, no dropped chain, and no wear.
 
 ```text
-riding app on your computer  <->  iPhone running VirtualShift  <->  KICKR V5
+riding app on your computer  <->  iPhone running Virtual Gears  <->  KICKR V5
                                               ^
                                               |
                                      Zwift Click (optional)
                                      Headwind fan (optional)
 ```
 
-Your riding app connects to the iPhone instead of to the trainer. VirtualShift
+Your riding app connects to the iPhone instead of to the trainer. Virtual Gears
 passes everything through in both directions, and applies your chosen gear on
 top. The riding app still controls the road: hills feel like hills.
 
@@ -61,7 +61,7 @@ gears, but it is never required and nothing ever waits for it.
 **Optional Headwind control.** Add a Wahoo Headwind and choose Automatic or
 Manual from the ride screen. Manual has a slider, one-tap common speeds, and
 large Slower and Faster buttons in portrait. Returning control to the fan's
-sensor is explicitly confirmed before VirtualShift disconnects. The controls
+sensor is explicitly confirmed before Virtual Gears disconnects. The controls
 work in both portrait and landscape.
 
 **Nothing to set up.** Open the app. It looks for your trainer, connects to it,
@@ -86,12 +86,12 @@ your riding app stays paired, so you can come back to the same gear.
 
 ERG mode. A workout that sets a target power is refused, because holding a power
 target and holding a gear are two different ideas of what the trainer should
-feel like. VirtualShift still tells riding apps it is a trainer they can steer,
+feel like. Virtual Gears still tells riding apps it is a trainer they can steer,
 so it appears in their trainer list rather than as a bare power sensor.
 
 ## How the gears work
 
-The KICKR has no virtual-shifting protocol of its own. VirtualShift uses a Wahoo
+The KICKR has no virtual-shifting protocol of its own. Virtual Gears uses a Wahoo
 command that changes the trainer's idea of your wheel size: a smaller wheel
 covers less ground per pedal stroke, which feels like an easier gear. The riding
 app's own terrain command is left untouched, so the two never fight.
@@ -102,7 +102,7 @@ starting point. A drivetrain too wide to fit is refused at setup rather than
 mid-ride.
 
 Wheel size is part of the standard interface available to every riding app.
-Whenever one sets it, VirtualShift honours it: that size becomes the new
+Whenever one sets it, Virtual Gears honours it: that size becomes the new
 reference and every gear is rebuilt around it, so the gear you are in keeps
 feeling the way it did. If virtual shifting stops while the riding app keeps
 running, its number is what the trainer is left sitting at. If the gears would no
@@ -114,8 +114,8 @@ the ride carries on at the size it already had.
 The selected 500-4800 mm operating range was confirmed on a physical KICKR V5,
 every value acknowledged by the trainer, with the reference restored between
 each probe. These are the edges we chose to test, not a claim that the KICKR
-rejects values outside them. VirtualShift never asks for anything outside the
-selected riding range. Ending virtual shifting removes VirtualShift's gear and
+rejects values outside them. Virtual Gears never asks for anything outside the
+selected riding range. Ending virtual shifting removes Virtual Gears' gear and
 returns to the riding app's latest wheel size, or to the trainer's starting size
 if the riding app did not set one.
 
@@ -128,7 +128,7 @@ what the safety check judges.
 
 The trainer works out its speed from that wheel size, so a value left behind
 would quietly distort the speed and distance of any ride that did not use
-VirtualShift. If iOS ends the app before a ride can stop, the size the ride
+Virtual Gears. If iOS ends the app before a ride can stop, the size the ride
 borrowed is still written down, and the next launch puts it back without saying
 anything about it.
 
@@ -144,7 +144,7 @@ says so permanently:
 > support the required protocols for virtual shifting using the Zwift protocol
 > and will not be receiving a future update for this functionality.
 
-VirtualShift gives a KICKR V5 gears anyway, and does it in every riding app
+Virtual Gears gives a KICKR V5 gears anyway, and does it in every riding app
 rather than only Zwift and Rouvy. The riding app will not display the gear —
 there is no message in the Bluetooth standard for reporting one — so the phone
 shows it instead.

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>VirtualShift</string>
+	<string>Virtual Gears</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,15 +19,15 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>VirtualShift uses Bluetooth to connect to your trainer, shift buttons and optional fan, and to appear as a trainer to the app you ride with.</string>
+	<string>Virtual Gears uses Bluetooth to connect to your trainer, shift buttons and optional fan, and to appear as a trainer to the app you ride with.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>VirtualShift uses Bluetooth to appear as a trainer to the app you ride with.</string>
+	<string>Virtual Gears uses Bluetooth to appear as a trainer to the app you ride with.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

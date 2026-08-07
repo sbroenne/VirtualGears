@@ -1,15 +1,15 @@
-# Privacy Policy for VirtualShift
+# Privacy Policy for Virtual Gears
 
 Last updated: 4 August 2026
 
 ## The short version
 
-VirtualShift does not collect anything about you. Nothing is sent anywhere, because
+Virtual Gears does not collect anything about you. Nothing is sent anywhere, because
 the app has no way to send anything anywhere.
 
 ## What the app stores
 
-VirtualShift remembers a few things on your iPhone so you don't have to set them up
+Virtual Gears remembers a few things on your iPhone so you don't have to set them up
 again each ride:
 
 - Which trainer you last used, so it can reconnect on its own.

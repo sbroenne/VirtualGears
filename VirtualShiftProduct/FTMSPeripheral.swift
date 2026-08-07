@@ -214,7 +214,7 @@ final class FTMSPeripheral: NSObject {
     private func advertise() {
         manager.startAdvertising([
             CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
-            CBAdvertisementDataLocalNameKey: "VirtualShift",
+            CBAdvertisementDataLocalNameKey: "Virtual Gears",
         ])
     }
 
