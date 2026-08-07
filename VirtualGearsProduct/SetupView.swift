@@ -101,7 +101,7 @@ struct SetupView: View {
         } footer: {
             Text(
                 "Equipment reconnects automatically. Open a device here to "
-                    + "replace it or fix a connection."
+                    + "switch devices or fix a connection."
             )
         }
     }
@@ -1150,7 +1150,7 @@ private struct DeviceDiscoverySection: View {
             switch discovery.phase {
             case .idle:
                 if hasSavedDevice {
-                    Button("Replace \(deviceName)") {
+                    Button("Switch to another \(deviceName)") {
                         beginSearch()
                     }
                 }
