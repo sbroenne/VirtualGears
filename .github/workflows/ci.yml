@@ -42,5 +42,5 @@ jobs:
           xcodebuild build \
             -project VirtualGears.xcodeproj \
             -scheme "${{ matrix.scheme }}" \
-            -destination 'platform=iOS Simulator,name=iPhone 17' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
