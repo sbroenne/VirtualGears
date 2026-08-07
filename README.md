@@ -10,13 +10,7 @@ Virtual Gears puts an iPhone between your trainer and the app you ride with.
 Your riding app still controls the route and its hills; Virtual Gears adds the
 gears.
 
-```text
-riding app  <->  iPhone running Virtual Gears  <->  KICKR V5
-                         ^
-                         |
-              Zwift Click and Headwind
-                    (optional)
-```
+![Your riding app connects to Virtual Gears, which connects to the KICKR V5 and optional accessories](docs/how-it-works.svg)
 
 Leave the bike in a quiet, straight chain line and shift virtually instead.
 Nothing moves on the bike, so shifting is silent and cannot drop the chain.
