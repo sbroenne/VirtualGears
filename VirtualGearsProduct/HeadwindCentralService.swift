@@ -15,6 +15,7 @@ final class HeadwindCentralService: NSObject {
         didSet { updateStallWatch() }
     }
     private(set) var candidates: [BluetoothCandidate] = []
+    private(set) var scanGeneration = 0
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var mode: HeadwindMode?
@@ -34,7 +35,6 @@ final class HeadwindCentralService: NSObject {
     var isManual: Bool { mode == .manual }
     var hasSavedDevice: Bool { selectedID != nil }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.headwindIdentity"
     private let speedKey = "VirtualGears.headwindManualSpeed"
@@ -49,6 +49,7 @@ final class HeadwindCentralService: NSObject {
     )
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var controlCharacteristic: CBCharacteristic?
@@ -67,11 +68,7 @@ final class HeadwindCentralService: NSObject {
 
     private(set) var connectionIsStalled = false
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let storedPreference = defaults.object(
             forKey: "VirtualGears.headwindManualControl"
@@ -95,24 +92,27 @@ final class HeadwindCentralService: NSObject {
     func startScanning() {
         if hasSavedDevice {
             guard isReady else {
-                commandError =
-                    "Reconnect the Headwind before choosing another one."
-                autoConnectSavedDevice()
+                deferredAction = .scan
+                commandError = nil
+                resumeSavedConnection()
                 return
             }
             restoreSensors(then: .scan)
             return
         }
+        scanWhenPoweredOn = true
         beginScanning()
     }
 
     private func beginScanning() {
+        scanGeneration += 1
         desiredConnection = false
         reconnectTask?.cancel()
         guard central.state == .poweredOn else {
-            failConnection("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        scanWhenPoweredOn = false
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
@@ -128,7 +128,8 @@ final class HeadwindCentralService: NSObject {
         log("Scanning for HEADWIND")
     }
 
-    func stopScanning() {
+    func stopScanning(reconnectSavedDevice: Bool = true) {
+        scanWhenPoweredOn = false
         let cancelledReplacement =
             deferredAction == .scan || scansAfterDisconnect
         if deferredAction == .scan { deferredAction = nil }
@@ -137,13 +138,14 @@ final class HeadwindCentralService: NSObject {
         if state == .scanning { state = .disconnected }
         if cancelledReplacement { desiredConnection = hasSavedDevice }
         if state == .disconnecting { return }
-        autoConnectSavedDevice()
+        if reconnectSavedDevice { autoConnectSavedDevice() }
     }
 
     func autoConnectSavedDevice() {
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         resumeSavedConnection()
     }
 
@@ -169,7 +171,8 @@ final class HeadwindCentralService: NSObject {
         reconnectAttempt = 0
         guard central.state == .poweredOn else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         guard let restored = central.retrievePeripherals(
             withIdentifiers: [selectedID]
         ).first else {
@@ -516,16 +519,37 @@ final class HeadwindCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "Headwind", level: level)
+        ProductLogger.record(message, source: "Headwind", level: level)
     }
 
 }
 
+#if DEBUG
+extension HeadwindCentralService {
+    func stageScreenshot(name: String, speed: Int) {
+        selectedID = ScreenshotFixture.headwindID
+        selectedName = name
+        state = .ready
+        mode = .manual
+        manualSpeed = speed
+        desiredManualSpeed = speed
+        requestedManual = true
+        lastSensorMode = .heartRate
+        commandError = nil
+        isCommandPending = false
+    }
+}
+#endif
+
 extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -538,7 +562,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -548,8 +572,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         discovered[peripheral.identifier] = peripheral
         candidates.absorb(.init(
             id: peripheral.identifier,
-            name: name,
-            rssi: RSSI.intValue
+            name: name
         ))
     }
 

@@ -13,6 +13,7 @@ final class KickrCentralService: NSObject {
         }
     }
     private(set) var candidates: [BluetoothCandidate] = []
+    private(set) var scanGeneration = 0
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var capabilities = KickrCapabilities()
@@ -50,7 +51,6 @@ final class KickrCentralService: NSObject {
         }
     }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.kickrIdentity"
     private let timeoutNanoseconds: UInt64 = 5_000_000_000
@@ -68,6 +68,7 @@ final class KickrCentralService: NSObject {
     private let wahooUUID = CBUUID(string: WahooKickrProtocol.controlCharacteristicUUID)
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
@@ -116,11 +117,7 @@ final class KickrCentralService: NSObject {
     private var disconnectOnCommandFailure = false
     private var activeResult: KickrCommandResult?
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         super.init()
         loadIdentity()
@@ -137,10 +134,17 @@ final class KickrCentralService: NSObject {
     func startScanning() {
         desiredConnection = false
         reconnectTask?.cancel()
+        scanWhenPoweredOn = true
         guard central.state == .poweredOn else {
-            fail("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        beginScanning()
+    }
+
+    private func beginScanning() {
+        scanGeneration += 1
+        scanWhenPoweredOn = false
         if let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
@@ -163,10 +167,11 @@ final class KickrCentralService: NSObject {
         log("Scanning for KICKR trainers")
     }
 
-    func stopScanning() {
+    func stopScanning(reconnectSavedDevice: Bool = true) {
+        scanWhenPoweredOn = false
         central.stopScan()
         if state == .scanning { state = .disconnected }
-        autoConnectSavedDevice()
+        if reconnectSavedDevice { autoConnectSavedDevice() }
     }
 
     var hasSavedDevice: Bool { selectedID != nil }
@@ -178,7 +183,8 @@ final class KickrCentralService: NSObject {
     func autoConnectSavedDevice() {
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         resumeSavedConnection()
     }
 
@@ -286,7 +292,7 @@ final class KickrCentralService: NSObject {
     }
 
     func disconnect(
-        restoringCircumferenceMillimeters: Double? = nil
+        resettingCircumferenceMillimeters: Double? = nil
     ) {
         desiredConnection = false
         reconnectTask?.cancel()
@@ -304,7 +310,7 @@ final class KickrCentralService: NSObject {
             command.continuation?.resume(throwing: cancellation)
         }
         queue.removeAll()
-        guard let value = restoringCircumferenceMillimeters, controlsAreReady else {
+        guard let value = resettingCircumferenceMillimeters, controlsAreReady else {
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
             return
@@ -317,11 +323,11 @@ final class KickrCentralService: NSObject {
             disconnectOnCommandFailure = true
             enqueue(
                 .wahoo(data: data, circumference: value),
-                name: "Restore neutral circumference",
+                name: "Reset baseline circumference",
                 disconnectAfterCompletion: true
             )
         } catch {
-            log("Could not restore neutral circumference: \(error)", level: .error)
+            log("Could not reset baseline circumference: \(error)", level: .error)
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
         }
@@ -675,15 +681,30 @@ final class KickrCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "KICKR", level: level)
+        ProductLogger.record(message, source: "KICKR", level: level)
     }
 }
+
+#if DEBUG
+extension KickrCentralService {
+    func stageScreenshot(name: String, state: ProductConnectionState) {
+        selectedID = ScreenshotFixture.kickrID
+        selectedName = name
+        hasFTMSControl = state == .ready
+        self.state = state
+    }
+}
+#endif
 
 extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -696,7 +717,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -707,7 +728,6 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         let item = BluetoothCandidate(
             id: peripheral.identifier,
             name: name,
-            rssi: RSSI.intValue,
             compatibility: TrainerModel
                 .compatibility(forAdvertisedName: name)
         )

@@ -14,7 +14,7 @@ again each ride:
 
 - Which trainer you last used, so it can reconnect on its own.
 - Which gears you chose.
-- Whether you use a shift controller.
+- Which optional shift controller or Headwind fan it should reconnect to.
 
 These stay on your iPhone. Deleting the app deletes them.
 
@@ -32,9 +32,10 @@ These stay on your iPhone. Deleting the app deletes them.
 ## Bluetooth
 
 The app asks for Bluetooth permission because that is how it works: it connects to
-your trainer and your shift buttons, and it appears as a trainer to the app you ride
-with on your computer. Bluetooth is used only for that. iOS requires this permission
-for any app that uses Bluetooth; it is not used to determine where you are.
+your trainer, optional shift buttons and optional fan, and it appears as a trainer
+to the app you ride with on your computer. Bluetooth is used only for that. iOS
+requires this permission for any app that uses Bluetooth; it is not used to
+determine where you are.
 
 ## Children
 

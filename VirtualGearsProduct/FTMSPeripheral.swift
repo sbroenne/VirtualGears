@@ -18,7 +18,6 @@ final class FTMSPeripheral: NSObject {
         RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)?
 
-    private let diagnostics: ProductDiagnosticsStore
     private let serviceUUID = CBUUID(string: FTMSUUID.fitnessMachineService)
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
     private let bikeDataUUID = CBUUID(string: FTMSUUID.indoorBikeData)
@@ -76,8 +75,7 @@ final class FTMSPeripheral: NSObject {
         incrementTenths: 5
     ).encode()
 
-    init(diagnostics: ProductDiagnosticsStore) {
-        self.diagnostics = diagnostics
+    override init() {
         super.init()
         // Intentionally foreground-only. Supplying a restoration identifier without
         // reconstructing services in willRestoreState can crash during relaunch.
@@ -365,14 +363,24 @@ final class FTMSPeripheral: NSObject {
 
     private func emit(_ event: FTMSPeripheralEvent) {
         latestEvent = event
-        diagnostics.record(String(describing: event), source: "FTMS Peripheral")
+        ProductLogger.record(String(describing: event), source: "FTMS Peripheral")
     }
 
     private func fail(_ message: String) {
         emit(.failed(message))
-        diagnostics.record(message, source: "FTMS Peripheral", level: .error)
+        ProductLogger.record(message, source: "FTMS Peripheral", level: .error)
     }
 }
+
+#if DEBUG
+extension FTMSPeripheral {
+    func stageScreenshotConnection() {
+        isAdvertising = true
+        subscribedAppCount = 1
+        controllingAppID = ScreenshotFixture.ridingAppID
+    }
+}
+#endif
 
 extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {

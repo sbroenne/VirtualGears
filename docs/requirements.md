@@ -3,9 +3,9 @@
 | | |
 |---|---|
 | **iPhone** | Running iOS 17 or later — any iPhone from the XS onwards |
-| **Trainer** | Wahoo KICKR V5. Other KICKRs, [see below](#which-trainers-work) |
-| **Riding app** | An app that supports FTMS trainers. RealVelo is physically validated; FulGaz, Zwift and others use the same standard interface. |
-| **Shift buttons** | Optional. An original Zwift Click. |
+| **Trainer** | A compatible direct-drive Wahoo KICKR. [See below](#which-trainers-work). |
+| **Riding app** | An app that can connect to an FTMS trainer. |
+| **Shifting** | Large buttons on the iPhone. An original Zwift Click is optional. |
 | **Fan** | Optional. A Wahoo KICKR HEADWIND. |
 
 ## Which trainers work
@@ -16,14 +16,23 @@ matters.
 
 | Trainer | Works? |
 |---|---|
-| **KICKR V5** | **Yes** — the trainer the app was built and measured against |
-| Other **Wahoo KICKR** models, including the Core | Should work. Not tested, and the app will say so |
+| **KICKR V5** | **Yes** — the trainer the app was built and physically tested with |
+| Other direct-drive **Wahoo KICKR** models, including CORE and MOVE | Expected to work, but not yet physically tested |
+| **KICKR ROLLR** | Unknown. The app allows you to try it but does not claim support |
 | **KICKR Snap** | No. It changes gear a different way |
 | **KICKR Bike** | No. It has its own gear levers already |
 | Tacx, Elite, Saris, Zwift Hub, anything else | No |
 
 The app lists every KICKR it can see and tells you plainly if yours is one it
 cannot work with, rather than leaving you to wonder why nothing happens.
+
+### If you set a custom wheel circumference
+
+Virtual Gears cannot read the wheel circumference previously set through the
+Wahoo app. It replaces that value while making gears and uses 2070 mm as its
+reference unless the riding app supplies another size. If you use a custom
+value, write it down and set it again in the Wahoo app after using Virtual
+Gears. Most riders never change this setting.
 
 ### If your KICKR is not the V5
 
@@ -47,16 +56,17 @@ KICKR CORE 1 and 2 — and then answers the obvious question directly:
 > support the required protocols for virtual shifting using the Zwift protocol
 > and will not be receiving a future update for this functionality."
 
-That is the gap Virtual Gears fills. Two differences worth knowing:
+That is the gap Virtual Gears fills. Three differences worth knowing:
 
 - **Your riding app will not display the gear.** Zwift can show it because Zwift
   decides it. Virtual Gears decides it, and there is no way to tell a riding app
   what gear you are in — the Bluetooth standard has no such message. The gear is
   shown large on the phone instead.
 - **Virtual Gears does not require virtual-shifting support in the riding app.**
-  It appears as an ordinary FTMS trainer, bringing gears to compatible apps such
-  as RealVelo and FulGaz that do not provide their own. RealVelo is physically
-  validated; other FTMS apps are expected from the shared standard interface.
+  It appears as an ordinary FTMS trainer, bringing gears to compatible apps that
+  do not provide their own.
+- **Virtual Gears does not support Zwift-native virtual shifting.** It supplies
+  and displays its own gears on the iPhone.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -78,8 +88,7 @@ idea of the bike and leaves the road alone.
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.
 2. Open Virtual Gears on your iPhone. It finds the trainer and connects on its
-   own. If more than one trainer is nearby and none is clearly closest, it asks
-   you which one.
+   own. If it finds more than one trainer, it asks you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
    That will be your iPhone, appearing as a trainer.
 4. Ride. Shift with the two large buttons on the phone.
@@ -103,23 +112,31 @@ About → Name — but that changes its name everywhere else too.
 
 ## Adding a Zwift Click
 
-Open Settings in the app and add the Click there. It shifts the same gears as
-the on-screen buttons. Nothing ever waits for it, so a Click that runs out of
+Wake the Click by pressing a button before opening Virtual Gears. The app finds,
+connects and remembers it automatically. It shifts the same gears as the
+on-screen buttons. Nothing ever waits for it, so a Click that runs out of
 battery mid-ride costs you nothing but the buttons on the handlebar.
+
+If the app finds more than one Click, choose yours in Settings rather than
+letting it guess. Some Clicks advertise the same name. In that case, keep
+pressing either button on the Click you want while Virtual Gears briefly tries
+each one; it confirms the Click whose connected button stream reports the press.
 
 The app shows the Click's battery level in Settings, and warns you on the ride
 screen if it drops below 20%.
 
 ## Adding a Wahoo Headwind
 
-Open Settings, choose Wahoo Headwind, and select the nearby fan. During a ride,
-the fan button switches between Automatic control from the Headwind's paired
-sensor and a manual speed from 0–100%. Manual has a slider and one-tap buttons
-for Off, 25%, 50%, 75% and 100%.
+Turn on the Headwind before opening Virtual Gears. The app finds, connects and
+remembers it automatically. During a ride, the fan button switches between
+Automatic control from the Headwind's paired sensor and a manual speed from
+0–100%. Manual has a slider and one-tap buttons for Off, 25%, 50%, 75% and 100%.
+
+If the app finds more than one Headwind, choose yours by name in Settings.
 
 Manual mode remains on the Headwind after Bluetooth disconnects. Virtual Gears
 therefore sends an explicit sensor-control command and waits for the fan to
-confirm it before removing or replacing a saved Headwind.
+confirm it before switching to another Headwind.
 
 ## Choosing your gears
 
@@ -127,5 +144,5 @@ The starting choice is a 24-step virtual ladder with extra room for easy
 climbing. If you would rather ride the gears of a real bike, describe it by its
 chainrings and cassette and the app builds that instead.
 
-You can change this mid-ride. The trainer is always put back to normal before
-the new gears are applied.
+You can change this mid-ride without interrupting the riding app. The trainer
+must confirm the newly selected gear before the app shows it.

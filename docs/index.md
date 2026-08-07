@@ -1,7 +1,7 @@
 # Virtual Gears
 
 <p align="center">
-  <img src="banner.png" alt="Virtual Gears — virtual shifting for KICKR V5">
+  <img src="banner.png" alt="Virtual Gears — virtual shifting for Wahoo KICKR">
 </p>
 
 **Virtual Gears gives you gears on a trainer — and in a riding app — that has
@@ -24,8 +24,11 @@ no chain noise, no dropped chain, and no wear.
     > functionality."
 
     Virtual Gears gives a KICKR V5 gears anyway. Because it appears as a normal
-    FTMS trainer, it also brings virtual shifting to riding apps such as RealVelo
-    and FulGaz that do not provide their own.
+    FTMS trainer, it also brings virtual shifting to riding apps that do not
+    provide their own.
+
+    The app was built and physically tested with a KICKR V5. Other direct-drive
+    KICKR models are expected to work but have not yet been physically tested.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -43,9 +46,10 @@ need special virtual-shifting support; ordinary FTMS trainer support is enough.
 
 ![How Virtual Gears sits between your riding app and your trainer](how-it-works.svg)
 
-A Zwift Click can be added to shift from the handlebar, but it is never
-required. A Wahoo Headwind can also be added, with a choice between its own
-sensor control and manual fan speed.
+Wake an original Zwift Click or Wahoo Headwind before opening Virtual Gears and
+the app finds and remembers it automatically. The Click shifts from the
+handlebar. The Headwind can stay with its own sensor control or use a manual fan
+speed. Both remain optional and never hold up a ride.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
@@ -79,7 +83,7 @@ An optional Wahoo Headwind can use Automatic control from its paired sensor or a
 manual speed from the ride screen. Manual offers a slider and one-tap common
 speeds. It stays on the fan even after Bluetooth disconnects, so Virtual Gears
 explicitly returns control to the sensor and waits for confirmation before
-forgetting or replacing it.
+switching to another fan.
 
 <p align="center">
   <img src="screenshots/headwind-control.png" width="30%" alt="Headwind manual fan control at 50 percent in portrait">
@@ -92,11 +96,10 @@ Open the app. It looks for your trainer, connects to it, starts the session and
 appears to your riding app, all on its own. There is no setup to complete and no
 button to press.
 
-The only question it ever asks is which trainer, and only when it genuinely
-cannot tell: one trainer nearby is simply used, several are only chosen
-automatically when one is clearly closest. Bluetooth reaches through walls, and
-connecting to a neighbour's trainer would change their wheel size, so anything
-ambiguous is asked rather than guessed.
+The only question it asks is which device, and only when it finds more than one
+trainer, Click or Headwind. A single device is simply used. Bluetooth signal
+strength does not measure distance reliably, so multiple devices are listed by
+name rather than ranked or guessed.
 
 ### Everything changeable mid-ride
 
@@ -112,6 +115,9 @@ your ride. The trainer stays connected and your riding app stays paired, so you
 can come back to the same gear.
 
 ## What it does not do
+
+**Zwift-native virtual shifting.** Virtual Gears supplies and displays its own
+gears over ordinary FTMS; it does not support Zwift's native gear system.
 
 **ERG mode.** A workout that sets a target power is refused, because holding a
 power target and holding a gear are two different ideas of what the trainer

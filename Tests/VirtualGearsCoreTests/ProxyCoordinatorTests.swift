@@ -40,7 +40,6 @@ final class ProxyCoordinatorTests: XCTestCase {
             click: shifter,
             peripheral: ridingApp,
             screen: screen,
-            diagnostics: ProductDiagnosticsStore(),
             defaults: defaults
         )
     }
@@ -110,7 +109,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             self.coordinator.sessionBaselineMillimeters == ridingAppWheelSize
         }
 
-        XCTAssertEqual(coordinator.borrowedNeutralMillimeters, neutral)
+        XCTAssertEqual(coordinator.preGearBaselineMillimeters, neutral)
 
         await coordinator.stopRide()
 
@@ -118,8 +117,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// A deliberate Stop leaves the still-running riding app's own setting in
-    /// place. Crash recovery is different: no PC app link survived the crash,
-    /// so Virtual Gears pays back the trainer's original setting.
+    /// place. After an interruption, Virtual Gears resets to the saved baseline.
     func testNormalStopAndCrashRecoveryRespectWhoStillOwnsTheRide() async throws {
         try await startRide(virtualGears: false)
         _ = await ridingApp.send(
@@ -134,7 +132,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         // A ride that never got to stop, finished at the next launch.
         makeCoordinator()
         defaults.set(neutral, forKey: "VirtualGears.unfinishedRideBaselineMillimeters")
-        coordinator.restoreInterruptedRideIfNeeded()
+        coordinator.resetInterruptedRideBaselineIfNeeded()
         try await settle { self.trainer.currentWheelSizeMillimeters != nil }
         let afterCrashRecovery = trainer.currentWheelSizeMillimeters
 
@@ -397,7 +395,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
     }
 
-    func testPCCommandArrivingDuringStopRunsAfterTheRestore() async throws {
+    func testPCCommandArrivingDuringStopRunsAfterTheBaselineReset() async throws {
         try await startRide()
         trainer.wahooConfirmationDelay = .milliseconds(100)
 
@@ -448,9 +446,9 @@ final class ProxyCoordinatorTests: XCTestCase {
 
         await coordinator.stopRide()
         guard case .failed = coordinator.state else {
-            return XCTFail("The refused restore must remain visible")
+            return XCTFail("The refused baseline reset must remain visible")
         }
-        coordinator.restoreInterruptedRideIfNeeded()
+        coordinator.resetInterruptedRideBaselineIfNeeded()
         try await settle {
             self.trainer.currentWheelSizeMillimeters == 2_105
                 && self.defaults.object(
@@ -503,7 +501,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters"),
             "A trainer that has been put right should leave nothing to recover"
         )
-        XCTAssertEqual(coordinator.failure?.trainerNeedsRestoring, false)
+        XCTAssertEqual(coordinator.failure?.trainerNeedsBaselineReset, false)
         XCTAssertFalse(screen.keepAwake)
         XCTAssertFalse(trainer.didDisconnect)
     }
@@ -517,16 +515,14 @@ final class ProxyCoordinatorTests: XCTestCase {
     ///
     /// The failing start puts the trainer back itself. If the stop then runs its
     /// whole body against the dead session it ends by telling the rider the
-    /// trainer could not be restored, when it just was. That message is the one
-    /// thing in this app that has to be believable: it is the difference between
-    /// "ride normally" and "reconnect and fix your trainer".
-    func testStoppingWhileTheStartIsFailingDoesNotInventARestoreProblem() async throws {
+    /// baseline could not be reset, when it just was.
+    func testStoppingWhileTheStartIsFailingDoesNotInventAResetProblem() async throws {
         trainer.deniesFTMSControl = true
         trainer.wahooConfirmationDelay = .milliseconds(200)
         coordinator.startRide(configuration: makeConfiguration())
 
         // The window is narrow and exact. Stop has to land after the failing
-        // start has committed to putting the trainer back - its restore write
+        // start has committed to resetting the baseline - its reset write
         // is the one Wahoo command a denied start makes - but before it has
         // finished and torn the session down. Tapping any earlier and the
         // start's own catch stands down instead.
@@ -543,9 +539,9 @@ final class ProxyCoordinatorTests: XCTestCase {
             return XCTFail("The start was denied control, so it must say so")
         }
         XCTAssertFalse(
-            message.contains("could not be restored"),
-            "The trainer was restored. Telling the rider otherwise sends them "
-                + "chasing a fault that is not there: \(message)"
+            message.contains("could not be reset"),
+            "The baseline was reset. Recording another fault would be wrong: "
+                + message
         )
         XCTAssertTrue(
             message.contains("denied FTMS control"),

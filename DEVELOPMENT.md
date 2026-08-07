@@ -129,6 +129,27 @@ confirmed on a real ride.
 `Tools/ClickTrace` below is the Mac equivalent, and it sees more than the app
 ever could.
 
+### Click buttons are not Zwift-native shifting
+
+Virtual Gears reads button messages from an original Zwift Click and turns those
+presses into Virtual Gears gear changes. The Click is an input device; those
+button messages are not a virtual-shifting protocol and do not make the trainer
+compatible with Zwift's native gear system.
+
+Zwift-native shifting requires communication between the riding app and a
+compatible trainer. Virtual Gears does not implement or emulate that proprietary
+trainer-side communication. Wahoo says the KICKR V5 cannot support the required
+"Zwift protocol":
+
+<https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers>
+
+As of 7 August 2026, no public specification or working open-source
+implementation was found for that trainer-side communication. Future
+investigation therefore starts with hardware evidence, not guessed code: a
+supported newer trainer, a Zwift or Rouvy native-shifting session, and a BLE
+capture that identifies what the riding app and trainer exchange. Until then,
+native Zwift support is explicitly out of scope.
+
 ## Recording what a Zwift Click really sends
 
 `Tools/ClickTrace` connects a Mac straight to a Click and prints every packet
@@ -152,6 +173,11 @@ Output therefore goes to `/tmp/click-trace.log`, which the script tails.
 
 `docs/zwift-click-button-trace.log` is a recording made this way. What it shows:
 
+- This Click advertised only the generic name `Zwift Click`; a unique suffix is
+  not guaranteed. Button state is available only after connection, not in the
+  advertisement. The duplicate-name setup flow therefore tries candidates one
+  at a time and confirms the one whose connected stream reports the rider's
+  press.
 - The Click streams its button state every 90-120 ms for about 1.3 seconds after
   anything changes, then goes quiet. It does not send an event per press.
 - A button reads `0` when pressed and `1` when released.

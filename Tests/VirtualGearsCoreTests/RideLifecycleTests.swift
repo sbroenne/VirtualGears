@@ -39,7 +39,7 @@ final class RideLifecycleTests: XCTestCase {
         XCTAssertTrue(lifecycle.isRidePresented)
         XCTAssertNotNil(lifecycle.beginStopping())
         XCTAssertTrue(lifecycle.isRidePresented)
-        lifecycle.finishStop(failures: [], trainerNeedsRestoring: false)
+        lifecycle.finishStop(failures: [], trainerNeedsBaselineReset: false)
         XCTAssertFalse(lifecycle.isRidePresented)
     }
 
@@ -67,7 +67,7 @@ final class RideLifecycleTests: XCTestCase {
         lifecycle.markActive()
         XCTAssertTrue(lifecycle.owns(first))
 
-        lifecycle.finishStop(failures: [], trainerNeedsRestoring: false)
+        lifecycle.finishStop(failures: [], trainerNeedsBaselineReset: false)
         let second = lifecycle.beginConnecting()
 
         XCTAssertFalse(lifecycle.owns(first))
@@ -77,20 +77,20 @@ final class RideLifecycleTests: XCTestCase {
     func testNothingIsOwnedOnceARideHasStopped() {
         var lifecycle = RideLifecycle()
         let id = lifecycle.beginConnecting()
-        lifecycle.finishStop(failures: [], trainerNeedsRestoring: false)
+        lifecycle.finishStop(failures: [], trainerNeedsBaselineReset: false)
         XCTAssertFalse(lifecycle.owns(id))
     }
 
-    // MARK: - Tidying up after an interrupted ride
+    // MARK: - Resetting after an interrupted ride
 
     func testTidyingUpIsAllowedWhenNoRideIsRunning() {
         var lifecycle = RideLifecycle()
-        let token = lifecycle.restoreToken
-        XCTAssertTrue(lifecycle.isRestoreWanted(token))
+        let token = lifecycle.baselineResetToken
+        XCTAssertTrue(lifecycle.isBaselineResetWanted(token))
 
         lifecycle.refuseStart("Setup is incomplete")
         XCTAssertTrue(
-            lifecycle.isRestoreWanted(token),
+            lifecycle.isBaselineResetWanted(token),
             "A failed ride still leaves the trainer worth tidying up"
         )
     }
@@ -101,36 +101,38 @@ final class RideLifecycleTests: XCTestCase {
     /// gear the new ride had just set.
     func testStartingARideStandsDownTheTidyUpAlreadyInFlight() {
         var lifecycle = RideLifecycle()
-        let token = lifecycle.restoreToken
+        let token = lifecycle.baselineResetToken
 
-        lifecycle.abandonRestore()
+        lifecycle.abandonBaselineReset()
         lifecycle.beginConnecting()
         lifecycle.markActive()
 
-        XCTAssertFalse(lifecycle.isRestoreWanted(token))
+        XCTAssertFalse(lifecycle.isBaselineResetWanted(token))
     }
 
     func testTheTidyUpStandsDownEvenIfItStartedBeforeTheRide() {
         var lifecycle = RideLifecycle()
-        let token = lifecycle.restoreToken
+        let token = lifecycle.baselineResetToken
         lifecycle.beginConnecting()
 
         XCTAssertFalse(
-            lifecycle.isRestoreWanted(token),
+            lifecycle.isBaselineResetWanted(token),
             "A ride is running, so its wheel size is the one that should win"
         )
     }
 
     func testAbandoningTheTidyUpTwiceInvalidatesBothAttempts() {
         var lifecycle = RideLifecycle()
-        let first = lifecycle.restoreToken
-        lifecycle.abandonRestore()
-        let second = lifecycle.restoreToken
-        lifecycle.abandonRestore()
+        let first = lifecycle.baselineResetToken
+        lifecycle.abandonBaselineReset()
+        let second = lifecycle.baselineResetToken
+        lifecycle.abandonBaselineReset()
 
-        XCTAssertFalse(lifecycle.isRestoreWanted(first))
-        XCTAssertFalse(lifecycle.isRestoreWanted(second))
-        XCTAssertTrue(lifecycle.isRestoreWanted(lifecycle.restoreToken))
+        XCTAssertFalse(lifecycle.isBaselineResetWanted(first))
+        XCTAssertFalse(lifecycle.isBaselineResetWanted(second))
+        XCTAssertTrue(
+            lifecycle.isBaselineResetWanted(lifecycle.baselineResetToken)
+        )
     }
 
     // MARK: - Losing trainer control
@@ -197,49 +199,55 @@ final class RideLifecycleTests: XCTestCase {
     func testACleanStopLeavesNoFailure() {
         var lifecycle = riding()
         _ = lifecycle.beginStopping()
-        lifecycle.finishStop(failures: [], trainerNeedsRestoring: false)
+        lifecycle.finishStop(failures: [], trainerNeedsBaselineReset: false)
 
         XCTAssertEqual(lifecycle.state, .idle)
         XCTAssertNil(lifecycle.failure)
         XCTAssertNil(lifecycle.sessionID)
     }
 
-    func testAFailedStopSaysWhetherTheTrainerStillNeedsPuttingRight() {
+    func testAFailedStopRecordsWhetherTheBaselineStillNeedsResetting() {
         var lifecycle = riding()
         _ = lifecycle.beginStopping()
         lifecycle.finishStop(
             failures: ["Trainer stop failed"],
-            trainerNeedsRestoring: true
+            trainerNeedsBaselineReset: true
         )
 
-        XCTAssertEqual(lifecycle.failure, .stopping(trainerNeedsRestoring: true))
+        XCTAssertEqual(
+            lifecycle.failure,
+            .stopping(trainerNeedsBaselineReset: true)
+        )
         XCTAssertTrue(lifecycle.failure?.happenedWhileStopping == true)
-        XCTAssertTrue(lifecycle.failure?.trainerNeedsRestoring == true)
+        XCTAssertTrue(lifecycle.failure?.trainerNeedsBaselineReset == true)
     }
 
-    func testAFailedStopThatStillPutTheTrainerBackSaysSo() {
+    func testAFailedStopThatResetTheBaselineRecordsNoPendingReset() {
         var lifecycle = riding()
         _ = lifecycle.beginStopping()
         lifecycle.finishStop(
             failures: ["Trainer stop failed"],
-            trainerNeedsRestoring: false
+            trainerNeedsBaselineReset: false
         )
 
-        XCTAssertEqual(lifecycle.failure, .stopping(trainerNeedsRestoring: false))
-        XCTAssertFalse(lifecycle.failure?.trainerNeedsRestoring == true)
+        XCTAssertEqual(
+            lifecycle.failure,
+            .stopping(trainerNeedsBaselineReset: false)
+        )
+        XCTAssertFalse(lifecycle.failure?.trainerNeedsBaselineReset == true)
     }
 
     func testEveryReasonAStopFailedIsReported() {
         var lifecycle = riding()
         _ = lifecycle.beginStopping()
         lifecycle.finishStop(
-            failures: ["Trainer stop failed", "Baseline restoration failed"],
-            trainerNeedsRestoring: true
+            failures: ["Trainer stop failed", "Baseline reset failed"],
+            trainerNeedsBaselineReset: true
         )
 
         XCTAssertEqual(
             lifecycle.state,
-            .failed("Trainer stop failed. Baseline restoration failed")
+            .failed("Trainer stop failed. Baseline reset failed")
         )
     }
 
@@ -251,7 +259,10 @@ final class RideLifecycleTests: XCTestCase {
         var lifecycle = RideLifecycle()
         lifecycle.refuseStart("Setup is incomplete")
 
-        XCTAssertEqual(lifecycle.failure, .starting(trainerNeedsRestoring: false))
+        XCTAssertEqual(
+            lifecycle.failure,
+            .starting(trainerNeedsBaselineReset: false)
+        )
         XCTAssertFalse(lifecycle.failure?.happenedWhileStopping == true)
         XCTAssertEqual(lifecycle.state, .failed("Setup is incomplete"))
     }
@@ -261,9 +272,15 @@ final class RideLifecycleTests: XCTestCase {
     func testAStartThatLeftTheTrainerChangedSaysSo() {
         var lifecycle = RideLifecycle()
         lifecycle.beginConnecting()
-        lifecycle.failStart("KICKR denied FTMS control", trainerNeedsRestoring: true)
+        lifecycle.failStart(
+            "KICKR denied FTMS control",
+            trainerNeedsBaselineReset: true
+        )
 
-        XCTAssertEqual(lifecycle.failure, .starting(trainerNeedsRestoring: true))
+        XCTAssertEqual(
+            lifecycle.failure,
+            .starting(trainerNeedsBaselineReset: true)
+        )
         XCTAssertNil(lifecycle.sessionID)
         XCTAssertTrue(lifecycle.canStart)
     }
@@ -271,15 +288,21 @@ final class RideLifecycleTests: XCTestCase {
     func testAFailedStartThatPutTheTrainerBackDoesNotAlarmTheRider() {
         var lifecycle = RideLifecycle()
         lifecycle.beginConnecting()
-        lifecycle.failStart("KICKR denied FTMS control", trainerNeedsRestoring: false)
+        lifecycle.failStart(
+            "KICKR denied FTMS control",
+            trainerNeedsBaselineReset: false
+        )
 
-        XCTAssertFalse(lifecycle.failure?.trainerNeedsRestoring == true)
+        XCTAssertFalse(lifecycle.failure?.trainerNeedsBaselineReset == true)
     }
 
     func testAFailedStartDisownsItsOwnWorkSoLateRepliesAreIgnored() {
         var lifecycle = RideLifecycle()
         let id = lifecycle.beginConnecting()
-        lifecycle.failStart("KICKR denied FTMS control", trainerNeedsRestoring: false)
+        lifecycle.failStart(
+            "KICKR denied FTMS control",
+            trainerNeedsBaselineReset: false
+        )
 
         XCTAssertFalse(lifecycle.owns(id))
     }

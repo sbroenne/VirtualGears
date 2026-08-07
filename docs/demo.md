@@ -42,8 +42,8 @@
 
 <figure markdown>
   ![Settings with trainer, Zwift Click and Wahoo Headwind](screenshots/settings.png){ width="280" }
-  <figcaption>Trainer, Click and Headwind are remembered in one ordinary
-  Settings screen.</figcaption>
+  <figcaption>One compact Settings screen shows what is connected, what is only
+  remembered, and what has not been added.</figcaption>
 </figure>
 
 <figure markdown>

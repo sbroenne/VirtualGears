@@ -46,7 +46,7 @@ them in.
 | 7 | Hold the Click button down, then let go | "Holding it sweeps through the gears and stops when I let go." |
 | 8 | Camera shot of the bike: point at the chain, unmoving, in one gear | "The chain stays where it is all ride. No noise, no wear." |
 | 9 | Phone: open the gears screen, switch to a real bike drivetrain | "I can ride the 24 virtual gears, or describe a real bike and ride its gears instead." |
-| 10 | Phone: stop the ride | "Ending the ride puts the trainer back exactly as it was." |
+| 10 | Phone: stop the ride | "Virtual shifting is now off." |
 
 ## What the reviewer specifically needs to see
 

@@ -26,7 +26,7 @@ public protocol ConnectableLink: AnyObject {
     var state: ProductConnectionState { get }
 }
 
-/// The trainer the ride is borrowing.
+/// The physical trainer controlled during a ride.
 @MainActor
 public protocol TrainerLink: ConnectableLink {
     var hasFTMSControl: Bool { get }
@@ -39,7 +39,7 @@ public protocol TrainerLink: ConnectableLink {
     ) async throws -> FitnessMachineControlPointResponse
     func executeWahoo(_ data: Data) async throws -> WahooKickrResponse
     func resumeSavedConnection()
-    func disconnect(restoringCircumferenceMillimeters: Double?)
+    func disconnect(resettingCircumferenceMillimeters: Double?)
 }
 
 /// The trainer the riding app thinks it is talking to.

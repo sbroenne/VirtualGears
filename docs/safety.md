@@ -7,14 +7,14 @@ app asks for.
 ## The range was measured, not guessed
 
 The selected 500–4800 mm operating range was confirmed on a physical KICKR V5,
-every value acknowledged by the trainer, with the reference restored between
+every value acknowledged by the trainer, with the reference reset between
 each probe. These are the edges we chose to test, not a claim that the KICKR
 rejects values outside them. Virtual Gears never asks for anything outside the
 selected riding range.
 
 A later boundary search reached both ends of Wahoo's two-byte command, with
 samples throughout the range acknowledged by the same KICKR V5. The search
-restored 2070 mm after every probe and again at the end.
+reset to 2070 mm after every probe and again at the end.
 
 That result proves what the command accepts; it does not prove that the extreme
 values produce useful, predictable gears while someone is pedalling. Virtual Gears
@@ -24,26 +24,16 @@ ride-tested.
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
 
-## The trainer is always put back
+## If you set a custom wheel circumference
 
-Ending virtual shifting returns the trainer to the riding app's latest wheel
-size, or to the size Virtual Gears borrowed if the riding app did not set one.
+The KICKR does not expose its current wheel circumference through FTMS, so
+Virtual Gears cannot read that setting when it connects. It starts from a
+2070 mm reference unless the riding app supplies a different wheel size.
 
-This matters because the trainer works out its speed from that setting. A
-virtual gear left behind would quietly distort speed and distance. A wheel size
-set by the riding app is different: that app still owns the ride, so its latest
-number remains the baseline when virtual shifting ends.
-
-Wheel size is part of the standard interface available to every riding app.
-Whenever one sets it, Virtual Gears rebuilds every gear around it. That number
-belongs to the riding app, and stopping Virtual Gears does not stop the app's
-ride, so the trainer returns to that number when virtual shifting ends.
-
-!!! info "If the app is interrupted"
-
-    If iOS ends Virtual Gears, the riding app's Bluetooth link cannot survive.
-    The size Virtual Gears originally borrowed is still written down, so the next
-    launch puts the trainer back without saying anything about it.
+That means Virtual Gears overwrites a custom circumference set through the
+Wahoo app and cannot put that unknown value back automatically. If you use a
+custom value, write it down and set it again in the Wahoo app after using
+Virtual Gears. Most riders never change this setting.
 
 ## What it is not
 

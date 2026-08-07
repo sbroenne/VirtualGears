@@ -4,10 +4,10 @@ import Foundation
 /// different words: one is worth retrying, the other means the trainer may
 /// still be carrying a gear's wheel size and needs putting right.
 public enum RideFailure: Equatable, Sendable {
-    case starting(trainerNeedsRestoring: Bool)
-    case stopping(trainerNeedsRestoring: Bool)
+    case starting(trainerNeedsBaselineReset: Bool)
+    case stopping(trainerNeedsBaselineReset: Bool)
 
-    public var trainerNeedsRestoring: Bool {
+    public var trainerNeedsBaselineReset: Bool {
         switch self {
         case let .starting(needs), let .stopping(needs): needs
         }
@@ -65,7 +65,7 @@ public struct RideLifecycle: Sendable {
     /// cancelling that work is not enough on its own: it spends most of its
     /// life waiting on a Bluetooth round trip, and those waits do not notice
     /// cancellation.
-    public private(set) var restoreToken = UUID()
+    public private(set) var baselineResetToken = UUID()
 
     public init() {}
 
@@ -106,21 +106,21 @@ public struct RideLifecycle: Sendable {
         state == .stopping
     }
 
-    // MARK: - Tidying up after an interrupted ride
+    // MARK: - Resetting after an interrupted ride
 
-    /// Whether the restore holding `token` may still act.
+    /// Whether the baseline reset holding `token` may still act.
     ///
     /// A ride that has started since owns the trainer's wheel size and owns the
-    /// record of it, so an older restore must not overwrite either.
-    public func isRestoreWanted(_ token: UUID) -> Bool {
-        token == restoreToken && isBetweenRides
+    /// record of it, so an older reset must not overwrite either.
+    public func isBaselineResetWanted(_ token: UUID) -> Bool {
+        token == baselineResetToken && isBetweenRides
     }
 
-    /// Stands down any restore in flight. A ride sets its own wheel size and
-    /// puts it back when it stops, so it does the tidying itself; letting both
-    /// run could leave the rider in a gear they did not choose.
-    public mutating func abandonRestore() {
-        restoreToken = UUID()
+    /// Stands down any baseline reset in flight. A ride sets its own initial
+    /// gear and resets to its baseline when it stops; letting both run could
+    /// leave the rider in a gear they did not choose.
+    public mutating func abandonBaselineReset() {
+        baselineResetToken = UUID()
     }
 
     // MARK: - Starting
@@ -132,7 +132,7 @@ public struct RideLifecycle: Sendable {
     /// Refuses a ride before anything has been connected, so nothing needs
     /// putting right.
     public mutating func refuseStart(_ reason: String) {
-        failure = .starting(trainerNeedsRestoring: false)
+        failure = .starting(trainerNeedsBaselineReset: false)
         state = .failed(reason)
     }
 
@@ -154,10 +154,12 @@ public struct RideLifecycle: Sendable {
     /// was put back decides what the rider is told.
     public mutating func failStart(
         _ message: String,
-        trainerNeedsRestoring: Bool
+        trainerNeedsBaselineReset: Bool
     ) {
         clearSession()
-        failure = .starting(trainerNeedsRestoring: trainerNeedsRestoring)
+        failure = .starting(
+            trainerNeedsBaselineReset: trainerNeedsBaselineReset
+        )
         state = .failed(message)
     }
 
@@ -191,13 +193,13 @@ public struct RideLifecycle: Sendable {
         return id
     }
 
-    /// Ends the stop. `trainerNeedsRestoring` should come from whether the
-    /// record of the borrowed wheel size is still there, because that record is
-    /// only removed once the trainer confirms the original size is back, and so
+    /// Ends the stop. `trainerNeedsBaselineReset` should come from whether the
+    /// record of the pre-gear baseline is still there, because that record is
+    /// only removed once the trainer confirms the virtual gear is cleared, and so
     /// is the honest answer.
     public mutating func finishStop(
         failures: [String],
-        trainerNeedsRestoring: Bool
+        trainerNeedsBaselineReset: Bool
     ) {
         clearSession()
         guard !failures.isEmpty else {
@@ -205,7 +207,9 @@ public struct RideLifecycle: Sendable {
             state = .idle
             return
         }
-        failure = .stopping(trainerNeedsRestoring: trainerNeedsRestoring)
+        failure = .stopping(
+            trainerNeedsBaselineReset: trainerNeedsBaselineReset
+        )
         state = .failed(failures.joined(separator: ". "))
     }
 

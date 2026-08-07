@@ -10,6 +10,7 @@ final class ClickCentralService: NSObject {
         didSet { updateStallWatch() }
     }
     private(set) var candidates: [BluetoothCandidate] = []
+    private(set) var scanGeneration = 0
     private(set) var selectedID: UUID?
     private(set) var selectedName: String?
     private(set) var batteryLevel: Int?
@@ -25,6 +26,7 @@ final class ClickCentralService: NSObject {
         return batteryLevel <= Self.lowBatteryPercent
     }
     private(set) var latestButtonEvent: ZwiftClickButtonEvent?
+    private(set) var identificationCandidateID: UUID?
     private(set) var latestShiftRequest: ShiftRequest?
     private(set) var shiftRequests: [ShiftRequest] = []
     var shiftHandler: ((ShiftRequest) -> Void)?
@@ -55,7 +57,6 @@ final class ClickCentralService: NSObject {
         }
     }
 
-    private let diagnostics: ProductDiagnosticsStore
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.clickIdentity"
     private let reconnectDelays: [UInt64] = [1, 2, 4, 8, 15]
@@ -72,6 +73,7 @@ final class ClickCentralService: NSObject {
     private let batteryUUID = CBUUID(string: "2A19")
 
     private var central: CBCentralManager!
+    private var scanWhenPoweredOn = false
     private var discovered: [UUID: CBPeripheral] = [:]
     private var peripheral: CBPeripheral?
     private var asyncCharacteristic: CBCharacteristic?
@@ -91,11 +93,7 @@ final class ClickCentralService: NSObject {
     private var heldButton: ZwiftClickButton?
     private var isHolding = false
 
-    init(
-        diagnostics: ProductDiagnosticsStore,
-        defaults: UserDefaults = .standard
-    ) {
-        self.diagnostics = diagnostics
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         super.init()
         loadIdentity()
@@ -109,10 +107,17 @@ final class ClickCentralService: NSObject {
     func startScanning() {
         desiredConnection = false
         reconnectTask?.cancel()
+        scanWhenPoweredOn = true
         guard central.state == .poweredOn else {
-            fail("Bluetooth is not powered on")
+            state = .unavailable(central.state.productDescription)
             return
         }
+        beginScanning()
+    }
+
+    private func beginScanning() {
+        scanGeneration += 1
+        scanWhenPoweredOn = false
         if let peripheral { central.cancelPeripheralConnection(peripheral) }
         candidates.removeAll()
         discovered.removeAll()
@@ -124,10 +129,11 @@ final class ClickCentralService: NSObject {
         log("Scanning for original Zwift Click")
     }
 
-    func stopScanning() {
+    func stopScanning(reconnectSavedDevice: Bool = true) {
+        scanWhenPoweredOn = false
         central.stopScan()
         if state == .scanning { state = .disconnected }
-        autoConnectSavedDevice()
+        if reconnectSavedDevice { autoConnectSavedDevice() }
     }
 
     var hasSavedDevice: Bool { selectedID != nil }
@@ -139,7 +145,8 @@ final class ClickCentralService: NSObject {
     func autoConnectSavedDevice() {
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
-              peripheral?.state != .connecting else { return }
+              peripheral?.state != .connecting,
+              peripheral?.state != .disconnecting else { return }
         resumeSavedConnection()
     }
 
@@ -156,6 +163,39 @@ final class ClickCentralService: NSObject {
         desiredConnection = true
         reconnectAttempt = 0
         connect(peripheral)
+    }
+
+    func connectForIdentification(_ id: UUID) {
+        guard let candidate = discovered[id] else {
+            fail("That Click is no longer available")
+            return
+        }
+        if let peripheral, peripheral.identifier != id {
+            central.cancelPeripheralConnection(peripheral)
+        }
+        desiredConnection = false
+        identificationCandidateID = id
+        latestButtonEvent = nil
+        connect(candidate)
+    }
+
+    func confirmIdentification() {
+        guard let id = identificationCandidateID,
+              let candidate = candidates.first(where: { $0.id == id })
+        else { return }
+        persistIdentity(id: id, name: candidate.name)
+        desiredConnection = true
+        identificationCandidateID = nil
+    }
+
+    func cancelIdentification() {
+        identificationCandidateID = nil
+        latestButtonEvent = nil
+        if let peripheral {
+            central.cancelPeripheralConnection(peripheral)
+        }
+        resetConnection()
+        state = .disconnected
     }
 
     func resumeSavedConnection() {
@@ -314,7 +354,9 @@ final class ClickCentralService: NSObject {
                 }
                 for event in edgeTracker.update(plus: plus, minus: minus) {
                     latestButtonEvent = event
-                    process(event)
+                    if identificationCandidateID == nil {
+                        process(event)
+                    }
                 }
             case let .batteryLevel(percent):
                 // The Click repeats this every few seconds, so it keeps the
@@ -434,15 +476,30 @@ final class ClickCentralService: NSObject {
 
     private func log(
         _ message: String,
-        level: ProductDiagnosticLevel = .info
+        level: ProductLogLevel = .info
     ) {
-        diagnostics.record(message, source: "Click", level: level)
+        ProductLogger.record(message, source: "Click", level: level)
     }
 }
+
+#if DEBUG
+extension ClickCentralService {
+    func stageScreenshot(name: String, batteryLevel: Int) {
+        selectedID = ScreenshotFixture.clickID
+        selectedName = name
+        self.batteryLevel = batteryLevel
+        state = .ready
+    }
+}
+#endif
 
 extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         if central.state == .poweredOn {
+            if scanWhenPoweredOn {
+                beginScanning()
+                return
+            }
             state = .disconnected
             if desiredConnection { resumeSavedConnection() }
         } else {
@@ -455,7 +512,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didDiscover peripheral: CBPeripheral,
         advertisementData: [String: Any],
-        rssi RSSI: NSNumber
+        rssi _: NSNumber
     ) {
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
@@ -464,8 +521,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         discovered[peripheral.identifier] = peripheral
         let item = BluetoothCandidate(
             id: peripheral.identifier,
-            name: name,
-            rssi: RSSI.intValue
+            name: name
         )
         candidates.absorb(item)
     }

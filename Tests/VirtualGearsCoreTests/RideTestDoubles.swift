@@ -23,10 +23,10 @@ final class FakeTrainer: TrainerLink {
         TrainerSafety.referenceCircumferenceMillimeters
     ]
     private(set) var didDisconnect = false
-    private(set) var disconnectRestoreRequest: Double??
+    private(set) var disconnectResetRequest: Double??
     private(set) var ftmsRequests: [FitnessMachineControlPointRequest] = []
 
-    /// What the trainer is left on. The whole point of the restore rules.
+    /// What the trainer is left on. The whole point of the baseline-reset rules.
     var currentWheelSizeMillimeters: Double? { wheelSizeHistory.last }
 
     /// Set to make the next Wahoo command fail, as a trainer that has gone to
@@ -94,11 +94,11 @@ final class FakeTrainer: TrainerLink {
 
     func resumeSavedConnection() {}
 
-    func disconnect(restoringCircumferenceMillimeters: Double?) {
+    func disconnect(resettingCircumferenceMillimeters: Double?) {
         didDisconnect = true
-        disconnectRestoreRequest = restoringCircumferenceMillimeters
-        if let restore = restoringCircumferenceMillimeters {
-            wheelSizeHistory.append(restore)
+        disconnectResetRequest = resettingCircumferenceMillimeters
+        if let reset = resettingCircumferenceMillimeters {
+            wheelSizeHistory.append(reset)
         }
         // A disconnected trainer cannot be written to. Leaving this double
         // "ready" after a disconnect let code that writes to a trainer it has
