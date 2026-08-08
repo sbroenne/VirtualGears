@@ -140,6 +140,12 @@ something every trainer can do, and the KICKR Snap and KICKR Bike cannot do it
 either. [Which trainers work](requirements.md#which-trainers-work) has the
 detail.
 
+## Questions or problems
+
+Support runs in the open on GitHub — ask a question, report a bug, or tell us
+your trainer works. [Support](support.md) has the links and answers the common
+problems first.
+
 !!! note "Not affiliated with Wahoo or Zwift"
 
     Virtual Gears is an independent app. Wahoo, KICKR, Zwift and Zwift Click are

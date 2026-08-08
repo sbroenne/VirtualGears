@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in the app is broken or does not behave as described.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. If you have a *question*
+        rather than a bug, please ask in
+        [Q&A discussions](https://github.com/sbroenne/VirtualGears/discussions/categories/q-a)
+        instead — you will usually get an answer faster there.
+
+        Please check [which trainers work](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
+        first. Several trainers cannot work with the app at all.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: |
+        I tapped the upshift button and expected the gear to change.
+        The gear number stayed the same and the app showed "Trainer did not confirm".
+    validations:
+      required: true
+
+  - type: input
+    id: trainer
+    attributes:
+      label: Trainer
+      description: Which trainer, and which model or year if you know it.
+      placeholder: Wahoo KICKR V5 (2020)
+    validations:
+      required: true
+
+  - type: input
+    id: iphone
+    attributes:
+      label: iPhone and iOS version
+      placeholder: iPhone 14 Pro, iOS 18.2
+    validations:
+      required: true
+
+  - type: input
+    id: riding-app
+    attributes:
+      label: Riding app
+      description: Which app you were riding with, and on what computer.
+      placeholder: Zwift on Windows 11
+    validations:
+      required: false
+
+  - type: dropdown
+    id: accessories
+    attributes:
+      label: Accessories connected at the time
+      multiple: true
+      options:
+        - Zwift Click
+        - Wahoo Headwind
+        - None
+    validations:
+      required: false
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error message
+      description: If the app showed an error, copy its exact wording.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I woke the trainer by turning the pedals.
+          required: false
+        - label: No other app was connected to the trainer at the time.
+          required: false

@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question
+    url: https://github.com/sbroenne/VirtualGears/discussions/categories/q-a
+    about: Questions about setup, trainers, riding apps or how the gears work.
+  - name: Suggest a feature
+    url: https://github.com/sbroenne/VirtualGears/discussions/categories/ideas
+    about: Ideas for things the app should do.
+  - name: Tell us your trainer works
+    url: https://github.com/sbroenne/VirtualGears/discussions/categories/show-and-tell
+    about: Reports from trainers other than the KICKR V5 are especially welcome.
+  - name: Support and common problems
+    url: https://sbroenne.github.io/VirtualGears/support/
+    about: Most problems have a known answer already.

@@ -150,9 +150,18 @@ the iPhone and when advertising itself as a trainer.
 
 ### URLs
 
-- Support URL: `https://github.com/sbroenne/VirtualGears/issues`
+- Support URL: `https://sbroenne.github.io/VirtualGears/support/`
 - Marketing URL: `https://sbroenne.github.io/VirtualGears/`
 - Privacy Policy URL: `https://sbroenne.github.io/VirtualGears/PRIVACY/`
+
+Support runs on the public GitHub repository: [Q&A discussions][supportqa] for
+questions and [Issues][supportissues] for bugs. The support page linked above
+routes users to the right one and answers the common problems first, so a
+reviewer or a rider without a GitHub account still gets a useful page. Both
+Issues and Discussions must stay enabled on the repository.
+
+  [supportqa]: https://github.com/sbroenne/VirtualGears/discussions/categories/q-a
+  [supportissues]: https://github.com/sbroenne/VirtualGears/issues
 
 ### Category and rating
 
