@@ -38,6 +38,10 @@ final class FTMSPeripheral: NSObject {
     private var powerRangeCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
     private var startRequested = false
+    /// Whether a ride still wants the phone advertising as a trainer. Kept
+    /// separate from `startRequested` so a Bluetooth reset can tear the service
+    /// down and put it back, while a deliberate stop stays stopped.
+    private var wantsAdvertising = false
     private var servicePublished = false
     private var acceptingCommands = false
     private var subscriptions: [UUID: Set<CBUUID>] = [:]
@@ -88,6 +92,7 @@ final class FTMSPeripheral: NSObject {
             return
         }
         guard !startRequested, !isAdvertising else { return }
+        wantsAdvertising = true
         startRequested = true
         acceptingCommands = true
         if servicePublished {
@@ -113,6 +118,13 @@ final class FTMSPeripheral: NSObject {
     }
 
     func stopAdvertising() {
+        wantsAdvertising = false
+        teardownAdvertising()
+    }
+
+    /// The teardown itself, without disturbing whether a ride still wants to be
+    /// advertising. A Bluetooth reset uses this so `.poweredOn` can restore it.
+    private func teardownAdvertising() {
         startRequested = false
         acceptingCommands = false
         commands.removeAll()
@@ -384,8 +396,14 @@ extension FTMSPeripheral {
 
 extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
     func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
-        if peripheral.state != .poweredOn {
-            if isAdvertising || startRequested { stopAdvertising() }
+        if peripheral.state == .poweredOn {
+            // iOS restarts the BLE stack on its own. Without this the riding
+            // app loses the trainer for the rest of the ride.
+            if wantsAdvertising, !isAdvertising, !startRequested {
+                startAdvertising()
+            }
+        } else if isAdvertising || startRequested {
+            teardownAdvertising()
         }
     }
 

@@ -97,12 +97,20 @@ neutral value, and then worked through ten wheel sizes one at a time, restoring
 write state was uncertain.
 
 All ten were confirmed by the trainer. The sequence covered the previously
-tested range, the 646.9–4735.1 mm range the 24 virtual gears need at a 2070 mm
-baseline, and a 4800 mm upper safety margin.
+tested range and a 4800 mm upper safety margin.
+
+A second run covered the easy end of the ladder, which the first did not reach:
+517.5, 525, 550, 575, 600, 625 and 647 mm. The trainer confirmed every one, in
+60 to 180 ms, resetting to 2070 mm between each and again at the end. The full
+output is in `docs/kickr-wheel-size-sweep.log`, and the run can be repeated with
+`Tools/KickrProbe/run.sh sweep`.
+
+Between the two runs, both ends of the 517.5–4735.1 mm span the 24 virtual gears
+need at a 2070 mm baseline have been confirmed on hardware.
 
 The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
-used, reconnect before riding so the starting circumference is restored first.
+used, reconnect before riding so the 2070 mm baseline is set first.
 
 ## What a KICKR V5 puts in its advertisement
 
@@ -277,8 +285,8 @@ before reporting the gear as changed. Two further reasons to prefer it:
 - It is a **separate channel**. The riding app's terrain commands occupy the
   standard control point, which carries one request at a time. Gear changes on
   their own characteristic never queue behind them.
-- It is the route that has been **proven on hardware**, across ten wheel sizes
-  from 647 mm to 4800 mm and timed at 59 to 238 ms per change.
+- It is the route that has been **proven on hardware**, across seventeen wheel
+  sizes from 517.5 mm to 4800 mm and timed at 59 to 238 ms per change.
 
 This mode changes nothing and leaves the trainer on 2070 mm.
 

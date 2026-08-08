@@ -51,8 +51,8 @@ advertise, connect or send Bluetooth commands.
 
 <figure markdown>
   ![Settings with trainer, Zwift Click and Wahoo Headwind](screenshots/settings.png){ width="280" }
-  <figcaption>One compact Settings screen shows what is connected, what is only
-  remembered, and what has not been added.</figcaption>
+  <figcaption>One compact Settings screen shows every piece of equipment and its
+  connection state.</figcaption>
 </figure>
 
 <figure markdown>

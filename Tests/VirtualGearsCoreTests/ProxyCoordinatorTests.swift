@@ -117,8 +117,12 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// A deliberate Stop leaves the still-running riding app's own setting in
-    /// place. After an interruption, Virtual Gears resets to the saved baseline.
-    func testNormalStopAndCrashRecoveryRespectWhoStillOwnsTheRide() async throws {
+    /// place. A ride that never got to stop must put the trainer in exactly the
+    /// same place at the next launch — the two paths cannot disagree, or a
+    /// force-quit silently leaves the riding app on a wheel size it never chose.
+    func testNormalStopAndCrashRecoveryAgreeOnTheRidingAppsWheelSize()
+        async throws
+    {
         try await startRide(virtualGears: false)
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
@@ -128,17 +132,63 @@ final class ProxyCoordinatorTests: XCTestCase {
         }
         await coordinator.stopRide()
         let afterNormalStop = trainer.currentWheelSizeMillimeters
-
-        // A ride that never got to stop, finished at the next launch.
-        makeCoordinator()
-        defaults.set(neutral, forKey: "VirtualGears.unfinishedRideBaselineMillimeters")
-        coordinator.resetInterruptedRideBaselineIfNeeded()
-        try await settle { self.trainer.currentWheelSizeMillimeters != nil }
-        let afterCrashRecovery = trainer.currentWheelSizeMillimeters
-
         XCTAssertEqual(afterNormalStop, 2_105)
-        XCTAssertEqual(afterCrashRecovery, neutral)
-        XCTAssertNotEqual(afterNormalStop, afterCrashRecovery)
+
+        // The same ride, but interrupted instead of stopped. A fresh start so
+        // the ride begins on 2070 and the riding app moves it mid-ride, which
+        // is the case where the record can go stale.
+        makeCoordinator()
+        let survivingDefaults = defaults!
+        try await startRide(virtualGears: false)
+        _ = await ridingApp.send(
+            .setWheelCircumference(tenthsOfMillimeter: 21_050)
+        )
+        try await settle {
+            self.coordinator.sessionBaselineMillimeters == 2_105
+        }
+
+        trainer = FakeTrainer()
+        coordinator = ProxyCoordinator(
+            kickr: trainer,
+            click: FakeShifter(),
+            peripheral: FakeRidingAppLink(),
+            screen: FakeScreen(),
+            defaults: survivingDefaults
+        )
+        coordinator.resetInterruptedRideBaselineIfNeeded()
+        // The record is removed only once the trainer confirms, so its absence
+        // is the signal that recovery actually finished.
+        try await settle {
+            survivingDefaults.object(
+                forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+            ) == nil
+        }
+
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, afterNormalStop)
+    }
+
+    /// A riding app is free to park any wheel size it likes between rides, and
+    /// 700x25c (2105 mm) is an ordinary one. The 24 virtual gears cannot be
+    /// built around anything above ~2098 mm, so carrying that value into the
+    /// next ride used to make Start fail for the rest of the launch.
+    func testAParkedWheelSizeTooLargeForTheGearsStillLetsTheNextRideStart()
+        async throws
+    {
+        try await startRide()
+        await coordinator.stopRide()
+
+        _ = await ridingApp.send(
+            .setWheelCircumference(tenthsOfMillimeter: 21_050)
+        )
+        try await settle {
+            self.trainer.currentWheelSizeMillimeters == 2_105
+        }
+
+        try await startRide()
+
+        XCTAssertEqual(coordinator.state, .active)
+        XCTAssertEqual(coordinator.sessionBaselineMillimeters, neutral)
     }
 
     func testAnUnfinishedRideIsForgottenOnceTheTrainerIsPutRight() async throws {

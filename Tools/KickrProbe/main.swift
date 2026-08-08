@@ -48,6 +48,10 @@ enum ProbeMode {
     case measure
     /// Leave a distinctive wheel size behind, on purpose.
     case set(millimeters: Double)
+    /// Send each wheel size in turn, resetting to 2070 mm in between, and
+    /// report which the trainer confirmed. This is how the recorded range
+    /// evidence is produced.
+    case sweep(millimeters: [Double])
     /// Work out the wheel size the trainer is currently using.
     case read
     /// Ask the trainer what it claims to support, and find out whether it
@@ -62,6 +66,14 @@ let mode: ProbeMode = {
     case "set":
         let value = arguments.dropFirst().first.flatMap(Double.init) ?? 3105
         return .set(millimeters: value)
+    case "sweep":
+        let values = arguments.dropFirst().compactMap(Double.init)
+        // The easy end of the shipping ladder, which the original ten-value
+        // run never reached, up to the lowest value it did cover.
+        return .sweep(
+            millimeters: values.isEmpty
+                ? [517.5, 525, 550, 575, 600, 625, 647] : values
+        )
     case "read":
         return .read
     case "features":
@@ -130,6 +142,8 @@ final class KickrProbe: NSObject {
                 await restoreNeutral()
             case let .set(millimeters):
                 try await leaveWheelSize(millimeters)
+            case let .sweep(millimeters):
+                try await sweepWheelSizes(millimeters)
             case .read:
                 try await readWheelSize()
             case .features:
@@ -379,6 +393,49 @@ final class KickrProbe: NSObject {
         } catch {
             say("WARNING: could not put the wheel size back: \(error)")
         }
+    }
+
+    /// Sends each wheel size in turn and records whether the trainer confirmed
+    /// it, resetting to 2070 mm between probes so no two values can run
+    /// together, and again at the end. Nothing is concluded from a value the
+    /// trainer did not acknowledge.
+    private func sweepWheelSizes(_ sizes: [Double]) async throws {
+        say("\n== Wheel size range probe ==")
+        say("Reference reset to \(Int(neutral)) mm between every probe.")
+        var confirmed: [Double] = []
+        var refused: [Double] = []
+        for size in sizes {
+            let command = try WahooKickrCommand.setWheelCircumference(
+                millimeters: size
+            )
+            let started = Date()
+            let raw = try await sendWahoo(command)
+            let elapsed = Date().timeIntervalSince(started)
+            if try WahooKickrResponse.decode(raw).confirmsSuccess(for: command) {
+                confirmed.append(size)
+                say("  \(size) mm confirmed in \(milliseconds(elapsed))")
+            } else {
+                refused.append(size)
+                say("  \(size) mm REFUSED")
+            }
+            let back = try WahooKickrCommand.setWheelCircumference(
+                millimeters: neutral
+            )
+            let backRaw = try await sendWahoo(back)
+            guard try WahooKickrResponse.decode(backRaw)
+                .confirmsSuccess(for: back)
+            else {
+                throw ProbeError.notReady
+            }
+        }
+        say("\n== Result ==")
+        say("Confirmed: " + confirmed.map { "\($0)" }.joined(separator: ", "))
+        if refused.isEmpty {
+            say("Refused: none")
+        } else {
+            say("Refused: " + refused.map { "\($0)" }.joined(separator: ", "))
+        }
+        await restoreNeutral()
     }
 
     private func report(times: [TimeInterval], heldControl: Bool) {

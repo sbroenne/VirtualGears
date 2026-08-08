@@ -444,6 +444,9 @@ final class HeadwindCentralService: NSObject {
         pendingCommand = nil
         commandQueue.removeAll()
         isCommandPending = false
+        // The action was waiting on a command that never landed. Leaving it
+        // armed would fire it against whatever the rider does next.
+        deferredAction = nil
         commandError = message
         log(message, level: .error)
     }

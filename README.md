@@ -138,6 +138,10 @@ Every gear change waits for confirmation from the trainer.
   message for reporting it, so the gear is shown on the iPhone.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app. Virtual Gears supplies and displays the gears itself.
+- **A custom wheel circumference is overwritten.** Virtual Gears cannot read the
+  trainer's current wheel size — FTMS has no read command — so it works from a
+  2070 mm reference. If you set a custom value in the Wahoo app, write it down
+  and set it again afterwards.
 
 ## Independent project
 

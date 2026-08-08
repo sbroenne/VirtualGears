@@ -28,6 +28,9 @@ public final class ProxyCoordinator {
     /// True once a riding app has set its own wheel size, so the ride screen can
     /// say whose number the gears are built around.
     public private(set) var ridingAppSetWheelSize = false
+    /// Whether a virtual gear has actually reached the trainer this ride. Until
+    /// it has, there is nothing to put right and nothing to report as unreset.
+    private var hasAppliedVirtualGear = false
 
     public let peripheral: any FitnessMachineBroadcast
     private let kickr: any TrainerLink
@@ -246,8 +249,23 @@ public final class ProxyCoordinator {
                     "These gears are outside the trainer's safe range"
                 )
             }
-            let baseline = parkedBaselineMillimeters
-                ?? Double(configuration.neutralCircumferenceMillimeters)
+            let reference = Double(
+                configuration.neutralCircumferenceMillimeters
+            )
+            // A wheel size the riding app parked between rides is only usable
+            // if the gears still fit around it. Falling back to the reference
+            // keeps Start working instead of failing for the whole launch.
+            var baseline = parkedBaselineMillimeters ?? reference
+            if !canBuildGears(around: baseline, drivetrain: drivetrain) {
+                log(
+                    "Your riding app left a \(Int(baseline.rounded())) mm wheel "
+                        + "size, which these gears cannot be built around. "
+                        + "Starting from \(Int(reference.rounded())) mm instead.",
+                    .warning
+                )
+                baseline = reference
+                parkedBaselineCameFromRidingApp = false
+            }
             parkedBaselineMillimeters = baseline
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
@@ -258,10 +276,6 @@ public final class ProxyCoordinator {
             sessionBaselineMillimeters = baseline
             preGearBaselineMillimeters = baseline
             ridingAppSetWheelSize = parkedBaselineCameFromRidingApp
-            defaults.set(
-                baseline,
-                forKey: unfinishedRideKey
-            )
 
             kickr.resumeSavedConnection()
             if usesClick { click.resumeSavedConnection() }
@@ -292,6 +306,12 @@ public final class ProxyCoordinator {
                     "KICKR did not confirm the initial virtual gear"
                 )
             }
+            // Only now has a virtual gear actually reached the trainer, so only
+            // now does the trainer need putting right. Writing the record any
+            // earlier makes a stop during connection report a fault that never
+            // happened, and leaves a force-quit reset a trainer we never moved.
+            hasAppliedVirtualGear = true
+            defaults.set(baseline, forKey: unfinishedRideKey)
             guard startMayProceed(id) else { throw CancellationError() }
             peripheral.startAdvertising()
             try await waitUntilPeripheralReady(sessionID: id)
@@ -396,7 +416,7 @@ public final class ProxyCoordinator {
                     "Baseline reset failed: \(error.localizedDescription)"
                 )
             }
-        } else {
+        } else if hasAppliedVirtualGear {
             failures.append("Trainer baseline could not be reset")
         }
 
@@ -476,6 +496,7 @@ public final class ProxyCoordinator {
         sessionBaselineMillimeters = nil
         preGearBaselineMillimeters = nil
         ridingAppSetWheelSize = false
+        hasAppliedVirtualGear = false
     }
 
     public func shift(_ direction: ShiftDirection) {
@@ -563,6 +584,19 @@ public final class ProxyCoordinator {
     /// Whether the ride this work belongs to is still the one running. Every
     /// step that suspends has to ask again afterwards: a stop can be claimed
     /// while the trainer is mid-answer, and it owns putting the trainer back.
+    /// Whether a full gear ladder still encodes inside the trainer's range
+    /// around this wheel size. A riding app is free to set any size it likes,
+    /// but a size the gears cannot be built around must not carry into a ride.
+    private func canBuildGears(
+        around millimeters: Double,
+        drivetrain: Drivetrain
+    ) -> Bool {
+        (try? ConfirmedGearEngine(
+            drivetrain: drivetrain,
+            baselineCircumferenceMillimeters: millimeters
+        )) != nil
+    }
+
     private func stillRiding(_ id: UUID) -> Bool {
         lifecycle.owns(id) && lifecycle.isRiding && !lifecycle.isStopping
     }
@@ -762,6 +796,10 @@ public final class ProxyCoordinator {
         ridingAppSetWheelSize = true
         parkedBaselineMillimeters = millimeters
         parkedBaselineCameFromRidingApp = true
+        // The reset target just moved. Without this the record left for a
+        // force-quit still names the ride's starting size, so recovery would
+        // put the trainer somewhere a normal Stop never would.
+        defaults.set(millimeters, forKey: unfinishedRideKey)
         gearEngine = rebased
         updateDisplayedGear()
         return .success(status: .wheelCircumferenceChanged(
