@@ -104,11 +104,10 @@ the iPhone and when advertising itself as a trainer.
     Motion and Differentiate Without Color.
 
     TRY IT WITHOUT A TRAINER
-    Tap Try Demo to explore a clearly marked simulated ride without Bluetooth. Shift
-    through the gear ladder and watch the wheel size the trainer would be set to
-    change with every gear. Compare virtual and real-bike gearing, open Settings and
-    try example Click, Headwind and riding-app status and fan controls. Demo choices
-    never replace saved equipment.
+    Tap Try Demo for a clearly marked simulated ride without Bluetooth. Shift through
+    the gear ladder and watch the trainer's wheel size change with every gear. Compare
+    virtual and real-bike gearing, and try example Click, Headwind and riding-app
+    controls. Demo choices never replace saved equipment.
 
     WORKS WITH THE APPS YOU ALREADY USE
     Virtual Gears appears as an ordinary FTMS indoor trainer. That adds virtual shifting
