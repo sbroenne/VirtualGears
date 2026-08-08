@@ -1,29 +1,38 @@
 # See it working
 
-!!! info "The ride video is not filmed yet"
+## Try it without equipment
 
-    A film of a real ride needs a real bike and a real trainer, so it cannot be
-    generated. This page is ready for it, and the shot list is in
-    `docs/DEMO_VIDEO.md` in the repository.
+Open Virtual Gears and tap **Try Demo** while it is looking for a trainer. The
+blue notice and every equipment status make clear that the ride is simulated and
+that no trainer is connected.
 
-    In the meantime, [the animation on the How the gears work
-    page](how-it-works.md) shows what the app is doing.
+In Demo Mode you can:
 
-<!-- When the video exists, replace the admonition above with this block and
-     point src at wherever the file is hosted:
+- shift easier and harder with the same large controls used on a real ride;
+- see the current gear move along the full gear ladder;
+- switch between the 24 virtual gears and a real-bike drivetrain;
+- open Settings and inspect the simulated trainer, Click, Headwind and riding-app
+  status; and
+- try simulated Headwind Automatic and Manual controls.
 
-<video controls preload="metadata" poster="screenshots/riding.png" width="100%">
-  <source src="https://github.com/sbroenne/VirtualGears/releases/download/demo/virtual-gears-demo.mp4" type="video/mp4">
-  Your browser cannot play this video.
-</video>
--->
+Tap **Exit Demo** to return to normal trainer discovery. Demo choices stay only
+inside that demo and are discarded when it closes. Demo Mode does not scan,
+advertise, connect or send Bluetooth commands.
+
+!!! warning "Simulation is not hardware evidence"
+
+    Demo Mode shows the product screens and local gear behavior. It does not
+    prove that a trainer, Click, Headwind or riding app is physically compatible.
+    The compatibility claims on this site remain based on the recorded hardware
+    evidence in the repository.
 
 ## What a ride looks like
 
 <figure markdown>
   ![The saved trainer connecting while the Zwift Click and Headwind are connected](screenshots/starting.png){ width="280" }
   <figcaption>Open the app and it goes looking for your trainer. There is
-  nothing to press. Optional equipment reconnects by itself.</figcaption>
+  nothing to press for a real ride. Try Demo is available when no trainer is
+  nearby. Optional equipment reconnects by itself.</figcaption>
 </figure>
 
 <figure markdown>

@@ -76,6 +76,8 @@ final class KickrCentralService: NSObject {
     private var reconnectAttempt = 0
     private var reconnectTask: Task<Void, Never>?
     private var timeoutTask: Task<Void, Never>?
+    private var isSuspendedForDemo = false
+    private var resumesAfterDemoDisconnect = false
     private var pendingServiceCount = 0
     private var requiredSubscriptions: Set<CBUUID> = []
     private var subscribed: Set<CBUUID> = []
@@ -132,6 +134,7 @@ final class KickrCentralService: NSObject {
     }
 
     func startScanning() {
+        guard !isSuspendedForDemo else { return }
         desiredConnection = false
         reconnectTask?.cancel()
         scanWhenPoweredOn = true
@@ -181,6 +184,7 @@ final class KickrCentralService: NSObject {
     }
 
     func autoConnectSavedDevice() {
+        guard !isSuspendedForDemo else { return }
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
               peripheral?.state != .connecting,
@@ -211,6 +215,7 @@ final class KickrCentralService: NSObject {
     }
 
     func resumeSavedConnection() {
+        guard !isSuspendedForDemo else { return }
         guard let selectedID else { return }
         desiredConnection = true
         if peripheral?.state == .connected
@@ -333,7 +338,32 @@ final class KickrCentralService: NSObject {
         }
     }
 
+    func suspendForDemo() {
+        isSuspendedForDemo = true
+        resumesAfterDemoDisconnect = false
+        stopScanning(reconnectSavedDevice: false)
+        disconnect(resettingCircumferenceMillimeters: nil)
+    }
+
+    func resumeAfterDemo() {
+        if peripheral != nil {
+            resumesAfterDemoDisconnect = true
+            return
+        }
+        isSuspendedForDemo = false
+        if hasSavedDevice { resumeSavedConnection() }
+    }
+
+    private func finishDemoSuspensionIfNeeded() -> Bool {
+        guard isSuspendedForDemo, resumesAfterDemoDisconnect else { return false }
+        isSuspendedForDemo = false
+        resumesAfterDemoDisconnect = false
+        if hasSavedDevice { resumeSavedConnection() }
+        return true
+    }
+
     private func connect(_ peripheral: CBPeripheral) {
+        guard !isSuspendedForDemo else { return }
         central.stopScan()
         resetConnection(keepingPeripheral: true)
         self.peripheral = peripheral
@@ -429,7 +459,8 @@ final class KickrCentralService: NSObject {
         disconnectAfterCompletion: Bool = false,
         continuation: CheckedContinuation<KickrCommandResult, Error>? = nil
     ) {
-        guard peripheral?.state == .connected,
+        guard !isSuspendedForDemo,
+              peripheral?.state == .connected,
               characteristics[kind.characteristic] != nil else {
             commandFailed("\(name): trainer control is unavailable")
             continuation?.resume(throwing: ProductBluetoothError.unavailable(
@@ -700,6 +731,15 @@ extension KickrCentralService {
 
 extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        guard !isSuspendedForDemo else {
+            central.stopScan()
+            state = .disconnected
+            if central.state != .poweredOn {
+                resetConnection()
+                _ = finishDemoSuspensionIfNeeded()
+            }
+            return
+        }
         if central.state == .poweredOn {
             if scanWhenPoweredOn {
                 beginScanning()
@@ -719,6 +759,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi _: NSNumber
     ) {
+        guard !isSuspendedForDemo else { return }
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
         ] as? String
@@ -738,6 +779,10 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
+        guard !isSuspendedForDemo else {
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         guard self.peripheral?.identifier == peripheral.identifier else {
             central.cancelPeripheralConnection(peripheral)
             return
@@ -755,6 +800,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         resetConnection()
         log(error?.localizedDescription ?? "Connection failed", level: .error)
+        if finishDemoSuspensionIfNeeded() { return }
         scheduleReconnect()
     }
 
@@ -767,6 +813,7 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         resetConnection()
         state = central.isScanning ? .scanning : .disconnected
         if let error { log(error.localizedDescription, level: .warning) }
+        if finishDemoSuspensionIfNeeded() { return }
         if desiredConnection { scheduleReconnect() }
     }
 }
@@ -776,6 +823,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             fail("Service discovery failed: \(error.localizedDescription)")
             return
@@ -805,6 +853,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         pendingServiceCount -= 1
         if let error {
             fail("Characteristic discovery failed: \(error.localizedDescription)")
@@ -821,6 +870,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             fail("Could not subscribe to \(characteristic.uuid): "
                 + error.localizedDescription)
@@ -839,6 +889,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard let active,
               active.kind.characteristic == characteristic.uuid else { return }
         if let error {
@@ -854,6 +905,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             log("\(characteristic.uuid) update failed: "
                 + error.localizedDescription, level: .error)

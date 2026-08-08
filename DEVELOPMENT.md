@@ -15,6 +15,13 @@ physical hardware measurements behind it. Rider instructions live in the
 The simulator can build and display the app, but it cannot prove Bluetooth
 behavior with a trainer, controller or fan.
 
+The in-app Demo Mode is intentionally simulator-safe. `DemoRideState` contains
+only a drivetrain and selected gear, while its `ConfigurationStore` has no
+`UserDefaults` backing. Entering the demo stops discovery and the app suppresses
+foreground reconnect and interrupted-ride reset work until the demo is closed.
+The demo therefore checks product navigation and local gear behavior only; it
+does not add any physical-hardware evidence.
+
 ## Build and test
 
 Run the hardware-independent test suite:
@@ -50,6 +57,11 @@ without code signing.
 | `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
 | `docs` | MkDocs website, screenshots and hardware findings |
 | `VirtualGears.xcodeproj` | iPhone app project |
+
+`DemoRideStateTests` cover the simulated gear ladder and drivetrain changes.
+Bluetooth safety still depends on keeping Demo Mode outside `ProxyCoordinator`
+and the CoreBluetooth services; do not replace its local state with staged
+production services.
 
 ## Documentation website
 

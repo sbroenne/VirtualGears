@@ -9,6 +9,7 @@ struct VirtualGearsApp: App {
     @State private var click: ClickCentralService
     @State private var headwind: HeadwindCentralService
     @State private var coordinator: ProxyCoordinator
+    @State private var isDemoMode = false
 
     init() {
         let defaults: UserDefaults
@@ -62,7 +63,8 @@ struct VirtualGearsApp: App {
             kickr: kickr,
             click: click,
             headwind: headwind,
-            coordinator: coordinator
+            coordinator: coordinator,
+            isDemoMode: $isDemoMode
         )
         .onChange(of: configurationStore.configuration.setupComplete) {
             if !configurationStore.configuration.setupComplete {
@@ -75,7 +77,8 @@ struct VirtualGearsApp: App {
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            guard phase == .active, !coordinator.isRidePresented else { return }
+            guard phase == .active, !isDemoMode,
+                  !coordinator.isRidePresented else { return }
             kickr.autoConnectSavedDevice()
             if configurationStore.configuration.usesClick {
                 click.autoConnectSavedDevice()
@@ -96,6 +99,7 @@ enum ScreenshotFixture: String {
     case gears = "-shotGears"
     case realGears = "-shotRealGears"
     case headwind = "-shotHeadwind"
+    case demo = "-shotDemo"
 
     static let kickrID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
     static let clickID = UUID(uuidString: "10000000-0000-0000-0000-000000000002")!
@@ -162,6 +166,8 @@ private struct ScreenshotFixtureView: View {
                 NavigationStack {
                     HeadwindControlView(headwind: headwind)
                 }
+            case .demo:
+                DemoModeView(onExit: {})
             }
         }
         .task {
@@ -172,6 +178,7 @@ private struct ScreenshotFixtureView: View {
     }
 
     private func stage() {
+        guard scenario != .demo else { return }
         var configuration = AppConfiguration()
         configuration.rememberKickr(
             named: "Wahoo KICKR 2A93",

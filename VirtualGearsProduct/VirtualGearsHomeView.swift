@@ -8,13 +8,18 @@ struct VirtualGearsHomeView: View {
     @Bindable var click: ClickCentralService
     @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
+    @Binding var isDemoMode: Bool
     /// Set once the rider stops a ride, so the app does not immediately start a
     /// new one. Reopening the app is the only way to ask for another ride.
     @State private var riderStopped = false
 
     var body: some View {
         Group {
-            if coordinator.isRidePresented {
+            if isDemoMode {
+                DemoModeView {
+                    exitDemoMode()
+                }
+            } else if coordinator.isRidePresented {
                 ActiveRideView(
                     store: store,
                     kickr: kickr,
@@ -30,11 +35,36 @@ struct VirtualGearsHomeView: View {
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    autoStarts: !riderStopped
+                    autoStarts: !riderStopped,
+                    onTryDemo: enterDemoMode
                 )
             }
         }
-        .task { await discoverOptionalEquipment() }
+        .task(id: isDemoMode) {
+            guard !isDemoMode else { return }
+            await discoverOptionalEquipment()
+        }
+    }
+
+    private func enterDemoMode() {
+        guard !coordinator.isRidePresented else { return }
+        // Disconnect without changing saved identities or resetting equipment.
+        // The interrupted-ride record stays in place for the real startup flow.
+        coordinator.suspendInterruptedRideBaselineRecovery()
+        coordinator.peripheral.stopAcceptingCommands()
+        coordinator.peripheral.stopAdvertising()
+        kickr.suspendForDemo()
+        click.suspendForDemo()
+        headwind.suspendForDemo()
+        isDemoMode = true
+    }
+
+    private func exitDemoMode() {
+        isDemoMode = false
+        kickr.resumeAfterDemo()
+        click.resumeAfterDemo()
+        headwind.resumeAfterDemo()
+        coordinator.resetInterruptedRideBaselineIfNeeded()
     }
 
     private func discoverOptionalEquipment() async {
@@ -110,6 +140,7 @@ struct StartupView: View {
     /// False after the rider stops a ride, so this screen waits for a tap.
     var autoStarts: Bool = true
     var beginsDiscovery = true
+    var onTryDemo: () -> Void = {}
     @State private var showsSettings = false
     /// Set when more than one trainer is found, which is the one situation
     /// where the rider has to say which is theirs.
@@ -131,6 +162,7 @@ struct StartupView: View {
                         stoppedCard
                         retryButton
                     }
+                    demoEntry
                 }
                 .frame(maxWidth: 560)
                 .padding(24)
@@ -165,7 +197,7 @@ struct StartupView: View {
             .onChange(of: canStart) { _, _ in startIfReady() }
             .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
             .onDisappear {
-                kickr.stopScanning()
+                kickr.stopScanning(reconnectSavedDevice: false)
             }
         }
     }
@@ -275,6 +307,29 @@ struct StartupView: View {
         )
         .font(.footnote)
         .foregroundStyle(.secondary)
+        .padding(.top, 4)
+    }
+
+    private var demoEntry: some View {
+        VStack(spacing: 8) {
+            Divider()
+            Button(action: onTryDemo) {
+                Label("Try Demo", systemImage: "play.circle.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityHint(
+                "Opens a simulated ride without connecting to a trainer"
+            )
+            Text(
+                "No trainer nearby? Explore a simulated ride. Demo Mode does not "
+                    + "use Bluetooth."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+        }
         .padding(.top, 4)
     }
 
@@ -447,6 +502,367 @@ struct StartupView: View {
         kickr.stopScanning()
         mustChoose = false
         coordinator.startRide(configuration: store.configuration)
+    }
+}
+
+struct DemoModeView: View {
+    @State private var store: ConfigurationStore
+    @State private var ride: DemoRideState
+    @State private var showsSettings = false
+    @State private var showsGears = false
+    @State private var showsFan = false
+    @State private var fanIsManual = false
+    @State private var fanSpeed = 50
+    @State private var sweepTask: Task<Void, Never>?
+    @State private var sweepGeneration: UUID?
+    let onExit: () -> Void
+
+    init(onExit: @escaping () -> Void) {
+        let configuration = AppConfiguration.demo
+        _store = State(initialValue: ConfigurationStore(configuration: configuration))
+        _ride = State(initialValue: DemoRideState(configuration: configuration))
+        self.onExit = onExit
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    simulationNotice
+                    gearsMenu
+                    gearReadout
+                    HStack(spacing: 12) {
+                        shiftButton(.easier)
+                        shiftButton(.harder)
+                    }
+                    .frame(minHeight: 180)
+                    simulatedStatus
+                }
+                .frame(maxWidth: 700)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity)
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Demo Ride")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    Button("Settings", systemImage: "gearshape") {
+                        showsSettings = true
+                    }
+                    Button("Fan", systemImage: "fan.fill") {
+                        showsFan = true
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Exit Demo", action: onExit)
+                        .fontWeight(.semibold)
+                }
+            }
+        }
+        .sheet(isPresented: $showsSettings) {
+            NavigationStack {
+                DemoSettingsView(store: store) {
+                    showsSettings = false
+                }
+            }
+        }
+        .sheet(isPresented: $showsGears) {
+            NavigationStack {
+                GearChoiceView(store: store)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showsGears = false }
+                                .fontWeight(.semibold)
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $showsFan) {
+            NavigationStack {
+                DemoHeadwindControlView(
+                    isManual: $fanIsManual,
+                    speed: $fanSpeed
+                ) {
+                    showsFan = false
+                }
+            }
+            .presentationDetents([.fraction(0.66), .large])
+        }
+        .onChange(of: store.configuration) { _, configuration in
+            stopSweep()
+            ride.use(configuration)
+        }
+        .onDisappear(perform: stopSweep)
+    }
+
+    private var simulationNotice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("Demo Mode · Simulated", systemImage: "testtube.2")
+                .font(.title3.weight(.bold))
+            Text(
+                "No trainer is connected. This demo stays on your iPhone and "
+                    + "does not use Bluetooth."
+            )
+            .font(.subheadline)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.blue.opacity(0.12), in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var gearsMenu: some View {
+        Menu {
+            Picker("Gears", selection: gearKind) {
+                Text("Virtual gears").tag(true)
+                Text("Copy a real bike").tag(false)
+            }
+            Button("All Gear Settings…", systemImage: "slider.horizontal.3") {
+                showsGears = true
+            }
+        } label: {
+            Label(
+                "\(store.configuration.drivetrainName) · "
+                    + "\(store.configuration.gearCount) gears",
+                systemImage: "chevron.up.chevron.down"
+            )
+            .font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.bordered)
+        .accessibilityHint("Change the simulated gears")
+    }
+
+    private var gearKind: Binding<Bool> {
+        Binding(
+            get: { store.configuration.usesVirtualGears },
+            set: { store.configuration.usesVirtualGears = $0 }
+        )
+    }
+
+    private var gearReadout: some View {
+        VStack(spacing: 4) {
+            Text("\(ride.selectedIndex + 1)")
+                .font(.system(
+                    size: 128,
+                    weight: .black,
+                    design: .rounded
+                ).monospacedDigit())
+                .minimumScaleFactor(0.4)
+                .lineLimit(1)
+                .contentTransition(.numericText())
+            Text(secondaryGearText)
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .accessibilityHidden(true)
+            GearPositionRail(
+                gears: ride.gearSequence,
+                selectedIndex: ride.selectedIndex,
+                requestedIndex: ride.selectedIndex
+            )
+            .padding(.top, 10)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, minHeight: 230)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: .rect(cornerRadius: 24)
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Simulated gear")
+        .accessibilityValue(gearAccessibilityValue)
+    }
+
+    private var secondaryGearText: String {
+        guard let gear = ride.displayedGear,
+              !store.configuration.usesVirtualGears else {
+            return "of \(ride.gearSequence.count)"
+        }
+        return "of \(ride.gearSequence.count) · \(gear.chainring)×\(gear.cog)"
+    }
+
+    private var gearAccessibilityValue: String {
+        let position = "\(ride.selectedIndex + 1) of \(ride.gearSequence.count)"
+        guard let gear = ride.displayedGear,
+              !store.configuration.usesVirtualGears else { return position }
+        return position + ", \(gear.chainring) tooth chainring by "
+            + "\(gear.cog) tooth cog"
+    }
+
+    private func shiftButton(_ direction: ShiftDirection) -> some View {
+        let easier = direction == .easier
+        return ShiftButton(
+            title: easier ? "Easier" : "Harder",
+            symbol: easier ? "minus" : "plus",
+            hint: easier
+                ? "Moves to the next easier simulated gear. Hold to keep shifting."
+                : "Moves to the next harder simulated gear. Hold to keep shifting.",
+            disabled: easier ? !ride.canShiftEasier : !ride.canShiftHarder
+        ) {
+            ride.shift(direction)
+        } repeatAction: {
+            beginSweep(direction)
+        } releaseAction: {
+            stopSweep()
+        }
+    }
+
+    private var simulatedStatus: some View {
+        VStack(spacing: 4) {
+            Label("Simulated status only", systemImage: "info.circle")
+                .font(.headline)
+            Text("Trainer, Click, Headwind and riding app: no devices connected")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func beginSweep(_ direction: ShiftDirection) {
+        stopSweep()
+        let generation = UUID()
+        sweepGeneration = generation
+        sweepTask = Task { @MainActor in
+            while !Task.isCancelled {
+                let canShift = direction == .easier
+                    ? ride.canShiftEasier : ride.canShiftHarder
+                guard canShift else { break }
+                ride.shift(direction)
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            guard sweepGeneration == generation else { return }
+            sweepTask = nil
+            sweepGeneration = nil
+        }
+    }
+
+    private func stopSweep() {
+        sweepGeneration = nil
+        sweepTask?.cancel()
+        sweepTask = nil
+    }
+}
+
+private struct DemoSettingsView: View {
+    @Bindable var store: ConfigurationStore
+    let onDone: () -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                Label(
+                    "These are examples only. No Bluetooth equipment is connected.",
+                    systemImage: "testtube.2"
+                )
+            } header: {
+                Text("Demo Mode · Simulated")
+            }
+
+            Section("Equipment status") {
+                LabeledContent("Trainer", value: "Not connected · simulated")
+                LabeledContent("Zwift Click", value: "Not connected · simulated")
+                LabeledContent("Wahoo Headwind", value: "Not connected · simulated")
+                LabeledContent("Riding app", value: "Not connected · simulated")
+            }
+
+            Section {
+                NavigationLink {
+                    GearChoiceView(store: store)
+                } label: {
+                    LabeledContent {
+                        Text(store.configuration.drivetrainName)
+                    } label: {
+                        Text("Gears")
+                        Text(store.configuration.gearSummary)
+                    }
+                }
+            } footer: {
+                Text(store.configuration.setupDescription)
+            }
+
+            Section("On the bike") {
+                Label(
+                    "In a real ride, leave the chain in a straight line. The demo "
+                        + "does not control exercise equipment.",
+                    systemImage: "link"
+                )
+            }
+        }
+        .navigationTitle("Settings")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", action: onDone)
+                    .fontWeight(.semibold)
+            }
+        }
+    }
+}
+
+private struct DemoHeadwindControlView: View {
+    @Binding var isManual: Bool
+    @Binding var speed: Int
+    let onDone: () -> Void
+    private let quickSpeeds = [0, 25, 50, 75, 100]
+
+    var body: some View {
+        Form {
+            Section {
+                Label(
+                    "Simulated controls only. No Headwind is connected.",
+                    systemImage: "testtube.2"
+                )
+            } header: {
+                Text("Demo Mode")
+            }
+
+            Section("Fan control") {
+                Picker("Fan control", selection: $isManual) {
+                    Text("Automatic").tag(false)
+                    Text("Manual").tag(true)
+                }
+                .pickerStyle(.segmented)
+
+                if isManual {
+                    LabeledContent("Fan speed", value: "\(speed)%")
+                        .font(.headline)
+                    Slider(
+                        value: Binding(
+                            get: { Double(speed) },
+                            set: { speed = Int($0.rounded()) }
+                        ),
+                        in: 0...100,
+                        step: 5
+                    )
+                    HStack(spacing: 8) {
+                        ForEach(quickSpeeds, id: \.self) { value in
+                            Button(value == 0 ? "Off" : "\(value)") {
+                                speed = value
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(maxWidth: .infinity)
+                            .accessibilityLabel(
+                                value == 0 ? "Fan off" : "\(value) percent"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Simulated Headwind")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", action: onDone)
+                    .fontWeight(.semibold)
+            }
+        }
     }
 }
 
@@ -1162,11 +1578,10 @@ private struct ShiftButton: View {
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
     @State private var repeatTask: Task<Void, Never>?
     @State private var isHeld = false
-    /// When the hold last shifted a gear. Letting go must not add a further
-    /// gear on top of the ones the rider already watched go by. This is a
-    /// timestamp rather than a flag so it can never get stuck and swallow a
-    /// later, genuine tap.
-    @State private var lastRepeatAt: Date?
+    @State private var hasRepeated = false
+    /// Releasing a hold also completes the underlying Button tap. Suppress that
+    /// completion briefly, but never long enough to swallow a later real tap.
+    @State private var suppressTapUntil: Date?
 
     var body: some View {
         Button(action: tapped) {
@@ -1188,13 +1603,13 @@ private struct ShiftButton: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in startRepeat() }
-                .onEnded { _ in stopRepeat() }
+                .onEnded { _ in finishRepeat() }
         )
-        .onDisappear(perform: stopRepeat)
+        .onDisappear(perform: cancelRepeat)
         // A cancelled touch never reports an end, so leaving the foreground has
         // to stop the repeat too or it would keep shifting with no finger down.
         .onChange(of: scenePhase) {
-            if scenePhase != .active { stopRepeat() }
+            if scenePhase != .active { cancelRepeat() }
         }
         .accessibilityLabel("Shift \(title.lowercased())")
         .accessibilityHint(
@@ -1203,36 +1618,48 @@ private struct ShiftButton: View {
     }
 
     private func tapped() {
-        if let lastRepeatAt, Date().timeIntervalSince(lastRepeatAt) < 0.4 {
+        if let suppressTapUntil, Date() < suppressTapUntil {
+            self.suppressTapUntil = nil
             return
         }
+        suppressTapUntil = nil
         action()
     }
 
     private func startRepeat() {
         guard !disabled, repeatTask == nil else { return }
         isHeld = true
-        lastRepeatAt = nil
+        hasRepeated = false
+        suppressTapUntil = nil
         repeatTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled, isHeld else { return }
             // Said once. From here the trainer sets the pace, so the sweep runs
             // as fast as gears can really be confirmed instead of on a timer
             // that either outruns the trainer or has its beats dropped.
-            lastRepeatAt = Date()
+            hasRepeated = true
             repeatAction()
         }
     }
 
-    private func stopRepeat() {
-        let wasSweeping = isHeld && lastRepeatAt != nil
+    private func finishRepeat() {
+        stopRepeat(cancelled: false)
+    }
+
+    private func cancelRepeat() {
+        stopRepeat(cancelled: true)
+    }
+
+    private func stopRepeat(cancelled: Bool) {
+        let wasSweeping = isHeld && hasRepeated
         isHeld = false
         repeatTask?.cancel()
         repeatTask = nil
         if wasSweeping {
-            lastRepeatAt = Date()
             releaseAction()
+            suppressTapUntil = cancelled ? nil : Date().addingTimeInterval(0.4)
         }
+        hasRepeated = false
     }
 }
 
@@ -1298,6 +1725,7 @@ private struct GearPositionRail: View {
             click: click,
             peripheral: FTMSPeripheral(),
             screen: DeviceScreenWake()
-        )
+        ),
+        isDemoMode: .constant(false)
     )
 }

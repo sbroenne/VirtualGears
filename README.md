@@ -59,6 +59,13 @@ it asks you to choose yours by name.
 The same rule applies to optional equipment: one Click or Headwind is used
 automatically; if several are found, Virtual Gears asks instead of guessing.
 
+No trainer nearby? Tap **Try Demo** on the looking-for-trainer screen. Demo Mode
+is clearly marked as simulated and lets you try the ride controls, gear ladder,
+gear choices, Settings and example accessory controls. It does not scan,
+connect, advertise or send Bluetooth commands, and it does not change saved
+equipment. Demo Mode shows how the app works; it does not prove compatibility
+with physical hardware.
+
 ## What it can do
 
 - **24 ready-made virtual gears**, with extra range for climbing.
@@ -72,6 +79,7 @@ automatically; if several are found, Virtual Gears asks instead of guessing.
 - **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
+- **A Bluetooth-free Demo Mode** for exploring the app without equipment.
 
 ## Screenshots
 

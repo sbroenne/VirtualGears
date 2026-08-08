@@ -101,6 +101,12 @@ trainer, Click or Headwind. A single device is simply used. Bluetooth signal
 strength does not measure distance reliably, so multiple devices are listed by
 name rather than ranked or guessed.
 
+If no trainer is available, **Try Demo** opens a clearly marked simulated ride.
+It includes the ride screen, shifting, gear choices, Settings and example Click,
+Headwind and riding-app status. Demo Mode never uses Bluetooth and never changes
+saved equipment. It is a tour of the product, not evidence that untested
+physical hardware works.
+
 ### Everything changeable mid-ride
 
 Trainer, gears, Click and Headwind can all be changed from the ride screen.
