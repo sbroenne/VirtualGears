@@ -97,6 +97,12 @@ the iPhone and when advertising itself as a trainer.
     while the current gear is the biggest thing on screen. Hold one to keep shifting.
     The screen stays awake for the whole ride.
 
+    ACCESSIBLE RIDE CONTROLS
+    VoiceOver reads the current gear and announces confirmed changes. The gear readout
+    is adjustable with VoiceOver gestures: swipe up for a harder gear and down for an
+    easier one. The app uses standard iPhone controls and respects larger text, Reduce
+    Motion and Differentiate Without Color.
+
     TRY IT WITHOUT A TRAINER
     Tap Try Demo to explore a clearly marked simulated ride without Bluetooth. Shift
     through the gear ladder, compare virtual and real-bike gearing, open Settings and

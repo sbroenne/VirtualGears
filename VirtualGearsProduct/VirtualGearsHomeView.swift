@@ -687,6 +687,10 @@ struct DemoModeView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Simulated gear")
         .accessibilityValue(gearAccessibilityValue)
+        .accessibilityHint(
+            "Swipe up for a harder gear or down for an easier gear."
+        )
+        .accessibilityAdjustableAction(adjustGear)
     }
 
     private var secondaryGearText: String {
@@ -703,6 +707,19 @@ struct DemoModeView: View {
               !store.configuration.usesVirtualGears else { return position }
         return position + ", \(gear.chainring) tooth chainring by "
             + "\(gear.cog) tooth cog"
+    }
+
+    private func adjustGear(_ direction: AccessibilityAdjustmentDirection) {
+        switch direction {
+        case .increment:
+            guard ride.canShiftHarder else { return }
+            ride.shift(.harder)
+        case .decrement:
+            guard ride.canShiftEasier else { return }
+            ride.shift(.easier)
+        @unknown default:
+            break
+        }
     }
 
     private func shiftButton(_ direction: ShiftDirection) -> some View {
@@ -861,6 +878,9 @@ private struct DemoHeadwindControlView: View {
                             .accessibilityLabel(
                                 value == 0 ? "Fan off" : "\(value) percent"
                             )
+                            .accessibilityAddTraits(
+                                speed == value ? .isSelected : []
+                            )
                         }
                     }
                 }
@@ -889,6 +909,7 @@ struct ActiveRideView: View {
     let onRiderStop: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverRunning
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var confirmsStop = false
     @State private var showsSettings = false
     @State private var showsGears = false
@@ -942,6 +963,7 @@ struct ActiveRideView: View {
         NavigationStack {
             GeometryReader { geometry in
                 let landscape = geometry.size.width > geometry.size.height
+                    && !dynamicTypeSize.isAccessibilitySize
                 VStack(spacing: landscape ? 10 : 14) {
                     if landscape {
                         landscapeControls(geometry)
@@ -1371,6 +1393,13 @@ struct ActiveRideView: View {
         .padding(.horizontal, 22)
         .padding(.vertical, 18)
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Gear")
+        .accessibilityValue(gearAccessibilityValue)
+        .accessibilityHint(
+            "Swipe up for a harder gear or down for an easier gear."
+        )
+        .accessibilityAdjustableAction(adjustGear)
     }
 
     private func shiftButton(easier: Bool) -> some View {
@@ -1442,6 +1471,19 @@ struct ActiveRideView: View {
         guard !configuration.usesVirtualGears else { return position }
         return position + ", \(gear.chainring) tooth chainring by "
             + "\(gear.cog) tooth cog"
+    }
+
+    private func adjustGear(_ direction: AccessibilityAdjustmentDirection) {
+        switch direction {
+        case .increment:
+            guard coordinator.canShiftHarder else { return }
+            coordinator.shift(.harder)
+        case .decrement:
+            guard coordinator.canShiftEasier else { return }
+            coordinator.shift(.easier)
+        @unknown default:
+            break
+        }
     }
 
     /// Says something out loud to a rider using VoiceOver. On a bike the screen

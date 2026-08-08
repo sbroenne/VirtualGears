@@ -73,6 +73,8 @@ with physical hardware.
   of their own.
 - **Real-bike gearing**, built from your chainrings and cassette.
 - **On-phone shifting** with large controls in portrait and landscape.
+- **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
+  control and support for larger text.
 - **Automatic optional-equipment discovery** for an original Zwift Click and
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.
@@ -128,7 +130,8 @@ circumference configured on the KICKR.
 Every gear change waits for confirmation from the trainer.
 
 [How the gears work](https://sbroenne.github.io/VirtualGears/how-it-works/) ·
-[Safety details](https://sbroenne.github.io/VirtualGears/safety/)
+[Safety details](https://sbroenne.github.io/VirtualGears/safety/) ·
+[Accessibility](https://sbroenne.github.io/VirtualGears/accessibility/)
 
 ## Important limitations
 

@@ -77,6 +77,11 @@ Two large buttons on the phone, placed for sweaty hands and a locked-out gaze.
 An original Zwift Click can be added and shifts the same gears, but it is never
 required and nothing ever waits for it.
 
+The current gear is also an adjustable VoiceOver control: swipe up for a harder
+gear and down for an easier one. Confirmed gear changes are announced, so the
+ride can be controlled without looking at the screen. [Accessibility
+details](accessibility.md) cover larger text and other iPhone settings.
+
 ### Headwind control
 
 An optional Wahoo Headwind can use Automatic control from its paired sensor or a
