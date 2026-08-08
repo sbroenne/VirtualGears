@@ -252,6 +252,21 @@ app because Demo Mode covers the reviewable interface without equipment.
 
 For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 `CURRENT_PROJECT_VERSION` in the Xcode target's Build Settings, then archive and
-upload again. The Demo Mode review build uses `CURRENT_PROJECT_VERSION = 4`.
+upload again. The current review build uses `CURRENT_PROJECT_VERSION = 5`, which
+adds the Demo Mode that shows the wheel size and command bytes changing.
 `CURRENT_PROJECT_VERSION` must increase on every single upload, even a re-upload of
 the same version.
+
+Uploading without opening Xcode:
+
+```sh
+xcodebuild -project VirtualGears.xcodeproj -scheme VirtualGears \
+  -configuration Release -destination 'generic/platform=iOS' \
+  -archivePath /tmp/VG.xcarchive archive
+xcodebuild -exportArchive -archivePath /tmp/VG.xcarchive \
+  -exportOptionsPlist TestFlightExportOptions.plist -exportPath /tmp/VGexport
+```
+
+The export options plist needs `destination: upload` and
+`method: app-store-connect`. Signing is automatic and uses the Apple ID already
+signed in to Xcode.
