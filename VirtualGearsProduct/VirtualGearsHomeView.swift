@@ -334,8 +334,9 @@ struct StartupView: View {
                 "Opens a simulated ride without connecting to a trainer"
             )
             Text(
-                "No trainer nearby? Explore a simulated ride. Demo Mode does not "
-                    + "use Bluetooth."
+                "No trainer nearby? Watch a simulated ride show how shifting "
+                    + "resizes the trainer's wheel. Demo Mode does not use "
+                    + "Bluetooth."
             )
             .font(.footnote)
             .foregroundStyle(.secondary)
@@ -547,6 +548,7 @@ struct DemoModeView: View {
                         shiftButton(.harder)
                     }
                     .frame(minHeight: 180)
+                    mechanismPanel
                     simulatedStatus
                 }
                 .frame(maxWidth: 700)
@@ -605,6 +607,8 @@ struct DemoModeView: View {
             stopSweep()
             ride.use(configuration)
         }
+        .task { await runSimulatedTrainer() }
+        .task { await runSimulatedRidingApp() }
         .onDisappear(perform: stopSweep)
     }
 
@@ -614,7 +618,8 @@ struct DemoModeView: View {
                 .font(.title3.weight(.bold))
             Text(
                 "No trainer is connected. This demo stays on your iPhone and "
-                    + "does not use Bluetooth."
+                    + "does not use Bluetooth. The wheel sizes and commands "
+                    + "below are the real ones a ride would send."
             )
             .font(.subheadline)
         }
@@ -673,7 +678,7 @@ struct DemoModeView: View {
             GearPositionRail(
                 gears: ride.gearSequence,
                 selectedIndex: ride.selectedIndex,
-                requestedIndex: ride.selectedIndex
+                requestedIndex: ride.requestedIndex
             )
             .padding(.top, 10)
         }
@@ -735,6 +740,122 @@ struct DemoModeView: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// The part of the demo that shows the actual mechanism: a riding app
+    /// working the terrain on one channel while shifting rewrites the trainer's
+    /// wheel size on another.
+    private var mechanismPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("What Virtual Gears is doing")
+                .font(.headline)
+
+            mechanismRow(
+                symbol: "mountain.2.fill",
+                title: "Riding app",
+                value: ride.route.terrainDescription,
+                detail: "The riding app sets the hills. Shifting never "
+                    + "changes them."
+            )
+
+            Divider()
+
+            mechanismRow(
+                symbol: "circle.dashed",
+                title: "Wheel size sent to trainer",
+                value: wheelSizeText,
+                detail: wheelSizeDetail
+            )
+
+            if let command = ride.commandDescription {
+                Divider()
+                mechanismRow(
+                    symbol: "chevron.left.forwardslash.chevron.right",
+                    title: "Command",
+                    value: command,
+                    detail: "The real bytes the app would send over Bluetooth."
+                )
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: .rect(cornerRadius: 20)
+        )
+    }
+
+    private func mechanismRow(
+        symbol: String,
+        title: String,
+        value: String,
+        detail: String
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.headline)
+                .foregroundStyle(.tint)
+                .frame(width: 26)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.title3.weight(.semibold).monospacedDigit())
+                    .contentTransition(.numericText())
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value)")
+    }
+
+    private var wheelSizeText: String {
+        guard let value = ride.pendingCircumferenceMillimeters
+            ?? ride.circumferenceMillimeters
+        else {
+            return "—"
+        }
+        return String(format: "%.1f mm", value)
+    }
+
+    private var wheelSizeDetail: String {
+        if ride.isAwaitingTrainer {
+            return "Asking the trainer. The gear changes on screen only once "
+                + "it says yes."
+        }
+        return "Confirmed. A bigger wheel is a harder gear — this is how a "
+            + "gear is made."
+    }
+
+    /// The simulated trainer answering, at about the speed a real KICKR does.
+    private func runSimulatedTrainer() async {
+        while !Task.isCancelled {
+            if ride.isAwaitingTrainer {
+                try? await Task.sleep(for: .milliseconds(120))
+                guard !Task.isCancelled else { return }
+                withAnimation(.snappy) {
+                    _ = ride.confirmPendingChange()
+                }
+            } else {
+                try? await Task.sleep(for: .milliseconds(40))
+            }
+        }
+    }
+
+    /// The simulated riding app moving along its route.
+    private func runSimulatedRidingApp() async {
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) {
+                ride.advanceRoute()
+            }
+        }
+    }
+
     private func beginSweep(_ direction: ShiftDirection) {
         stopSweep()
         let generation = UUID()
@@ -746,6 +867,11 @@ struct DemoModeView: View {
                 guard canShift else { break }
                 ride.shift(direction)
                 try? await Task.sleep(for: .milliseconds(250))
+                // A hold asks for gears at the trainer's pace, exactly as a
+                // real ride does.
+                while !Task.isCancelled, !ride.isSettled {
+                    try? await Task.sleep(for: .milliseconds(20))
+                }
             }
             guard sweepGeneration == generation else { return }
             sweepTask = nil
