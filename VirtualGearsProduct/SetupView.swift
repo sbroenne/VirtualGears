@@ -641,6 +641,9 @@ private struct HeadwindControls: View {
         .tint(headwind.desiredManualSpeed == speed ? .blue : .gray.opacity(0.28))
         .foregroundStyle(headwind.desiredManualSpeed == speed ? .white : .primary)
         .accessibilityLabel(speed == 0 ? "Fan off" : "\(speed) percent")
+        .accessibilityAddTraits(
+            headwind.desiredManualSpeed == speed ? .isSelected : []
+        )
     }
 }
 
