@@ -12,6 +12,9 @@ struct VirtualGearsHomeView: View {
     /// Set once the rider stops a ride, so the app does not immediately start a
     /// new one. Reopening the app is the only way to ask for another ride.
     @State private var riderStopped = false
+    /// Whether demo entry took the trainer service away from a still-connected
+    /// riding app, so exit knows to put it back.
+    @State private var demoInterruptedAdvertising = false
 
     var body: some View {
         Group {
@@ -51,6 +54,10 @@ struct VirtualGearsHomeView: View {
         // Disconnect without changing saved identities or resetting equipment.
         // The interrupted-ride record stays in place for the real startup flow.
         coordinator.suspendInterruptedRideBaselineRecovery()
+        // Stop parks the proxy with the riding app still connected, so demo
+        // entry can take the trainer service away from it. Remember that so
+        // exit can hand it straight back.
+        demoInterruptedAdvertising = coordinator.peripheral.isAdvertising
         coordinator.peripheral.stopAcceptingCommands()
         coordinator.peripheral.stopAdvertising()
         kickr.suspendForDemo()
@@ -64,6 +71,10 @@ struct VirtualGearsHomeView: View {
         kickr.resumeAfterDemo()
         click.resumeAfterDemo()
         headwind.resumeAfterDemo()
+        if demoInterruptedAdvertising {
+            demoInterruptedAdvertising = false
+            coordinator.peripheral.startAdvertising()
+        }
         coordinator.resetInterruptedRideBaselineIfNeeded()
     }
 

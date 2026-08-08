@@ -97,12 +97,13 @@ neutral value, and then worked through ten wheel sizes one at a time, restoring
 write state was uncertain.
 
 All ten were confirmed by the trainer. The sequence covered the previously
-tested range, the 646.9–4735.1 mm range the 24 virtual gears need at a 2070 mm
-baseline, and a 4800 mm upper safety margin.
+tested range and a 4800 mm upper safety margin. The 24 virtual gears need
+517.5–4735.1 mm at a 2070 mm baseline, so the hard end is covered by this run
+but the easy end below 647 mm is not yet individually confirmed.
 
 The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
-used, reconnect before riding so the starting circumference is restored first.
+used, reconnect before riding so the 2070 mm baseline is set first.
 
 ## What a KICKR V5 puts in its advertisement
 

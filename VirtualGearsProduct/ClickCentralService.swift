@@ -210,6 +210,13 @@ final class ClickCentralService: NSObject {
             || peripheral?.state == .connecting {
             return
         }
+        // The disconnect callback has not landed yet. Connecting now would let
+        // that callback tear this attempt down; it reconnects for us instead.
+        if peripheral?.state == .disconnecting {
+            reconnectTask?.cancel()
+            reconnectAttempt = 0
+            return
+        }
         // A pending backoff retry would otherwise reconnect underneath this
         // attempt and reset an in-progress discovery.
         reconnectTask?.cancel()

@@ -10,20 +10,15 @@ and cannot send a command to exercise equipment.
 
 ## The range was measured, not guessed
 
-The selected 500–4800 mm operating range was confirmed on a physical KICKR V5,
-every value acknowledged by the trainer, with the reference reset between
-each probe. These are the edges we chose to test, not a claim that the KICKR
-rejects values outside them. Virtual Gears never asks for anything outside the
-selected riding range.
+Ten wheel sizes between 647 mm and 4800 mm were sent to a physical KICKR V5 and
+every one was acknowledged by the trainer, with the 2070 mm reference reset
+between each probe. These are the edges we chose to test, not a claim that the
+KICKR rejects values outside them.
 
-A later boundary search reached both ends of Wahoo's two-byte command, with
-samples throughout the range acknowledged by the same KICKR V5. The search
-reset to 2070 mm after every probe and again at the end.
-
-That result proves what the command accepts; it does not prove that the extreme
-values produce useful, predictable gears while someone is pedalling. Virtual Gears
-therefore keeps its narrower riding range until the wider gears are physically
-ride-tested.
+Virtual Gears keeps its own operating range at 500–4800 mm and never asks for
+anything outside it. The easiest of the 24 virtual gears works out at 517.5 mm,
+which sits below the lowest value on that recorded run, so the easy end of the
+ladder has not yet been individually confirmed on hardware.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
