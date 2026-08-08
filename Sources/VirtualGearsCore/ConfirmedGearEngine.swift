@@ -7,7 +7,7 @@ public struct PendingGearChange: Equatable, Sendable {
     public let command: Data
 }
 
-public struct ConfirmedGearEngine: Sendable {
+public struct ConfirmedGearEngine: Equatable, Sendable {
     public let drivetrain: Drivetrain
     public let baselineCircumferenceMillimeters: Double
 
