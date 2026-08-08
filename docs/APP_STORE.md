@@ -119,8 +119,8 @@ the iPhone and when advertising itself as a trainer.
     speed from the ride screen. The fan is optional and never blocks a ride.
 
     CAREFUL WITH YOUR TRAINER
-    A gear is only shown after your trainer confirms it, and every gear stays inside
-    a fixed safety range the app never sends beyond.
+    A gear is only shown after your trainer confirms it. Every gear stays inside a
+    range tested on a real trainer.
 
     NOT AN ERG APP
     Workouts that set a target power are refused. Virtual Gears controls how hard a
@@ -240,7 +240,7 @@ app because Demo Mode covers the reviewable interface without equipment.
 | "We were unable to review because we don't have the hardware" | Point to **Try Demo** on the first screen and repeat the review steps above. A physical-hardware video can be supplied later as supporting evidence, but is not required to navigate the app. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
-| Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting, within a fixed range, and shows a gear only after the trainer confirms it. |
+| Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware, and shows a gear only after the trainer confirms it. |
 
 ## Later versions
 

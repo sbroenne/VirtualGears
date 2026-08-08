@@ -7,11 +7,11 @@ public enum TrainerSafety {
     /// scaled away from.
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
-    /// The range Virtual Gears will operate in. Ten values between 647 mm and
-    /// 4800 mm were staged on a physical KICKR V5 and each was acknowledged,
-    /// with the reference reset between probes; the span below 647 mm is not
-    /// yet individually confirmed. This intentionally remains much narrower
-    /// than the command's encodable limits.
+    /// The range Virtual Gears will operate in. Staged on a physical KICKR V5
+    /// across two runs — 517.5 mm to 647 mm, and 647 mm to 4800 mm — with every
+    /// value acknowledged and the reference reset between each probe, so both
+    /// ends of the gear ladder are covered. This intentionally remains much
+    /// narrower than the command's encodable limits.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
         500...4_800
 

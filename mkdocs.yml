@@ -17,6 +17,7 @@ exclude_docs: |
   DEMO_VIDEO.md
   requirements.txt
   zwift-click-button-trace.log
+  kickr-wheel-size-sweep.log
 
 theme:
   name: material
