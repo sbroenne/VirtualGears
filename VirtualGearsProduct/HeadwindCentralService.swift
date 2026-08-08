@@ -61,6 +61,8 @@ final class HeadwindCentralService: NSObject {
     private var speedDebounceTask: Task<Void, Never>?
     private var commandQueue: [HeadwindCommand] = []
     private var pendingCommand: HeadwindCommand?
+    private var isSuspendedForDemo = false
+    private var resumesAfterDemoDisconnect = false
     private var deferredAction: DeferredAction?
     private var scansAfterDisconnect = false
     private var hasReceivedInitialState = false
@@ -90,6 +92,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     func startScanning() {
+        guard !isSuspendedForDemo else { return }
         if hasSavedDevice {
             guard isReady else {
                 deferredAction = .scan
@@ -142,6 +145,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     func autoConnectSavedDevice() {
+        guard !isSuspendedForDemo else { return }
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
               peripheral?.state != .connecting,
@@ -165,6 +169,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     func resumeSavedConnection() {
+        guard !isSuspendedForDemo else { return }
         guard let selectedID else { return }
         desiredConnection = true
         reconnectTask?.cancel()
@@ -239,6 +244,45 @@ final class HeadwindCentralService: NSObject {
         restoreSensors(then: .remove)
     }
 
+    /// Stops Bluetooth activity for Demo Mode without changing the remembered
+    /// fan or sending the sensor/manual commands used by normal removal.
+    func suspendForDemo() {
+        isSuspendedForDemo = true
+        resumesAfterDemoDisconnect = false
+        desiredConnection = false
+        reconnectTask?.cancel()
+        speedDebounceTask?.cancel()
+        scanWhenPoweredOn = false
+        deferredAction = nil
+        scansAfterDisconnect = false
+        central.stopScan()
+        commandQueue.removeAll()
+        guard let peripheral else {
+            resetConnection()
+            state = .disconnected
+            return
+        }
+        state = .disconnecting
+        central.cancelPeripheralConnection(peripheral)
+    }
+
+    func resumeAfterDemo() {
+        if peripheral != nil {
+            resumesAfterDemoDisconnect = true
+            return
+        }
+        isSuspendedForDemo = false
+        if hasSavedDevice { resumeSavedConnection() }
+    }
+
+    private func finishDemoSuspensionIfNeeded() -> Bool {
+        guard isSuspendedForDemo, resumesAfterDemoDisconnect else { return false }
+        isSuspendedForDemo = false
+        resumesAfterDemoDisconnect = false
+        if hasSavedDevice { resumeSavedConnection() }
+        return true
+    }
+
     private func restoreSensors(then action: DeferredAction) {
         deferredAction = action
         requestedManual = false
@@ -254,6 +298,7 @@ final class HeadwindCentralService: NSObject {
         _ command: HeadwindCommand,
         replacingSpeed: Bool = false
     ) {
+        guard !isSuspendedForDemo else { return }
         if replacingSpeed {
             commandQueue.removeAll {
                 if case .setManualSpeed = $0 { true } else { false }
@@ -404,6 +449,7 @@ final class HeadwindCentralService: NSObject {
     }
 
     private func connect(_ peripheral: CBPeripheral) {
+        guard !isSuspendedForDemo else { return }
         central.stopScan()
         resetConnection(keepingPeripheral: true)
         self.peripheral = peripheral
@@ -545,6 +591,15 @@ extension HeadwindCentralService {
 
 extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        guard !isSuspendedForDemo else {
+            central.stopScan()
+            state = .disconnected
+            if central.state != .poweredOn {
+                resetConnection()
+                _ = finishDemoSuspensionIfNeeded()
+            }
+            return
+        }
         if central.state == .poweredOn {
             if scanWhenPoweredOn {
                 beginScanning()
@@ -564,6 +619,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi _: NSNumber
     ) {
+        guard !isSuspendedForDemo else { return }
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
         ] as? String
@@ -580,6 +636,10 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
+        guard !isSuspendedForDemo else {
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         guard self.peripheral?.identifier == peripheral.identifier else {
             central.cancelPeripheralConnection(peripheral)
             return
@@ -597,6 +657,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         resetConnection()
         log(error?.localizedDescription ?? "Connection failed", level: .error)
+        if finishDemoSuspensionIfNeeded() { return }
         scheduleReconnect()
     }
 
@@ -609,6 +670,7 @@ extension HeadwindCentralService: @preconcurrency CBCentralManagerDelegate {
         resetConnection()
         state = central.isScanning ? .scanning : .disconnected
         if let error { log(error.localizedDescription, level: .warning) }
+        if finishDemoSuspensionIfNeeded() { return }
         if scansAfterDisconnect {
             scansAfterDisconnect = false
             self.peripheral = nil
@@ -624,6 +686,7 @@ extension HeadwindCentralService: @preconcurrency CBPeripheralDelegate {
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         if let error {
             failConnection(
@@ -645,6 +708,7 @@ extension HeadwindCentralService: @preconcurrency CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         if let error {
             failConnection(
@@ -671,6 +735,7 @@ extension HeadwindCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard self.peripheral?.identifier == peripheral.identifier,
               characteristic.uuid == controlUUID else { return }
         if let error {
@@ -691,6 +756,7 @@ extension HeadwindCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard self.peripheral?.identifier == peripheral.identifier,
               characteristic.uuid == controlUUID else { return }
         if let error {

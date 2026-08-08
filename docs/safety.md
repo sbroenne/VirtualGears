@@ -4,6 +4,10 @@ Virtual Gears changes one setting on your trainer: its idea of your wheel size.
 It never touches resistance directly, and it never overrides what your riding
 app asks for.
 
+Demo Mode is separate from this hardware path. It uses local simulated gear
+state, does not use Bluetooth, does not run the interrupted-ride baseline reset
+and cannot send a command to exercise equipment.
+
 ## The range was measured, not guessed
 
 The selected 500–4800 mm operating range was confirmed on a physical KICKR V5,

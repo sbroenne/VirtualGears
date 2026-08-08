@@ -95,6 +95,10 @@ idea of the bike and leaves the road alone.
 
 There is no setup screen to complete first and no start button to press.
 
+You can explore the app without any equipment by tapping **Try Demo** while it
+looks for a trainer. The simulated ride does not use Bluetooth or control
+exercise equipment. A real ride still requires the compatible hardware above.
+
 ### What name to look for
 
 Virtual Gears tells your riding app it is called **Virtual Gears**, and most apps

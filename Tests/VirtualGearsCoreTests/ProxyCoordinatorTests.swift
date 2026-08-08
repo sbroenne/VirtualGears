@@ -154,6 +154,43 @@ final class ProxyCoordinatorTests: XCTestCase {
         )
     }
 
+    func testDemoSuspendsRecoveryWithoutForgettingTheInterruptedRide() async throws {
+        let key = "VirtualGears.unfinishedRideBaselineMillimeters"
+        defaults.set(neutral, forKey: key)
+        trainer.isReady = false
+        trainer.state = .disconnected
+
+        coordinator.resetInterruptedRideBaselineIfNeeded()
+        await Task.yield()
+        coordinator.suspendInterruptedRideBaselineRecovery()
+        trainer.isReady = true
+        trainer.state = .ready
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(trainer.wahooCommandCount, 0)
+        XCTAssertEqual(defaults.double(forKey: key), neutral)
+    }
+
+    func testRepeatedDemoEntryCanCancelReplacementRecovery() async throws {
+        let key = "VirtualGears.unfinishedRideBaselineMillimeters"
+        defaults.set(neutral, forKey: key)
+        trainer.isReady = false
+        trainer.state = .disconnected
+
+        coordinator.resetInterruptedRideBaselineIfNeeded()
+        await Task.yield()
+        coordinator.suspendInterruptedRideBaselineRecovery()
+        coordinator.resetInterruptedRideBaselineIfNeeded()
+        try await Task.sleep(for: .milliseconds(150))
+        coordinator.suspendInterruptedRideBaselineRecovery()
+        trainer.isReady = true
+        trainer.state = .ready
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(trainer.wahooCommandCount, 0)
+        XCTAssertEqual(defaults.double(forKey: key), neutral)
+    }
+
     // MARK: - Holding a button to keep shifting
 
     /// Holding used to fire on a 300 ms timer and silently drop any beat that

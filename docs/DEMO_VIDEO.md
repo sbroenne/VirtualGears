@@ -1,19 +1,17 @@
 # Recording the demo video
 
-Apple's reviewer will not own a smart trainer. Without one the app sits on
-"Looking for your trainer" forever, and the submission gets rejected as
-untestable. This video is what stops that happening. It is also the best thing
-to put on the website.
+This recording is optional supporting evidence of a physical ride. App Store
+reviewers can navigate the product without hardware by tapping **Try Demo**, so
+the App Review notes do not require a video link. A recording is still useful on
+the website because Demo Mode does not prove physical Bluetooth behavior.
 
 Aim for **90 seconds**. Longer and the reviewer stops watching.
 
-!!! danger "An animation will not do"
+!!! warning "Simulation is not hardware evidence"
 
-    The website has an animated explainer, and it is not a substitute here. The
-    reviewer is not asking what the app would look like; they are asking whether
-    it really drives the hardware it names. Only footage of the real thing
-    answers that, and offering an animation instead invites a harder rejection
-    than sending nothing.
+    Demo Mode and the website animation can show screens and local gear behavior.
+    Only footage of a physical ride can add evidence that the app drives the
+    named hardware. Never present the simulation as that evidence.
 
 ## Before you start
 
@@ -48,10 +46,9 @@ them in.
 | 9 | Phone: open the gears screen, switch to a real bike drivetrain | "I can ride the 24 virtual gears, or describe a real bike and ride its gears instead." |
 | 10 | Phone: stop the ride | "Virtual shifting is now off." |
 
-## What the reviewer specifically needs to see
+## What physical hardware evidence should show
 
-Make sure these three are unmistakable, because they are what the rejection
-risks are about:
+If a recording is made, make these three points unmistakable:
 
 1. **The iPhone appearing in the riding app's trainer list** (shot 3). This
    proves the app does what the description claims.
@@ -71,10 +68,10 @@ forever and makes every clone slow. Instead:
 3. The public link is then
    `https://github.com/sbroenne/VirtualGears/releases/download/demo/virtual-gears-demo.mp4`
 
-That link needs no account to open, which is exactly what Apple requires.
+That link needs no account to open.
 
 Then:
 
-- Put the link in **App Review Information → Notes** in App Store Connect,
-  replacing `<ADD LINK>` in [the App Store guide](APP_STORE.md).
-- Uncomment the video block in `docs/demo.md` so it plays on the website.
+- Optionally add the link to **App Review Information → Notes** as extra physical
+  evidence after the Demo Mode instructions in [the App Store guide](APP_STORE.md).
+- Add a video block to `docs/demo.md` if the recording should play on the website.

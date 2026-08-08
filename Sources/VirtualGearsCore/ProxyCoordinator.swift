@@ -53,6 +53,7 @@ public final class ProxyCoordinator {
     /// changed, leaving the rider shown a gear the trainer is not on.
     private var baselineUpdateInProgress = false
     private var baselineResetTask: Task<Void, Never>?
+    private var baselineResetGeneration: UUID?
     /// A normal Stop has to reset Virtual Gears' current gear without racing
     /// the riding app's command queue. Commands already executing finish first;
     /// new ones wait and continue transparently after the reset.
@@ -130,10 +131,25 @@ public final class ProxyCoordinator {
     /// sets its own gear regardless.
     public func resetInterruptedRideBaselineIfNeeded() {
         guard baselineResetTask == nil, lifecycle.isBetweenRides else { return }
+        let generation = UUID()
+        baselineResetGeneration = generation
         baselineResetTask = Task { [weak self] in
             await self?.resetInterruptedRideBaseline()
+            guard self?.baselineResetGeneration == generation else { return }
             self?.baselineResetTask = nil
+            self?.baselineResetGeneration = nil
         }
+    }
+
+    /// Pauses launch-time recovery while the local demo is open.
+    ///
+    /// The saved baseline remains in place, so returning to the real startup
+    /// flow can try again. Demo Mode must never be the reason a trainer command
+    /// is sent.
+    public func suspendInterruptedRideBaselineRecovery() {
+        baselineResetTask?.cancel()
+        baselineResetTask = nil
+        baselineResetGeneration = nil
     }
 
     private func resetInterruptedRideBaseline() async {

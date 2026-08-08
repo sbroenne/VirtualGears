@@ -97,6 +97,12 @@ the iPhone and when advertising itself as a trainer.
     while the current gear is the biggest thing on screen. Hold one to keep shifting.
     The screen stays awake for the whole ride.
 
+    TRY IT WITHOUT A TRAINER
+    Tap Try Demo to explore a clearly marked simulated ride without Bluetooth. Shift
+    through the gear ladder, compare virtual and real-bike gearing, open Settings and
+    try example Click, Headwind and riding-app status and fan controls. Demo choices
+    never replace saved equipment.
+
     WORKS WITH THE APPS YOU ALREADY USE
     Virtual Gears appears as an ordinary FTMS indoor trainer. That adds virtual shifting
     to compatible apps that have none of their own, without requiring a plugin or
@@ -154,7 +160,7 @@ Upload these six, in this order:
 3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
 4. `headwind-control.png` — optional Automatic/Manual Headwind control with
    one-tap speeds.
-5. `starting.png` — automatic reconnect for the trainer, Click and Headwind.
+5. `starting.png` — automatic reconnect plus the Bluetooth-free Try Demo entry.
 6. `settings.png` — the three remembered equipment rows and gear choice.
 
 ### Privacy answers ("App Privacy" section)
@@ -177,16 +183,23 @@ to the version, then **Add for Review** → **Submit**.
 
 ## Stage 6 — The review notes (do not skip this)
 
-The reviewer will not have a smart trainer. Without one the app shows "Looking for
-your trainer" and nothing else, and the review will be rejected as untestable unless
-you explain it. Paste this into **App Review Information → Notes**:
+The reviewer does not need a smart trainer to inspect the app. Paste this into
+**App Review Information → Notes**:
 
     This app controls a compatible Wahoo KICKR indoor bicycle trainer over Bluetooth.
-    It was built and physically tested with a KICKR V5. Without a KICKR present the app
-    stays on its "looking for your trainer" screen because there is nothing to connect
-    to.
+    It was built and physically tested with a KICKR V5.
 
-    A video showing the full app in use on real hardware is here: <ADD LINK>
+    No hardware is required for review. On the first screen, tap "Try Demo". A blue
+    "Demo Mode · Simulated" notice confirms that no trainer is connected and Bluetooth
+    is not being used. The demo provides the production gear picker, visible gear
+    ladder, large Easier and Harder controls, virtual and real-bike gearing choices,
+    Settings, simulated trainer/Click/Headwind/riding-app status, and simulated
+    Headwind controls. Tap "Exit Demo" to return to real trainer discovery.
+
+    Demo Mode uses local in-memory state only. It does not scan, advertise, connect or
+    send Bluetooth commands, and its choices do not replace saved equipment. The demo
+    shows the app's interface and local gearing behavior; it is not a claim that
+    simulated accessories prove physical compatibility.
 
     How it works: the iPhone connects to the trainer as a Bluetooth client, and at the
     same time presents itself as a standard FTMS indoor trainer to a riding app on a
@@ -207,22 +220,23 @@ you explain it. Paste this into **App Review Information → Notes**:
     that must survive an incoming call or a notification. Losing it mid-ride would
     disconnect the rider's trainer.
 
-**Record the video before you submit.** `DEMO_VIDEO.md` in this folder is a
-shot-by-shot script for it, including what to say, what the reviewer specifically
-needs to see, and where to host the file so it opens without an account.
+`DEMO_VIDEO.md` remains an optional script for recording additional physical
+hardware evidence. A video link is not required for the reviewer to navigate the
+app because Demo Mode covers the reviewable interface without equipment.
 
 ## Likely rejection reasons, and what to say
 
 | Reason | Response |
 |---|---|
-| "We were unable to review because we don't have the hardware" | The notes and video above. If it happens anyway, reply in Resolution Center with the video timestamped. |
+| "We were unable to review because we don't have the hardware" | Point to **Try Demo** on the first screen and repeat the review steps above. A physical-hardware video can be supplied later as supporting evidence, but is not required to navigate the app. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
 | Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware. |
 
 ## Later versions
 
-For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and `CURRENT_PROJECT_VERSION`
-(1 → 2) in the Xcode target's Build Settings, then archive and upload again.
+For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
+`CURRENT_PROJECT_VERSION` in the Xcode target's Build Settings, then archive and
+upload again. The Demo Mode review build uses `CURRENT_PROJECT_VERSION = 4`.
 `CURRENT_PROJECT_VERSION` must increase on every single upload, even a re-upload of
 the same version.

@@ -1,6 +1,6 @@
 # Privacy Policy for Virtual Gears
 
-Last updated: 7 August 2026
+Last updated: 8 August 2026
 
 ## The short version
 
@@ -17,6 +17,10 @@ again each ride:
 - Which optional shift controller or Headwind fan it should reconnect to.
 
 These stay on your iPhone. Deleting the app deletes them.
+
+Demo Mode uses a separate in-memory setup. Its simulated equipment and gear
+choices are discarded when you leave the demo and are not written over the
+equipment or gears saved for real rides.
 
 ## What the app does not do
 

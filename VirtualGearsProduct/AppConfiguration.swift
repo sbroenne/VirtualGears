@@ -6,7 +6,7 @@ import VirtualGearsCore
 @Observable
 final class ConfigurationStore {
     private static let storageKey = "VirtualGears.appConfiguration"
-    private let defaults: UserDefaults
+    private let defaults: UserDefaults?
 
     var configuration: AppConfiguration {
         didSet { save() }
@@ -24,6 +24,13 @@ final class ConfigurationStore {
         configuration = loaded
     }
 
+    /// An in-memory store for previews and Demo Mode. Changes are intentionally
+    /// discarded and can never overwrite the rider's saved equipment or gears.
+    init(configuration: AppConfiguration) {
+        defaults = nil
+        self.configuration = configuration
+    }
+
     func setChainring(_ option: ChainringOption) {
         configuration.chainringID = option.id
     }
@@ -33,6 +40,7 @@ final class ConfigurationStore {
     }
 
     private func save() {
+        guard let defaults else { return }
         guard let data = try? JSONEncoder().encode(configuration) else { return }
         defaults.set(data, forKey: Self.storageKey)
     }

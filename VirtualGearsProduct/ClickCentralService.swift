@@ -89,6 +89,8 @@ final class ClickCentralService: NSObject {
     private var reconnectTask: Task<Void, Never>?
     private var handshakeTimeoutTask: Task<Void, Never>?
     private var repeatTask: Task<Void, Never>?
+    private var isSuspendedForDemo = false
+    private var resumesAfterDemoDisconnect = false
     private var edgeTracker = ZwiftClickEdgeTracker()
     private var heldButton: ZwiftClickButton?
     private var isHolding = false
@@ -105,6 +107,7 @@ final class ClickCentralService: NSObject {
     }
 
     func startScanning() {
+        guard !isSuspendedForDemo else { return }
         desiredConnection = false
         reconnectTask?.cancel()
         scanWhenPoweredOn = true
@@ -143,6 +146,7 @@ final class ClickCentralService: NSObject {
     }
 
     func autoConnectSavedDevice() {
+        guard !isSuspendedForDemo else { return }
         guard hasSavedDevice, !isScanning else { return }
         guard peripheral?.state != .connected,
               peripheral?.state != .connecting,
@@ -199,6 +203,7 @@ final class ClickCentralService: NSObject {
     }
 
     func resumeSavedConnection() {
+        guard !isSuspendedForDemo else { return }
         guard let selectedID else { return }
         desiredConnection = true
         if peripheral?.state == .connected
@@ -227,6 +232,30 @@ final class ClickCentralService: NSObject {
         central.cancelPeripheralConnection(peripheral)
     }
 
+    func suspendForDemo() {
+        isSuspendedForDemo = true
+        resumesAfterDemoDisconnect = false
+        scanWhenPoweredOn = false
+        disconnect()
+    }
+
+    func resumeAfterDemo() {
+        if peripheral != nil {
+            resumesAfterDemoDisconnect = true
+            return
+        }
+        isSuspendedForDemo = false
+        if hasSavedDevice { resumeSavedConnection() }
+    }
+
+    private func finishDemoSuspensionIfNeeded() -> Bool {
+        guard isSuspendedForDemo, resumesAfterDemoDisconnect else { return false }
+        isSuspendedForDemo = false
+        resumesAfterDemoDisconnect = false
+        if hasSavedDevice { resumeSavedConnection() }
+        return true
+    }
+
     func forgetSelection() {
         disconnect()
         selectedID = nil
@@ -235,6 +264,7 @@ final class ClickCentralService: NSObject {
     }
 
     private func connect(_ peripheral: CBPeripheral) {
+        guard !isSuspendedForDemo else { return }
         central.stopScan()
         resetConnection(keepingPeripheral: true)
         self.peripheral = peripheral
@@ -316,7 +346,8 @@ final class ClickCentralService: NSObject {
     }
 
     private func sendHandshakeIfReady() {
-        guard subscribed.contains(asyncUUID),
+        guard !isSuspendedForDemo,
+              subscribed.contains(asyncUUID),
               subscribed.contains(transmitUUID),
               !handshakeSent,
               let peripheral,
@@ -495,6 +526,15 @@ extension ClickCentralService {
 
 extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        guard !isSuspendedForDemo else {
+            central.stopScan()
+            state = .disconnected
+            if central.state != .poweredOn {
+                resetConnection()
+                _ = finishDemoSuspensionIfNeeded()
+            }
+            return
+        }
         if central.state == .poweredOn {
             if scanWhenPoweredOn {
                 beginScanning()
@@ -514,6 +554,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi _: NSNumber
     ) {
+        guard !isSuspendedForDemo else { return }
         let advertised = advertisementData[
             CBAdvertisementDataLocalNameKey
         ] as? String
@@ -530,6 +571,10 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         _ central: CBCentralManager,
         didConnect peripheral: CBPeripheral
     ) {
+        guard !isSuspendedForDemo else {
+            central.cancelPeripheralConnection(peripheral)
+            return
+        }
         guard self.peripheral?.identifier == peripheral.identifier else {
             central.cancelPeripheralConnection(peripheral)
             return
@@ -547,6 +592,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         resetConnection()
         log(error?.localizedDescription ?? "Connection failed", level: .error)
+        if finishDemoSuspensionIfNeeded() { return }
         scheduleReconnect()
     }
 
@@ -559,6 +605,7 @@ extension ClickCentralService: @preconcurrency CBCentralManagerDelegate {
         resetConnection()
         state = central.isScanning ? .scanning : .disconnected
         if let error { log(error.localizedDescription, level: .warning) }
+        if finishDemoSuspensionIfNeeded() { return }
         if desiredConnection { scheduleReconnect() }
     }
 }
@@ -568,6 +615,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             fail("Click service discovery failed: \(error.localizedDescription)")
             return
@@ -595,6 +643,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         servicesPending -= 1
         if let error {
             if service.uuid == batteryServiceUUID {
@@ -623,6 +672,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             if characteristic.uuid == batteryUUID {
                 log("Battery notification unavailable: "
@@ -643,6 +693,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         guard characteristic.uuid == receiveUUID, let error else { return }
         handshakeTimeoutTask?.cancel()
         fail("Click handshake write failed: \(error.localizedDescription)")
@@ -653,6 +704,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
+        guard !isSuspendedForDemo else { return }
         if let error {
             log("\(characteristic.uuid) update failed: "
                 + error.localizedDescription, level: .error)
