@@ -146,6 +146,15 @@ Every gear change waits for confirmation from the trainer.
   2070 mm reference. If you set a custom value in the Wahoo app, write it down
   and set it again afterwards.
 
+## Support
+
+Questions go in [Q&A discussions][qa]; bugs go in [Issues][newissue]. The
+[support page](https://sbroenne.github.io/VirtualGears/support/) lists the
+common problems and their answers first.
+
+  [qa]: https://github.com/sbroenne/VirtualGears/discussions/categories/q-a
+  [newissue]: https://github.com/sbroenne/VirtualGears/issues/new/choose
+
 ## Independent project
 
 Virtual Gears is not affiliated with Wahoo Fitness or Zwift. Wahoo, KICKR,

@@ -53,6 +53,7 @@ nav:
   - Accessibility: accessibility.md
   - Safety: safety.md
   - Privacy: PRIVACY.md
+  - Support: support.md
 
 markdown_extensions:
   - admonition
