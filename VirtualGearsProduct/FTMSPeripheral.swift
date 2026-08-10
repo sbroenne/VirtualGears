@@ -87,12 +87,19 @@ final class FTMSPeripheral: NSObject {
     }
 
     func startAdvertising() {
+        // A failure left over from an earlier attempt must not be read as this
+        // one's verdict, or a perfectly good ride start aborts on stale news.
+        latestEvent = nil
+        // Set before the guard below, not after. A ride that asks to advertise
+        // while the Bluetooth stack happens to be resetting used to have the
+        // request dropped for good, because the recovery in
+        // `peripheralManagerDidUpdateState` keys off exactly this flag.
+        wantsAdvertising = true
         guard manager.state == .poweredOn else {
             fail("Bluetooth peripheral mode is unavailable")
             return
         }
         guard !startRequested, !isAdvertising else { return }
-        wantsAdvertising = true
         startRequested = true
         acceptingCommands = true
         if servicePublished {
@@ -146,6 +153,14 @@ final class FTMSPeripheral: NSObject {
     func isControlSubscriber(_ source: RidingAppCommandSource) -> Bool {
         subscriptions[source.centralID]?.contains(controlUUID) == true
             && controlSubscriptionIDs[source.centralID] == source.subscriptionID
+    }
+
+    /// Whether a control claim still belongs to a riding app that is actually
+    /// here. A dropped link does not reliably produce an unsubscribe, so this is
+    /// what tells a live claim apart from the ghost of a finished one.
+    private func isLiveControlSubscriber(_ centralID: UUID) -> Bool {
+        centrals[centralID] != nil
+            && subscriptions[centralID]?.contains(controlUUID) == true
     }
 
     /// Sent to every subscribed app. A riding app that only reads ride data,
@@ -263,7 +278,13 @@ final class FTMSPeripheral: NSObject {
         // by whoever actually asked for control. Tying it to the first app that
         // merely subscribed used to lock out every later riding app.
         if request == .requestControl {
-            if let owner = controlOwnerID, owner != centralID {
+            // A riding app whose link dropped does not always get to unsubscribe
+            // on the way out, so its claim can outlive it. Holding the trainer
+            // for a connection that no longer exists locks out the very app that
+            // is trying to come back, and nothing on the PC can clear it.
+            if let owner = controlOwnerID,
+               owner != centralID,
+               isLiveControlSubscriber(owner) {
                 return .init(result: .controlNotPermitted, status: nil)
             }
         } else if controlOwnerID != centralID {

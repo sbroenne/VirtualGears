@@ -215,7 +215,12 @@ public enum ProductLogger {
         let safeMessage = sanitized(message)
         switch level {
         case .info:
-            logger.info(
+            // Deliberately `notice`, not `info`. On iOS, `info` lives only in a
+            // memory buffer and is gone by the time anyone collects a log, so a
+            // whole ride used to leave no trace to diagnose a fault with. These
+            // are low-rate ride milestones, not chatter, so they are worth the
+            // disk.
+            logger.notice(
                 "\(source, privacy: .public): \(safeMessage, privacy: .public)"
             )
         case .warning:

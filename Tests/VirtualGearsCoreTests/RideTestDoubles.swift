@@ -176,7 +176,11 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
         return await commandHandler?(request, source)
     }
     func relayIndoorBikeData(_ data: Data) { relayedBikeData.append(data) }
-    func notifyControlLost() {}
+
+    /// Counts how often the riding app has been told its control claim is gone.
+    /// A no-op here used to hide the fact that a trainer blip revoked it.
+    private(set) var controlLostNotificationCount = 0
+    func notifyControlLost() { controlLostNotificationCount += 1 }
 }
 
 @MainActor

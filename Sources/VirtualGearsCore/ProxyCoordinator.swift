@@ -877,7 +877,14 @@ public final class ProxyCoordinator {
         // leave the trainer holding it. Only a live ride is worth recovering.
         guard lifecycle.canRecover else { return }
         lifecycle.markReconnecting()
-        peripheral.notifyControlLost()
+        // The riding app's control claim is a relationship with Virtual Gears,
+        // not with the trainer, so a trainer that blips must not revoke it.
+        // Telling the app it has lost control forces it to ask again, and that
+        // request is answered from `handleCommand`, which refuses everything
+        // while the trainer is away. A riding app that runs out of retries in
+        // that window never gets control back for the rest of the ride, with
+        // every link still looking healthy. Commands during the blip already
+        // fail honestly on their own.
         shiftTask?.cancel()
         // A sweep cannot outlive the connection it was riding on.
         heldDirection = nil

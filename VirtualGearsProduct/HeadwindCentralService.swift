@@ -66,6 +66,7 @@ final class HeadwindCentralService: NSObject {
     private var deferredAction: DeferredAction?
     private var scansAfterDisconnect = false
     private var hasReceivedInitialState = false
+    private var isIgnoringConflictingHeadwindState = false
     private var hasStoredControlPreference: Bool
 
     private(set) var connectionIsStalled = false
@@ -344,12 +345,20 @@ final class HeadwindCentralService: NSObject {
                 let isInitial = !hasReceivedInitialState
                 if !isInitial, hasStoredControlPreference,
                    (newMode == .manual) != requestedManual {
-                    log(
-                        "Ignored Headwind state that conflicts with confirmed control",
-                        level: .warning
-                    )
+                    // A Headwind reports its state about once a second, so a
+                    // disagreement that lasts logs forever and buries every
+                    // other line in the log a bug report depends on. Say it
+                    // once per disagreement.
+                    if !isIgnoringConflictingHeadwindState {
+                        isIgnoringConflictingHeadwindState = true
+                        log(
+                            "Ignored Headwind state that conflicts with confirmed control",
+                            level: .warning
+                        )
+                    }
                     return
                 }
+                isIgnoringConflictingHeadwindState = false
                 apply(mode: newMode, speed: speed)
                 if isInitial {
                     hasReceivedInitialState = true
