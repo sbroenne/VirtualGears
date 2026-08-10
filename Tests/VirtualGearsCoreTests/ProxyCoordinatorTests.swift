@@ -388,6 +388,44 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertFalse(screen.keepAwake)
     }
 
+    /// A trainer that blips must not cost the riding app its control claim.
+    /// That claim is between the riding app and Virtual Gears, and asking for it
+    /// again is refused for as long as the trainer is away, so revoking it can
+    /// lock the riding app out for the rest of the ride while every link still
+    /// looks healthy.
+    func testATrainerBlipLeavesTheRidingAppInControl() async throws {
+        try await startRide()
+        let ridingAppID = UUID()
+        let claimed = await ridingApp.send(.requestControl, from: ridingAppID)
+        XCTAssertEqual(claimed?.result, .success)
+
+        trainer.isReady = false
+        trainer.state = .disconnected
+        trainer.stateHandler?(.disconnected)
+        try await Task.sleep(for: .milliseconds(150))
+
+        XCTAssertEqual(
+            ridingApp.controlLostNotificationCount,
+            0,
+            "A trainer blip must not revoke the riding app's control"
+        )
+
+        trainer.isReady = true
+        trainer.state = .ready
+        trainer.stateHandler?(.ready)
+        try await settle { self.coordinator.state == .active }
+
+        let afterBlip = await ridingApp.send(
+            .setTargetResistanceLevel(tenths: 50),
+            from: ridingAppID
+        )
+        XCTAssertNotEqual(
+            afterBlip?.result,
+            .controlNotPermitted,
+            "The riding app should still be steering once the trainer is back"
+        )
+    }
+
     func testNormalStopKeepsEveryBluetoothLinkReady() async throws {
         try await startRide()
         ridingApp.subscribedAppCount = 1
