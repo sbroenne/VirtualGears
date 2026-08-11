@@ -449,17 +449,16 @@ final class HeadwindCentralService: NSObject {
         // connecting is not a reason to send one. Launching the app to check a
         // setting used to put the fan straight back to whatever speed it was
         // last left on, which at full power is alarming rather than helpful.
-        // The rider's own controls enqueue directly and are unaffected.
-        guard isRideDrivingFan else { return }
-        if requestedManual {
-            if mode != .manual {
-                enqueue(.setMode(.manual))
-            }
-            if mode != .manual || manualSpeed != desiredManualSpeed {
-                enqueue(.setManualSpeed(desiredManualSpeed), replacingSpeed: true)
-            }
-        } else if mode != lastSensorMode {
-            enqueue(.setMode(lastSensorMode))
+        // Only a manual preference is worth asserting at all: choosing sensor
+        // control means the fan answers to its own sensor, so there is nothing
+        // to restore. The rider's own controls enqueue directly and so are
+        // unaffected by either restriction.
+        guard isRideDrivingFan, requestedManual else { return }
+        if mode != .manual {
+            enqueue(.setMode(.manual))
+        }
+        if mode != .manual || manualSpeed != desiredManualSpeed {
+            enqueue(.setManualSpeed(desiredManualSpeed), replacingSpeed: true)
         }
     }
 
