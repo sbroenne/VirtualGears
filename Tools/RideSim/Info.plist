@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualGearsTools.NameScan</string>
+	<string>com.sbroenne.VirtualGearsTools.RideSim</string>
 	<key>CFBundleName</key>
-	<string>name-scan</string>
+	<string>ride-sim</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>name-scan reads the name a fitness machine broadcasts, to check what a riding app would show.</string>
+	<string>ride-sim connects to the app as a riding app would, to check what it offers.</string>
 </dict>
 </plist>
