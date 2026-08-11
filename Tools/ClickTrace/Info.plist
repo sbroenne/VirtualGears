@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualGears.ClickTrace</string>
+	<string>com.sbroenne.VirtualGearsTools.ClickTrace</string>
 	<key>CFBundleName</key>
 	<string>click-trace</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.sbroenne.VirtualGears.KickrProbe</string>
+	<string>com.sbroenne.VirtualGearsTools.KickrProbe</string>
 	<key>CFBundleName</key>
 	<string>kickr-probe</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

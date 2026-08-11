@@ -25,6 +25,10 @@ let package = Package(
             name: "name-scan",
             targets: ["NameScan"]
         ),
+        .executable(
+            name: "ride-sim",
+            targets: ["RideSim"]
+        ),
     ],
     targets: [
         .target(
@@ -87,6 +91,23 @@ let package = Package(
         .testTarget(
             name: "VirtualGearsCoreTests",
             dependencies: ["VirtualGearsCore"]
+        ),
+        // A macOS command-line tool that connects to the app on the phone the
+        // way a riding app on a PC does, so the far side of CoreBluetooth can
+        // be checked on demand instead of only by riding.
+        .executableTarget(
+            name: "RideSim",
+            dependencies: ["VirtualGearsCore"],
+            path: "Tools/RideSim",
+            exclude: ["Info.plist", "run.sh"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Tools/RideSim/Info.plist",
+                ])
+            ]
         ),
     ]
 )
