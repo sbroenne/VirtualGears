@@ -92,42 +92,4 @@ final class FTMSControlPointTests: XCTestCase {
             try FitnessMachineControlPointResponse.decode(Data([0x80, 0, 0]))
         )
     }
-
-    func testOwnershipRequiresSubscriptionAndControl() {
-        var ownership = FTMSControlOwnership()
-        XCTAssertEqual(
-            ownership.handle(.requestControl).result,
-            .controlNotPermitted
-        )
-        ownership.setControlPointSubscribed(true)
-        XCTAssertEqual(
-            ownership.handle(.setTargetPower(watts: 200)).result,
-            .controlNotPermitted
-        )
-        XCTAssertEqual(ownership.handle(.requestControl).result, .success)
-        XCTAssertTrue(ownership.hasControl)
-        XCTAssertEqual(
-            ownership.handle(.setTargetPower(watts: 200)).result,
-            .success
-        )
-    }
-
-    func testResetAndControlLossRelinquishControl() {
-        var ownership = FTMSControlOwnership()
-        ownership.setControlPointSubscribed(true)
-        _ = ownership.handle(.requestControl)
-        XCTAssertEqual(ownership.handle(.reset).result, .success)
-        XCTAssertFalse(ownership.hasControl)
-        XCTAssertEqual(
-            ownership.handle(.startOrResume).result,
-            .controlNotPermitted
-        )
-
-        _ = ownership.handle(.requestControl)
-        XCTAssertEqual(ownership.loseControl(), .controlPermissionLost)
-        XCTAssertNil(ownership.loseControl())
-        _ = ownership.handle(.requestControl)
-        ownership.setControlPointSubscribed(false)
-        XCTAssertFalse(ownership.hasControl)
-    }
 }

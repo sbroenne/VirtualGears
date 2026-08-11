@@ -268,27 +268,20 @@ final class FTMSPeripheral: NSObject {
         let request = command.request
         let centralID = command.source.centralID
         emit(.controlRequest(centralID, request))
-        guard acceptingCommands, isControlSubscriber(command.source) else {
-            return .init(result: .operationFailed, status: nil)
-        }
-        guard subscriptions[centralID]?.contains(controlUUID) == true else {
-            return .init(result: .controlNotPermitted, status: nil)
-        }
-        // Only one app may steer the trainer at a time, but that claim is held
-        // by whoever actually asked for control. Tying it to the first app that
-        // merely subscribed used to lock out every later riding app.
-        if request == .requestControl {
-            // A riding app whose link dropped does not always get to unsubscribe
-            // on the way out, so its claim can outlive it. Holding the trainer
-            // for a connection that no longer exists locks out the very app that
-            // is trying to come back, and nothing on the PC can clear it.
-            if let owner = controlOwnerID,
-               owner != centralID,
-               isLiveControlSubscriber(owner) {
-                return .init(result: .controlNotPermitted, status: nil)
-            }
-        } else if controlOwnerID != centralID {
-            return .init(result: .controlNotPermitted, status: nil)
+        let decision = FTMSControlOwnership.decide(
+            FTMSControlRequest(
+                request: request,
+                requesterID: centralID,
+                ownerID: controlOwnerID,
+                ownerIsPresent: controlOwnerID.map(isLiveControlSubscriber) ?? false,
+                requesterSubscriptionIsCurrent: isControlSubscriber(command.source),
+                requesterIsSubscribed: subscriptions[centralID]?
+                    .contains(controlUUID) == true,
+                isAcceptingCommands: acceptingCommands
+            )
+        )
+        if case let .refuse(result) = decision {
+            return .init(result: result, status: nil)
         }
         guard let commandHandler else {
             return .init(result: .operationFailed, status: nil)
@@ -306,12 +299,13 @@ final class FTMSPeripheral: NSObject {
             return
         }
         let centralID = command.source.centralID
+        controlOwnerID = FTMSControlOwnership.owner(
+            after: command.request,
+            result: result.result,
+            currentOwner: controlOwnerID,
+            requesterID: centralID
+        )
         if result.result == .success {
-            if command.request == .requestControl {
-                controlOwnerID = centralID
-            } else if command.request == .reset {
-                controlOwnerID = nil
-            }
             controllingAppID = controlOwnerID
         }
         let response = FitnessMachineControlPointResponse(

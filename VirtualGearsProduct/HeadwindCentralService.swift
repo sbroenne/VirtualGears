@@ -440,25 +440,28 @@ final class HeadwindCentralService: NSObject {
     }
 
     private func reconcileControlPreference() {
-        if deferredAction != nil {
-            commandQueue.removeAll()
-            enqueue(.setMode(lastSensorMode))
-            return
-        }
-        // Restoring a saved manual speed is a real command to a real fan, and
-        // connecting is not a reason to send one. Launching the app to check a
-        // setting used to put the fan straight back to whatever speed it was
-        // last left on, which at full power is alarming rather than helpful.
-        // Only a manual preference is worth asserting at all: choosing sensor
-        // control means the fan answers to its own sensor, so there is nothing
-        // to restore. The rider's own controls enqueue directly and so are
-        // unaffected by either restriction.
-        guard isRideDrivingFan, requestedManual else { return }
-        if mode != .manual {
-            enqueue(.setMode(.manual))
-        }
-        if mode != .manual || manualSpeed != desiredManualSpeed {
-            enqueue(.setManualSpeed(desiredManualSpeed), replacingSpeed: true)
+        let commands = HeadwindControlPolicy.commands(
+            for: HeadwindSituation(
+                rideIsDrivingFan: isRideDrivingFan,
+                isHandingBack: deferredAction != nil,
+                wantsManualControl: requestedManual,
+                desiredManualSpeed: desiredManualSpeed,
+                lastSensorMode: lastSensorMode,
+                observedMode: mode,
+                observedManualSpeed: manualSpeed
+            )
+        )
+        guard !commands.isEmpty else { return }
+        // Handing the fan back replaces whatever was queued, because those are
+        // the commands being abandoned.
+        if deferredAction != nil { commandQueue.removeAll() }
+        for command in commands {
+            switch command {
+            case .setManualSpeed:
+                enqueue(command, replacingSpeed: true)
+            case .setMode:
+                enqueue(command)
+            }
         }
     }
 
