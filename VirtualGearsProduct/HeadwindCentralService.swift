@@ -67,6 +67,9 @@ final class HeadwindCentralService: NSObject {
     private var scansAfterDisconnect = false
     private var hasReceivedInitialState = false
     private var isIgnoringConflictingHeadwindState = false
+    /// Whether a ride is what is asking for the fan. Connecting on its own is
+    /// not, so the saved preference stays on the shelf until a ride starts.
+    private var isRideDrivingFan = false
     private var hasStoredControlPreference: Bool
 
     private(set) var connectionIsStalled = false
@@ -422,21 +425,40 @@ final class HeadwindCentralService: NSObject {
         }
     }
 
+    /// Applies the rider's saved fan preference. Called when a ride starts, not
+    /// when the fan connects: simply opening the app must never spin a fan up.
+    func applySavedControlPreference() {
+        isRideDrivingFan = true
+        guard isReady else { return }
+        reconcileControlPreference()
+    }
+
+    /// Hands the fan back once the ride is over, so a later reconnect is just a
+    /// connection again rather than a reason to start blowing.
+    func releaseRideFanControl() {
+        isRideDrivingFan = false
+    }
+
     private func reconcileControlPreference() {
         if deferredAction != nil {
             commandQueue.removeAll()
             enqueue(.setMode(lastSensorMode))
             return
         }
-        if requestedManual {
-            if mode != .manual {
-                enqueue(.setMode(.manual))
-            }
-            if mode != .manual || manualSpeed != desiredManualSpeed {
-                enqueue(.setManualSpeed(desiredManualSpeed), replacingSpeed: true)
-            }
-        } else if mode != lastSensorMode {
-            enqueue(.setMode(lastSensorMode))
+        // Restoring a saved manual speed is a real command to a real fan, and
+        // connecting is not a reason to send one. Launching the app to check a
+        // setting used to put the fan straight back to whatever speed it was
+        // last left on, which at full power is alarming rather than helpful.
+        // Only a manual preference is worth asserting at all: choosing sensor
+        // control means the fan answers to its own sensor, so there is nothing
+        // to restore. The rider's own controls enqueue directly and so are
+        // unaffected by either restriction.
+        guard isRideDrivingFan, requestedManual else { return }
+        if mode != .manual {
+            enqueue(.setMode(.manual))
+        }
+        if mode != .manual || manualSpeed != desiredManualSpeed {
+            enqueue(.setManualSpeed(desiredManualSpeed), replacingSpeed: true)
         }
     }
 
