@@ -480,6 +480,7 @@ struct StartupView: View {
 
     private var retryButton: some View {
         Button {
+            headwind.applySavedControlPreference()
             coordinator.startRide(configuration: store.configuration)
         } label: {
             Label("Start Shifting", systemImage: "bicycle")
@@ -513,6 +514,7 @@ struct StartupView: View {
         guard autoStarts, canStart, coordinator.state == .idle else { return }
         kickr.stopScanning()
         mustChoose = false
+        headwind.applySavedControlPreference()
         coordinator.startRide(configuration: store.configuration)
     }
 }
@@ -1230,6 +1232,7 @@ struct ActiveRideView: View {
         ) {
             Button("Stop Shifting", role: .destructive) {
                 onRiderStop()
+                headwind.releaseRideFanControl()
                 Task { await coordinator.stopRide() }
             }
             Button("Cancel", role: .cancel) {}
