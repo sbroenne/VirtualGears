@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Foundation
+import ToolSupport
 import VirtualGearsCore
 
 // A riding app picks a trainer out of a list of names. Virtual Gears asks to be
@@ -15,20 +16,14 @@ import VirtualGearsCore
 // If the advertisement says "Virtual Gears" but the riding app shows the phone's
 // name, the app is reading the second one and no change to advertising fixes it.
 
-let logPath = ProcessInfo.processInfo.environment["NAME_SCAN_LOG"]
-    ?? "/tmp/name-scan.log"
+let log = ToolLog(
+    environmentKey: "NAME_SCAN_LOG",
+    defaultPath: "/tmp/name-scan.log"
+)
+let logPath = log.path
 
 func say(_ message: String) {
-    let line = message + "\n"
-    print(message)
-    guard let data = line.data(using: .utf8) else { return }
-    if let handle = FileHandle(forWritingAtPath: logPath) {
-        handle.seekToEndOfFile()
-        handle.write(data)
-        try? handle.close()
-    } else {
-        try? data.write(to: URL(fileURLWithPath: logPath))
-    }
+    log.say(message)
 }
 
 @MainActor
@@ -107,9 +102,8 @@ final class NameScan: NSObject {
     }
 
     func scheduleReport() {
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(4))
-            finish()
+        scheduleMainActorTimeout(after: .seconds(4)) {
+            self.finish()
         }
     }
 }

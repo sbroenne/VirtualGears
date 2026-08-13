@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Foundation
+import ToolSupport
 import VirtualGearsCore
 
 /// Everything is written to a file as well as to the console.
@@ -10,19 +11,14 @@ import VirtualGearsCore
 /// so the tool is killed the moment it asks. Launching the bundle with `open`
 /// makes the tool answer for itself, but then there is no console left to print
 /// to. Hence the file.
-let logPath = ProcessInfo.processInfo.environment["CLICK_TRACE_LOG"]
-    ?? "/tmp/click-trace.log"
+let log = ToolLog(
+    environmentKey: "CLICK_TRACE_LOG",
+    defaultPath: "/tmp/click-trace.log"
+)
+let logPath = log.path
 
 func say(_ text: String) {
-    print(text)
-    guard let data = (text + "\n").data(using: .utf8) else { return }
-    if let handle = FileHandle(forWritingAtPath: logPath) {
-        handle.seekToEndOfFile()
-        handle.write(data)
-        try? handle.close()
-    } else {
-        try? data.write(to: URL(fileURLWithPath: logPath))
-    }
+    log.say(text)
 }
 
 /// Connects to an original Zwift Click and prints every packet it sends, with

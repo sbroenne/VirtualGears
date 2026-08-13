@@ -34,12 +34,15 @@ let package = Package(
         .target(
             name: "VirtualGearsCore"
         ),
+        .target(
+            name: "ToolSupport"
+        ),
         // A macOS command-line tool that prints what a Zwift Click really
         // sends. Kept out of the app: it exists to answer questions about the
         // hardware, not to ship.
         .executableTarget(
             name: "ClickTrace",
-            dependencies: ["VirtualGearsCore"],
+            dependencies: ["VirtualGearsCore", "ToolSupport"],
             path: "Tools/ClickTrace",
             exclude: ["Info.plist", "run.sh"],
             // macOS refuses Bluetooth to a program that does not say why it
@@ -59,7 +62,7 @@ let package = Package(
         // out of the app for the same reason as the Click tracer.
         .executableTarget(
             name: "KickrProbe",
-            dependencies: ["VirtualGearsCore"],
+            dependencies: ["VirtualGearsCore", "ToolSupport"],
             path: "Tools/KickrProbe",
             exclude: ["Info.plist", "run.sh"],
             linkerSettings: [
@@ -76,7 +79,7 @@ let package = Package(
         // guessed at.
         .executableTarget(
             name: "NameScan",
-            dependencies: ["VirtualGearsCore"],
+            dependencies: ["VirtualGearsCore", "ToolSupport"],
             path: "Tools/NameScan",
             exclude: ["Info.plist", "run.sh"],
             linkerSettings: [
@@ -97,7 +100,7 @@ let package = Package(
         // be checked on demand instead of only by riding.
         .executableTarget(
             name: "RideSim",
-            dependencies: ["VirtualGearsCore"],
+            dependencies: ["VirtualGearsCore", "ToolSupport"],
             path: "Tools/RideSim",
             exclude: ["Info.plist", "run.sh"],
             linkerSettings: [

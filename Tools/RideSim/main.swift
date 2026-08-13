@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Foundation
+import ToolSupport
 import VirtualGearsCore
 
 /// Pretends to be the riding app on the PC, so the phone's side of the
@@ -30,23 +31,14 @@ import VirtualGearsCore
 ///
 /// Run it with the app open and shifting on the phone. It never speaks to the
 /// trainer or the fan.
-let logPath = ProcessInfo.processInfo.environment["RIDE_SIM_LOG"]
-    ?? "/tmp/ride-sim.log"
+let log = ToolLog(
+    environmentKey: "RIDE_SIM_LOG",
+    defaultPath: "/tmp/ride-sim.log"
+)
+let logPath = log.path
 
 func say(_ text: String) {
-    print(text)
-    guard let data = (text + "\n").data(using: .utf8) else { return }
-    if let handle = FileHandle(forWritingAtPath: logPath) {
-        handle.seekToEndOfFile()
-        handle.write(data)
-        try? handle.close()
-    } else {
-        try? data.write(to: URL(fileURLWithPath: logPath))
-    }
-}
-
-func milliseconds(_ interval: TimeInterval) -> String {
-    String(format: "%.0f ms", interval * 1000)
+    log.say(text)
 }
 
 /// One thing that was checked, so a run ends with a verdict rather than a wall
@@ -95,9 +87,7 @@ final class RideSim: NSObject {
     /// The answer to the request currently in flight. Only one may be
     /// outstanding at a time, which is the whole reason a slow answer is
     /// dangerous.
-    private var pendingResponse: CheckedContinuation<
-        FitnessMachineControlPointResponse, Error
-    >?
+    private let responseWaiter = CharacteristicWaiter<FitnessMachineControlPointResponse>()
     private var pendingSentAt: Date?
     private var responseTimes: [TimeInterval] = []
 
@@ -130,9 +120,8 @@ final class RideSim: NSObject {
         // A watchdog that does not depend on Bluetooth ever coming up. Without
         // it, a permission prompt left unanswered leaves the tool waiting for
         // a radio that never powers on, and nothing is ever reported.
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(120))
-            giveUp(
+        scheduleMainActorTimeout(after: .seconds(120)) {
+            self.giveUp(
                 "Gave up after two minutes. If macOS asked for Bluetooth "
                     + "permission, answer it and run this again."
             )
@@ -164,17 +153,17 @@ final class RideSim: NSObject {
             "The control point takes writes and answers back",
             controlPoint.properties.contains(.write)
                 && controlPoint.properties.contains(.indicate),
-            describe(controlPoint.properties)
+            controlPoint.properties.toolDescription
         )
         record(
             "Ride data is a notify stream",
             bikeData.properties.contains(.notify),
-            describe(bikeData.properties)
+            bikeData.properties.toolDescription
         )
         record(
             "Machine status is a notify stream",
             status.properties.contains(.notify),
-            describe(status.properties)
+            status.properties.toolDescription
         )
         if let feature {
             target?.readValue(for: feature)
@@ -322,43 +311,20 @@ final class RideSim: NSObject {
             throw SimError.missing("the control point")
         }
         let payload = try request.encode()
-        return try await withCheckedThrowingContinuation {
-            (continuation: CheckedContinuation<
-                FitnessMachineControlPointResponse, Error
-            >) in
-            pendingResponse = continuation
-            pendingSentAt = Date()
+        pendingSentAt = Date()
+        return try await responseWaiter.wait(
+            timeout: .seconds(10),
+            timedOut: SimError.timedOut("an answer to \(request)")
+        ) {
             target.writeValue(payload, for: controlPoint, type: .withResponse)
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(10))
-                if let waiting = pendingResponse {
-                    pendingResponse = nil
-                    waiting.resume(
-                        throwing: SimError.timedOut("an answer to \(request)")
-                    )
-                }
-            }
         }
-    }
-
-    private func describe(_ properties: CBCharacteristicProperties) -> String {
-        var names: [String] = []
-        if properties.contains(.read) { names.append("read") }
-        if properties.contains(.write) { names.append("write") }
-        if properties.contains(.writeWithoutResponse) {
-            names.append("write without response")
-        }
-        if properties.contains(.notify) { names.append("notify") }
-        if properties.contains(.indicate) { names.append("indicate") }
-        return names.isEmpty ? "nothing" : names.joined(separator: ", ")
     }
 
     /// Every way out of this tool goes through here, so the run script is
     /// always told the run is over.
     private func giveUp(_ reason: String) -> Never {
         say(reason)
-        say("ride-sim finished.")
-        exit(1)
+        ToolSupport.finish(sentinel: "ride-sim finished.", code: 1, say: say)
     }
 
     private func report() {
@@ -382,8 +348,11 @@ final class RideSim: NSObject {
         say("Full output is also in \(logPath).")
         // The run script watches for this line so it can stop following the
         // log rather than hanging until it is interrupted.
-        say("ride-sim finished.")
-        exit(failed.isEmpty ? 0 : 1)
+        ToolSupport.finish(
+            sentinel: "ride-sim finished.",
+            code: failed.isEmpty ? 0 : 1,
+            say: say
+        )
     }
 }
 
@@ -501,16 +470,15 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
         guard let data = characteristic.value else { return }
         switch characteristic.uuid {
         case controlPointUUID:
-            guard let waiting = pendingResponse else { return }
-            pendingResponse = nil
+            guard responseWaiter.isWaiting else { return }
             if let sentAt = pendingSentAt {
                 responseTimes.append(Date().timeIntervalSince(sentAt))
             }
             do {
                 let response = try FitnessMachineControlPointResponse.decode(data)
-                waiting.resume(returning: response)
+                responseWaiter.resume(returning: response)
             } catch {
-                waiting.resume(throwing: error)
+                responseWaiter.resume(throwing: error)
             }
         case bikeDataUUID:
             bikeDataArrivals.append(Date())
@@ -555,7 +523,7 @@ while let argument = arguments.first {
 }
 
 setvbuf(stdout, nil, _IONBF, 0)
-try? "".write(toFile: logPath, atomically: true, encoding: .utf8)
+log.clear()
 let sim = MainActor.assumeIsolated { RideSim(name: name, dataSeconds: dataSeconds) }
 MainActor.assumeIsolated { sim.start() }
 RunLoop.main.run()
