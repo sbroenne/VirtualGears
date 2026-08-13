@@ -347,3 +347,31 @@ minds can rename the phone in Settings.
 Note that macOS keeps 0x1800 to itself, so the tool cannot read 0x2A00
 directly; `CBPeripheral.name` showing the phone's name is the evidence that
 the device name is what reaches a central.
+
+## Why the three Bluetooth services still look alike
+
+The trainer, fan and shifter each have their own central service, and at a
+glance they repeat each other. Most of that repetition has now been removed:
+the decisions they share live in `ConnectionPolicy.swift` and are covered by
+tests, and the Mac tools share `Sources/ToolSupport`.
+
+What is left was measured and deliberately kept. Only about eighty lines are
+still identical in all three, so sharing them would save under a hundred lines
+once the machinery to share them is written. The cost is higher than that
+sounds: those functions write to `state`, `selectedID`, `selectedName` and
+`connectionIsStalled`, which are `private(set)` precisely so the screens can
+read them and nothing else can change them. Sharing through a protocol opens
+all twelve of those for writing anywhere in the app. Sharing through a helper
+object keeps them closed, but restructures the reconnect path that caused
+real ride disconnects, and no test can prove that path correct — only a ride
+can.
+
+Some things that look duplicated are not, and should not be merged:
+
+- `resetConnection` genuinely differs; each device has its own
+  characteristics and queues.
+- Scanning differs. A HEADWIND does not advertise its control service, so it
+  cannot be filtered by UUID, and the fan hands itself back before scanning.
+- The fan reconnects through `resumeSavedConnection` rather than
+  `retrieveAndConnect`. The two are equivalent today, but making them the
+  same call would be a behaviour change wearing a refactor's clothes.
