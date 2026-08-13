@@ -1,5 +1,6 @@
 import CoreBluetooth
 import Foundation
+import ToolSupport
 import VirtualGearsCore
 
 /// Measures how a real KICKR behaves, so the app's timing and lifecycle rules
@@ -21,30 +22,15 @@ import VirtualGearsCore
 /// failure, because the trainer works out speed and distance from it.
 ///
 /// Run with the iPhone app closed: a KICKR takes one controlling connection.
-let logPath = ProcessInfo.processInfo.environment["KICKR_PROBE_LOG"]
-    ?? "/tmp/kickr-probe.log"
+let log = ToolLog(environmentKey: "KICKR_PROBE_LOG", defaultPath: "/tmp/kickr-probe.log")
+let logPath = log.path
 
-func say(_ text: String) {
-    print(text)
-    guard let data = (text + "\n").data(using: .utf8) else { return }
-    if let handle = FileHandle(forWritingAtPath: logPath) {
-        handle.seekToEndOfFile()
-        handle.write(data)
-        try? handle.close()
-    } else {
-        try? data.write(to: URL(fileURLWithPath: logPath))
-    }
-}
-
-func milliseconds(_ interval: TimeInterval) -> String {
-    String(format: "%.0f ms", interval * 1000)
-}
+func say(_ text: String) { log.say(text) }
 
 /// Every way out prints the same last line, so a script following the log knows
 /// the probe is done instead of waiting for a write that never comes.
 func finish(_ code: Int32) -> Never {
-    say("kickr-probe finished.")
-    exit(code)
+    ToolSupport.finish(sentinel: "kickr-probe finished.", code: code, say: say)
 }
 
 /// What this run is for. The wheel size cannot be read back from the trainer,
@@ -99,7 +85,7 @@ enum ProbeError: Error {
 @MainActor
 final class KickrProbe: NSObject {
     private var central: CBCentralManager!
-    private var kickr: CBPeripheral?
+    private var kickr: CBPeripheral? { finder.peripheral }
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
     private var subscribed = Set<CBUUID>()
     private var hasStarted = false
@@ -118,11 +104,28 @@ final class KickrProbe: NSObject {
     )
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
 
+    private lazy var finder = PeripheralFinder(
+        scanServices: [ftmsService], discoveryServices: [ftmsService, powerService],
+        say: say,
+        matches: { [weak self] discovery in
+            let name = discovery.peripheralName ?? ""
+            guard name.uppercased().contains("KICKR") else {
+                if self?.ignored.contains(name) == false {
+                    self?.ignored.insert(name)
+                    say("Ignoring \(name.isEmpty ? "an unnamed device" : name).")
+                }
+                return false
+            }
+            return true
+        },
+        foundMessage: { "Found \($0.peripheralName ?? "") at \($0.rssi) dBm. Connecting." }
+    )
+
     /// One waiter per characteristic, which is all the protocol allows: a
     /// control point carries one outstanding request at a time.
-    private var ftmsWaiter: CheckedContinuation<Data, Error>?
-    private var readWaiter: CheckedContinuation<Data, Error>?
-    private var wahooWaiter: CheckedContinuation<Data, Error>?
+    private let ftmsWaiter = CharacteristicWaiter<Data>()
+    private let readWaiter = CharacteristicWaiter<Data>()
+    private let wahooWaiter = CharacteristicWaiter<Data>()
 
     private var statusMessages: [Data] = []
     /// Speed as the trainer reports it, which is the only visible consequence
@@ -136,8 +139,7 @@ final class KickrProbe: NSObject {
         // Runs whatever the radio does. Without it, a probe that is never told
         // Bluetooth is available — the shape a pending permission prompt takes —
         // would sit silently for ever.
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(180))
+        scheduleMainActorTimeout(after: .seconds(180)) {
             guard !self.hasStarted else { return }
             say(
                 "Gave up after three minutes. If macOS asked for Bluetooth "
@@ -641,15 +643,10 @@ final class KickrProbe: NSObject {
         guard let kickr, let characteristic = characteristics[uuid] else {
             throw ProbeError.notReady
         }
-        let timeout = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard let self, !Task.isCancelled else { return }
-            self.readWaiter?.resume(throwing: ProbeError.timedOut)
-            self.readWaiter = nil
-        }
-        defer { timeout.cancel() }
-        return try await withCheckedThrowingContinuation { continuation in
-            readWaiter = continuation
+        return try await readWaiter.wait(
+            timeout: .seconds(5),
+            timedOut: ProbeError.timedOut
+        ) {
             kickr.readValue(for: characteristic)
         }
     }
@@ -672,29 +669,12 @@ final class KickrProbe: NSObject {
         guard let kickr, let characteristic = characteristics[uuid] else {
             throw ProbeError.notReady
         }
-        let timeout = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard let self, !Task.isCancelled else { return }
-            self.failWaiter(isWahoo: isWahoo)
-        }
-        defer { timeout.cancel() }
-        return try await withCheckedThrowingContinuation { continuation in
-            if isWahoo {
-                wahooWaiter = continuation
-            } else {
-                ftmsWaiter = continuation
-            }
+        let waiter = isWahoo ? wahooWaiter : ftmsWaiter
+        return try await waiter.wait(
+            timeout: .seconds(5),
+            timedOut: ProbeError.timedOut
+        ) {
             kickr.writeValue(payload, for: characteristic, type: .withResponse)
-        }
-    }
-
-    private func failWaiter(isWahoo: Bool) {
-        if isWahoo {
-            wahooWaiter?.resume(throwing: ProbeError.timedOut)
-            wahooWaiter = nil
-        } else {
-            ftmsWaiter?.resume(throwing: ProbeError.timedOut)
-            ftmsWaiter = nil
         }
     }
 }
@@ -705,9 +685,8 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         switch central.state {
         case .poweredOn:
             say("Looking for a KICKR. Wake it, and close the phone app first.")
-            central.scanForPeripherals(withServices: [ftmsService])
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(60))
+            finder.startScanning(with: central)
+            scheduleMainActorTimeout(after: .seconds(60)) {
                 guard !self.hasStarted else { return }
                 say(
                     "No KICKR answered in a minute. Wake it, and close "
@@ -732,29 +711,16 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        guard kickr == nil else { return }
         // The iPhone running Virtual Gears also advertises as a fitness machine,
         // so the trainer has to be picked by name rather than by service.
-        let name = peripheral.name ?? ""
-        guard name.uppercased().contains("KICKR") else {
-            if !ignored.contains(name) {
-                ignored.insert(name)
-                say("Ignoring \(name.isEmpty ? "an unnamed device" : name).")
-            }
-            return
-        }
-        say("Found \(name) at \(RSSI) dBm. Connecting.")
-        kickr = peripheral
-        peripheral.delegate = self
-        central.stopScan()
-        central.connect(peripheral)
+        finder.connectFirstMatch(
+            from: central, peripheral: peripheral,
+            advertisementData: advertisementData, rssi: RSSI, delegate: self
+        )
     }
 
-    func centralManager(
-        _ central: CBCentralManager,
-        didConnect peripheral: CBPeripheral
-    ) {
-        peripheral.discoverServices([ftmsService, powerService])
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        finder.discoverServices(on: peripheral)
     }
 
     func centralManager(
@@ -837,14 +803,11 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
         guard let data = characteristic.value else { return }
         switch characteristic.uuid {
         case featureUUID:
-            readWaiter?.resume(returning: data)
-            readWaiter = nil
+            readWaiter.resume(returning: data)
         case controlUUID:
-            ftmsWaiter?.resume(returning: data)
-            ftmsWaiter = nil
+            ftmsWaiter.resume(returning: data)
         case wahooUUID:
-            wahooWaiter?.resume(returning: data)
-            wahooWaiter = nil
+            wahooWaiter.resume(returning: data)
         case statusUUID:
             statusMessages.append(data)
         case bikeDataUUID:
@@ -871,7 +834,7 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
 }
 
 setvbuf(stdout, nil, _IONBF, 0)
-try? "".write(toFile: logPath, atomically: true, encoding: .utf8)
+log.clear()
 let probe = MainActor.assumeIsolated { KickrProbe() }
 MainActor.assumeIsolated { probe.start() }
 RunLoop.main.run()
