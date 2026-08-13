@@ -4,4 +4,5 @@
 PRODUCT="kickr-probe"
 BUNDLE="KickrProbe"
 DESCRIPTION="kickr-probe connects to a KICKR to measure how it responds."
+SENTINEL="kickr-probe finished"
 source "$(dirname "${BASH_SOURCE[0]}")/../run-tool.sh"
