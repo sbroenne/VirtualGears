@@ -18,11 +18,17 @@ covered the easy end the gears reach — 517.5, 525, 550, 575, 600, 625 and
 647 mm — and the trainer acknowledged every one, in 60 to 180 ms. That run is
 recorded in `docs/kickr-wheel-size-sweep.log` in the repository.
 
+Those two runs stopped at 517.5 mm, while the app's own operating range went
+down to 500 mm. A third run closed that gap: 500, 502.5, 505, 507.5, 510, 512.5,
+515 and 517.5 mm were all acknowledged, in 58 to 181 ms, and it is recorded in
+`docs/kickr-wheel-size-sweep-low-end.log`. The bottom of the range is now
+measured rather than assumed.
+
 The 24 virtual gears span 517.5 mm to 4735.1 mm at a 2070 mm reference, so both
 ends of the ladder have been confirmed on real hardware. These are the edges we
 chose to test, not a claim that the KICKR rejects values outside them. Virtual
 Gears keeps its own operating range at 500–4800 mm and never asks for anything
-outside it.
+outside it. Every value at both edges of that range has been confirmed.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

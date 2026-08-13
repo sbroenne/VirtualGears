@@ -40,6 +40,13 @@ func milliseconds(_ interval: TimeInterval) -> String {
     String(format: "%.0f ms", interval * 1000)
 }
 
+/// Every way out prints the same last line, so a script following the log knows
+/// the probe is done instead of waiting for a write that never comes.
+func finish(_ code: Int32) -> Never {
+    say("kickr-probe finished.")
+    exit(code)
+}
+
 /// What this run is for. The wheel size cannot be read back from the trainer,
 /// so proving whether it survives a power cut takes two runs with the plug
 /// pulled in between.
@@ -126,6 +133,18 @@ final class KickrProbe: NSObject {
 
     func start() {
         central = CBCentralManager(delegate: self, queue: .main)
+        // Runs whatever the radio does. Without it, a probe that is never told
+        // Bluetooth is available — the shape a pending permission prompt takes —
+        // would sit silently for ever.
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(180))
+            guard !self.hasStarted else { return }
+            say(
+                "Gave up after three minutes. If macOS asked for Bluetooth "
+                    + "permission, answer it and run this again."
+            )
+            finish(1)
+        }
     }
 
     // MARK: - The experiment
@@ -157,7 +176,7 @@ final class KickrProbe: NSObject {
             }
         }
         say("\nDone. Full log in \(logPath)")
-        exit(0)
+        finish(0)
     }
 
     /// Deliberately leaves the trainer on an unusual wheel size, so that after
@@ -687,12 +706,21 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         case .poweredOn:
             say("Looking for a KICKR. Wake it, and close the phone app first.")
             central.scanForPeripherals(withServices: [ftmsService])
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(60))
+                guard !self.hasStarted else { return }
+                say(
+                    "No KICKR answered in a minute. Wake it, and close "
+                        + "the phone app, which takes the one connection it has."
+                )
+                finish(1)
+            }
         case .unauthorized:
             say("macOS refused Bluetooth. Allow it for this tool and run again.")
-            exit(1)
+            finish(1)
         case .poweredOff:
             say("Bluetooth is off.")
-            exit(1)
+            finish(1)
         default:
             break
         }
@@ -735,7 +763,7 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         error: Error?
     ) {
         say("The trainer disconnected.")
-        exit(1)
+        finish(1)
     }
 }
 
@@ -783,7 +811,7 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
             guard self.characteristics[self.controlUUID] != nil,
                   self.characteristics[self.wahooUUID] != nil else {
                 say("The trainer is missing a channel this probe needs.")
-                exit(1)
+                finish(1)
             }
             self.hasStarted = true
             say("Connected and listening.")

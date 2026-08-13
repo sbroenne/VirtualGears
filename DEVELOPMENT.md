@@ -108,6 +108,13 @@ output is in `docs/kickr-wheel-size-sweep.log`, and the run can be repeated with
 Between the two runs, both ends of the 517.5–4735.1 mm span the 24 virtual gears
 need at a 2070 mm baseline have been confirmed on hardware.
 
+A third run closed a gap the first two left: `TrainerSafety` declared an
+operating range starting at 500 mm, but nothing below 517.5 mm had ever been
+sent to a trainer. Eight values from 500 mm to 517.5 mm in 2.5 mm steps were all
+confirmed, in 58 to 181 ms, with the reference reset between each and again at
+the end. The output is in `docs/kickr-wheel-size-sweep-low-end.log`. The bottom
+of the declared range is now measured rather than assumed.
+
 The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
 used, reconnect before riding so the 2070 mm baseline is set first.
