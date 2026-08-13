@@ -37,3 +37,19 @@ extension CBManagerState {
         }
     }
 }
+
+extension Optional where Wrapped == CBPeripheral {
+    /// The link as the shared connection policies see it. Having no peripheral
+    /// at all and having one that is disconnected are different situations to
+    /// CoreBluetooth but the same decision to us.
+    var linkState: LinkState {
+        switch self?.state {
+        case .none: .absent
+        case .disconnected: .disconnected
+        case .connecting: .connecting
+        case .connected: .connected
+        case .disconnecting: .disconnecting
+        @unknown default: .disconnected
+        }
+    }
+}

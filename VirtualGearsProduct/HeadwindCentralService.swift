@@ -40,7 +40,6 @@ final class HeadwindCentralService: NSObject {
     private let speedKey = "VirtualGears.headwindManualSpeed"
     private let sensorModeKey = "VirtualGears.headwindSensorMode"
     private let controlPreferenceKey = "VirtualGears.headwindManualControl"
-    private let reconnectDelays: [UInt64] = [1, 2, 4, 8, 15]
     private let serviceUUID = CBUUID(
         string: "A026EE0C-0A7D-4AB3-97FA-F1500F9FEB8B"
     )
@@ -149,11 +148,12 @@ final class HeadwindCentralService: NSObject {
     }
 
     func autoConnectSavedDevice() {
-        guard !isSuspendedForDemo else { return }
-        guard hasSavedDevice, !isScanning else { return }
-        guard peripheral?.state != .connected,
-              peripheral?.state != .connecting,
-              peripheral?.state != .disconnecting else { return }
+        guard SavedConnectionPolicy.decide(
+            hasSavedDevice: hasSavedDevice,
+            isSuspendedForDemo: isSuspendedForDemo,
+            isScanning: isScanning,
+            link: peripheral.linkState
+        ) == .connect else { return }
         resumeSavedConnection()
     }
 
@@ -501,12 +501,14 @@ final class HeadwindCentralService: NSObject {
     }
 
     private func scheduleReconnect() {
-        guard desiredConnection, central.state == .poweredOn else { return }
+        guard ReconnectPolicy.shouldSchedule(
+            wantsConnection: desiredConnection,
+            radioIsOn: central.state == .poweredOn
+        ) else { return }
         reconnectTask?.cancel()
-        let index = min(reconnectAttempt, reconnectDelays.count - 1)
+        let delay = ReconnectPolicy.delaySeconds(afterAttempts: reconnectAttempt)
         reconnectAttempt += 1
         state = .reconnecting(attempt: reconnectAttempt)
-        let delay = reconnectDelays[index]
         reconnectTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: delay * 1_000_000_000)
             guard !Task.isCancelled, let self, self.desiredConnection else { return }
@@ -521,9 +523,14 @@ final class HeadwindCentralService: NSObject {
             connectionIsStalled = false
             return
         }
-        guard stallTask == nil else { return }
+        guard StallWatchPolicy.decide(
+            state: state,
+            isAlreadyWatching: stallTask != nil
+        ) == .beginWatching else { return }
         stallTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(
+                for: .seconds(StallWatchPolicy.patienceSeconds)
+            )
             guard !Task.isCancelled else { return }
             self?.connectionIsStalled = true
         }
@@ -532,7 +539,10 @@ final class HeadwindCentralService: NSObject {
     private func persistIdentity(id: UUID, name: String) {
         selectedID = id
         selectedName = name
-        defaults.set(["id": id.uuidString, "name": name], forKey: identityKey)
+        defaults.set(
+            SavedDeviceIdentity(id: id, name: name).stored,
+            forKey: identityKey
+        )
     }
 
     private func persistControlPreference() {
@@ -541,11 +551,11 @@ final class HeadwindCentralService: NSObject {
     }
 
     private func loadIdentity() {
-        guard let value = defaults.dictionary(forKey: identityKey),
-              let idString = value["id"] as? String,
-              let id = UUID(uuidString: idString) else { return }
-        selectedID = id
-        selectedName = value["name"] as? String
+        guard let saved = SavedDeviceIdentity.from(
+            stored: defaults.dictionary(forKey: identityKey)
+        ) else { return }
+        selectedID = saved.id
+        selectedName = saved.name
     }
 
     private func clearSelection() {

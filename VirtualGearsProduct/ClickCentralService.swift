@@ -47,11 +47,14 @@ final class ClickCentralService: NSObject {
             connectionIsStalled = false
             return
         }
-        // Keep one timer running across connecting, discovering and preparing so
-        // ordinary progress does not reset the clock.
-        guard stallTask == nil else { return }
+        guard StallWatchPolicy.decide(
+            state: state,
+            isAlreadyWatching: stallTask != nil
+        ) == .beginWatching else { return }
         stallTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(5))
+            try? await Task.sleep(
+                for: .seconds(StallWatchPolicy.patienceSeconds)
+            )
             guard !Task.isCancelled else { return }
             self?.connectionIsStalled = true
         }
@@ -59,7 +62,6 @@ final class ClickCentralService: NSObject {
 
     private let defaults: UserDefaults
     private let identityKey = "VirtualGears.clickIdentity"
-    private let reconnectDelays: [UInt64] = [1, 2, 4, 8, 15]
 
     private let serviceUUID = CBUUID(string: ZwiftClickProtocol.serviceUUID)
     private let asyncUUID = CBUUID(string: ZwiftClickProtocol.asyncCharacteristicUUID)
@@ -146,11 +148,12 @@ final class ClickCentralService: NSObject {
     }
 
     func autoConnectSavedDevice() {
-        guard !isSuspendedForDemo else { return }
-        guard hasSavedDevice, !isScanning else { return }
-        guard peripheral?.state != .connected,
-              peripheral?.state != .connecting,
-              peripheral?.state != .disconnecting else { return }
+        guard SavedConnectionPolicy.decide(
+            hasSavedDevice: hasSavedDevice,
+            isSuspendedForDemo: isSuspendedForDemo,
+            isScanning: isScanning,
+            link: peripheral.linkState
+        ) == .connect else { return }
         resumeSavedConnection()
     }
 
@@ -296,23 +299,25 @@ final class ClickCentralService: NSObject {
     }
 
     private func scheduleReconnect() {
-        guard desiredConnection, central.state == .poweredOn else { return }
+        guard ReconnectPolicy.shouldSchedule(
+            wantsConnection: desiredConnection,
+            radioIsOn: central.state == .poweredOn
+        ) else { return }
         reconnectTask?.cancel()
-        let index = min(reconnectAttempt, reconnectDelays.count - 1)
+        let delay = ReconnectPolicy.delaySeconds(afterAttempts: reconnectAttempt)
         reconnectAttempt += 1
         state = .reconnecting(attempt: reconnectAttempt)
-        let delay = reconnectDelays[index]
         reconnectTask = Task { [weak self] in
             do {
                 try await Task.sleep(nanoseconds: delay * 1_000_000_000)
             } catch {
                 return
             }
-            guard let self, self.desiredConnection, let id = self.selectedID else {
-                return
-            }
-            guard self.peripheral?.state != .connected,
-                  self.peripheral?.state != .connecting else { return }
+            guard let self, let id = self.selectedID else { return }
+            guard ReconnectPolicy.shouldProceed(
+                wantsConnection: self.desiredConnection,
+                link: self.peripheral.linkState
+            ) else { return }
             self.retrieveAndConnect(id)
         }
     }
@@ -493,15 +498,18 @@ final class ClickCentralService: NSObject {
     private func persistIdentity(id: UUID, name: String) {
         selectedID = id
         selectedName = name
-        defaults.set(["id": id.uuidString, "name": name], forKey: identityKey)
+        defaults.set(
+            SavedDeviceIdentity(id: id, name: name).stored,
+            forKey: identityKey
+        )
     }
 
     private func loadIdentity() {
-        guard let value = defaults.dictionary(forKey: identityKey),
-              let idString = value["id"] as? String,
-              let id = UUID(uuidString: idString) else { return }
-        selectedID = id
-        selectedName = value["name"] as? String
+        guard let saved = SavedDeviceIdentity.from(
+            stored: defaults.dictionary(forKey: identityKey)
+        ) else { return }
+        selectedID = saved.id
+        selectedName = saved.name
     }
 
     private func fail(_ message: String) {
