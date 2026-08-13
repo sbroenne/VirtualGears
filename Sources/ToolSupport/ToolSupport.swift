@@ -57,6 +57,78 @@ public extension CBCharacteristicProperties {
     }
 }
 
+public final class PeripheralFinder {
+    public struct Discovery {
+        public let peripheral: CBPeripheral
+        public let advertisementData: [String: Any]
+        public let rssi: NSNumber
+
+        public var peripheralName: String? { peripheral.name }
+
+        public func advertisedName(default defaultName: String = "") -> String {
+            advertisementData[CBAdvertisementDataLocalNameKey] as? String
+                ?? peripheral.name ?? defaultName
+        }
+    }
+
+    public private(set) var peripheral: CBPeripheral?
+    public let scanServices: [CBUUID]?
+
+    private let discoveryServices: [CBUUID]?
+    private let connectOptions: [String: Any]?
+    private let matches: (Discovery) -> Bool
+    private let foundMessage: (Discovery) -> String
+    private let say: (String) -> Void
+
+    public init(
+        scanServices: [CBUUID]?,
+        discoveryServices: [CBUUID]?,
+        connectOptions: [String: Any]? = nil,
+        say: @escaping (String) -> Void,
+        matches: @escaping (Discovery) -> Bool,
+        foundMessage: @escaping (Discovery) -> String
+    ) {
+        self.scanServices = scanServices
+        self.discoveryServices = discoveryServices
+        self.connectOptions = connectOptions
+        self.say = say
+        self.matches = matches
+        self.foundMessage = foundMessage
+    }
+
+    public func startScanning(with central: CBCentralManager) {
+        central.scanForPeripherals(withServices: scanServices)
+    }
+
+    @discardableResult
+    public func connectFirstMatch(
+        from central: CBCentralManager,
+        peripheral candidate: CBPeripheral,
+        advertisementData: [String: Any],
+        rssi: NSNumber,
+        delegate: CBPeripheralDelegate
+    ) -> Discovery? {
+        guard peripheral == nil else { return nil }
+        let discovery = Discovery(
+            peripheral: candidate,
+            advertisementData: advertisementData,
+            rssi: rssi
+        )
+        guard matches(discovery) else { return nil }
+
+        peripheral = candidate
+        say(foundMessage(discovery))
+        central.stopScan()
+        candidate.delegate = delegate
+        central.connect(candidate, options: connectOptions)
+        return discovery
+    }
+
+    public func discoverServices(on peripheral: CBPeripheral) {
+        peripheral.discoverServices(discoveryServices)
+    }
+}
+
 @MainActor
 public final class CharacteristicWaiter<Response: Sendable> {
     private var continuation: CheckedContinuation<Response, Error>?

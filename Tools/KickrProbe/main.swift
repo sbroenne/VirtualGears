@@ -22,15 +22,10 @@ import VirtualGearsCore
 /// failure, because the trainer works out speed and distance from it.
 ///
 /// Run with the iPhone app closed: a KICKR takes one controlling connection.
-let log = ToolLog(
-    environmentKey: "KICKR_PROBE_LOG",
-    defaultPath: "/tmp/kickr-probe.log"
-)
+let log = ToolLog(environmentKey: "KICKR_PROBE_LOG", defaultPath: "/tmp/kickr-probe.log")
 let logPath = log.path
 
-func say(_ text: String) {
-    log.say(text)
-}
+func say(_ text: String) { log.say(text) }
 
 /// Every way out prints the same last line, so a script following the log knows
 /// the probe is done instead of waiting for a write that never comes.
@@ -90,7 +85,7 @@ enum ProbeError: Error {
 @MainActor
 final class KickrProbe: NSObject {
     private var central: CBCentralManager!
-    private var kickr: CBPeripheral?
+    private var kickr: CBPeripheral? { finder.peripheral }
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
     private var subscribed = Set<CBUUID>()
     private var hasStarted = false
@@ -108,6 +103,23 @@ final class KickrProbe: NSObject {
         string: WahooKickrProtocol.controlCharacteristicUUID
     )
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
+
+    private lazy var finder = PeripheralFinder(
+        scanServices: [ftmsService], discoveryServices: [ftmsService, powerService],
+        say: say,
+        matches: { [weak self] discovery in
+            let name = discovery.peripheralName ?? ""
+            guard name.uppercased().contains("KICKR") else {
+                if self?.ignored.contains(name) == false {
+                    self?.ignored.insert(name)
+                    say("Ignoring \(name.isEmpty ? "an unnamed device" : name).")
+                }
+                return false
+            }
+            return true
+        },
+        foundMessage: { "Found \($0.peripheralName ?? "") at \($0.rssi) dBm. Connecting." }
+    )
 
     /// One waiter per characteristic, which is all the protocol allows: a
     /// control point carries one outstanding request at a time.
@@ -673,7 +685,7 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         switch central.state {
         case .poweredOn:
             say("Looking for a KICKR. Wake it, and close the phone app first.")
-            central.scanForPeripherals(withServices: [ftmsService])
+            finder.startScanning(with: central)
             scheduleMainActorTimeout(after: .seconds(60)) {
                 guard !self.hasStarted else { return }
                 say(
@@ -699,29 +711,16 @@ extension KickrProbe: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        guard kickr == nil else { return }
         // The iPhone running Virtual Gears also advertises as a fitness machine,
         // so the trainer has to be picked by name rather than by service.
-        let name = peripheral.name ?? ""
-        guard name.uppercased().contains("KICKR") else {
-            if !ignored.contains(name) {
-                ignored.insert(name)
-                say("Ignoring \(name.isEmpty ? "an unnamed device" : name).")
-            }
-            return
-        }
-        say("Found \(name) at \(RSSI) dBm. Connecting.")
-        kickr = peripheral
-        peripheral.delegate = self
-        central.stopScan()
-        central.connect(peripheral)
+        finder.connectFirstMatch(
+            from: central, peripheral: peripheral,
+            advertisementData: advertisementData, rssi: RSSI, delegate: self
+        )
     }
 
-    func centralManager(
-        _ central: CBCentralManager,
-        didConnect peripheral: CBPeripheral
-    ) {
-        peripheral.discoverServices([ftmsService, powerService])
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        finder.discoverServices(on: peripheral)
     }
 
     func centralManager(

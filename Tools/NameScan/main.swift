@@ -16,20 +16,14 @@ import VirtualGearsCore
 // If the advertisement says "Virtual Gears" but the riding app shows the phone's
 // name, the app is reading the second one and no change to advertising fixes it.
 
-let log = ToolLog(
-    environmentKey: "NAME_SCAN_LOG",
-    defaultPath: "/tmp/name-scan.log"
-)
+let log = ToolLog(environmentKey: "NAME_SCAN_LOG", defaultPath: "/tmp/name-scan.log")
 let logPath = log.path
 
-func say(_ message: String) {
-    log.say(message)
-}
+func say(_ message: String) { log.say(message) }
 
 @MainActor
 final class NameScan: NSObject {
     private var central: CBCentralManager!
-    private var target: CBPeripheral?
     private var advertisedName: String?
     private var reported = false
 
@@ -42,6 +36,21 @@ final class NameScan: NSObject {
     /// Only look at things claiming to be a fitness machine, which is what a
     /// riding app scans for.
     private let ftmsService = CBUUID(string: FTMSUUID.fitnessMachineService)
+
+    private lazy var finder = PeripheralFinder(
+        scanServices: [ftmsService],
+        discoveryServices: [genericAccessUUID, deviceInfoUUID, ftmsService],
+        say: say,
+        matches: { discovery in
+            let candidate = discovery.advertisedName()
+            if TrainerModel.isKickr(advertisedName: candidate) {
+                say("Ignoring \(candidate), which is the trainer itself.")
+                return false
+            }
+            return true
+        },
+        foundMessage: { "\nFound a fitness machine at \($0.rssi) dBm." }
+    )
 
     override init() {
         super.init()
@@ -98,7 +107,7 @@ final class NameScan: NSObject {
                     + " name was never set."
             )
         }
-        exit(0)
+        ToolSupport.finish(sentinel: "name-scan finished.", code: 0, say: say)
     }
 
     func scheduleReport() {
@@ -113,7 +122,7 @@ extension NameScan: @preconcurrency CBCentralManagerDelegate {
         guard central.state == .poweredOn else { return }
         say("Looking for anything advertising as a fitness machine.")
         say("Start a ride in Virtual Gears so that it begins advertising.")
-        central.scanForPeripherals(withServices: [ftmsService])
+        finder.startScanning(with: central)
     }
 
     func centralManager(
@@ -122,24 +131,14 @@ extension NameScan: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        guard target == nil else { return }
-        let local = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-        // A real KICKR is a fitness machine too. Skip it: this is about what
-        // the phone broadcasts.
-        let candidate = local ?? peripheral.name ?? ""
-        if TrainerModel.isKickr(advertisedName: candidate) {
-            say("Ignoring \(candidate), which is the trainer itself.")
-            return
+        if let found = finder.connectFirstMatch(
+            from: central, peripheral: peripheral,
+            advertisementData: advertisementData, rssi: RSSI, delegate: self
+        ) {
+            advertisedName = found.advertisementData[CBAdvertisementDataLocalNameKey] as? String
+            say("  In the advertisement: \(describe(advertisementData))")
+            say("  CBPeripheral.name reads: \(peripheral.name ?? "nothing")")
         }
-        advertisedName = local
-        say("")
-        say("Found a fitness machine at \(RSSI) dBm.")
-        say("  In the advertisement: \(describe(advertisementData))")
-        say("  CBPeripheral.name reads: \(peripheral.name ?? "nothing")")
-        central.stopScan()
-        target = peripheral
-        peripheral.delegate = self
-        central.connect(peripheral)
     }
 
     func centralManager(
@@ -147,9 +146,7 @@ extension NameScan: @preconcurrency CBCentralManagerDelegate {
         didConnect peripheral: CBPeripheral
     ) {
         say("  Connected. Reading the names it reports once connected.")
-        peripheral.discoverServices([
-            genericAccessUUID, deviceInfoUUID, ftmsService,
-        ])
+        finder.discoverServices(on: peripheral)
     }
 
     func centralManager(

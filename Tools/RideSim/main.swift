@@ -31,15 +31,10 @@ import VirtualGearsCore
 ///
 /// Run it with the app open and shifting on the phone. It never speaks to the
 /// trainer or the fan.
-let log = ToolLog(
-    environmentKey: "RIDE_SIM_LOG",
-    defaultPath: "/tmp/ride-sim.log"
-)
+let log = ToolLog(environmentKey: "RIDE_SIM_LOG", defaultPath: "/tmp/ride-sim.log")
 let logPath = log.path
 
-func say(_ text: String) {
-    log.say(text)
-}
+func say(_ text: String) { log.say(text) }
 
 /// One thing that was checked, so a run ends with a verdict rather than a wall
 /// of prose.
@@ -64,7 +59,7 @@ enum SimError: Error, CustomStringConvertible {
 @MainActor
 final class RideSim: NSObject {
     private var central: CBCentralManager!
-    private var target: CBPeripheral?
+    private var target: CBPeripheral? { finder.peripheral }
 
     private let serviceUUID = CBUUID(string: FTMSUUID.fitnessMachineService)
     private let controlPointUUID = CBUUID(
@@ -73,6 +68,12 @@ final class RideSim: NSObject {
     private let bikeDataUUID = CBUUID(string: FTMSUUID.indoorBikeData)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
+
+    private lazy var finder = PeripheralFinder(
+        scanServices: [serviceUUID], discoveryServices: [serviceUUID], say: say,
+        matches: { [weak self] in $0.advertisedName().localizedCaseInsensitiveContains(self?.name ?? "") },
+        foundMessage: { "Found \"\($0.advertisedName())\" at \($0.rssi) dBm. Connecting." }
+    )
 
     private var controlPoint: CBCharacteristic?
     private var bikeData: CBCharacteristic?
@@ -360,7 +361,7 @@ extension RideSim: @preconcurrency CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
         case .poweredOn:
-            central.scanForPeripherals(withServices: [serviceUUID])
+            finder.startScanning(with: central)
             Task { @MainActor in
                 try? await Task.sleep(for: .seconds(20))
                 if self.target == nil {
@@ -385,25 +386,16 @@ extension RideSim: @preconcurrency CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        let advertised =
-            advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            ?? peripheral.name ?? ""
-        guard advertised.localizedCaseInsensitiveContains(name),
-              target == nil
-        else { return }
-        target = peripheral
-        peripheral.delegate = self
-        central.stopScan()
-        say("Found \"\(advertised)\" at \(RSSI) dBm. Connecting.")
-        record("The phone advertises as a fitness machine", true, advertised)
-        central.connect(peripheral, options: nil)
+        if let found = finder.connectFirstMatch(
+            from: central, peripheral: peripheral,
+            advertisementData: advertisementData, rssi: RSSI, delegate: self
+        ) {
+            record("The phone advertises as a fitness machine", true, found.advertisedName())
+        }
     }
 
-    func centralManager(
-        _ central: CBCentralManager,
-        didConnect peripheral: CBPeripheral
-    ) {
-        peripheral.discoverServices([serviceUUID])
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        finder.discoverServices(on: peripheral)
     }
 
     func centralManager(

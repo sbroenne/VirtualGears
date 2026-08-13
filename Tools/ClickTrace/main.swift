@@ -11,14 +11,13 @@ import VirtualGearsCore
 /// so the tool is killed the moment it asks. Launching the bundle with `open`
 /// makes the tool answer for itself, but then there is no console left to print
 /// to. Hence the file.
-let log = ToolLog(
-    environmentKey: "CLICK_TRACE_LOG",
-    defaultPath: "/tmp/click-trace.log"
-)
+let log = ToolLog(environmentKey: "CLICK_TRACE_LOG", defaultPath: "/tmp/click-trace.log")
 let logPath = log.path
 
-func say(_ text: String) {
-    log.say(text)
+func say(_ text: String) { log.say(text) }
+
+func finish(_ code: Int32) -> Never {
+    ToolSupport.finish(sentinel: "click-trace finished.", code: code, say: say)
 }
 
 /// Connects to an original Zwift Click and prints every packet it sends, with
@@ -33,7 +32,6 @@ func say(_ text: String) {
 /// time, so the phone and the Mac cannot both hold it.
 final class ClickTrace: NSObject {
     private var central: CBCentralManager!
-    private var click: CBPeripheral?
     private var receive: CBCharacteristic?
     private var subscribed = Set<CBUUID>()
     private var handshakeSent = false
@@ -51,9 +49,13 @@ final class ClickTrace: NSObject {
     private let batteryServiceUUID = CBUUID(string: "180F")
     private let batteryUUID = CBUUID(string: "2A19")
 
-    func start() {
-        central = CBCentralManager(delegate: self, queue: .main)
-    }
+    private lazy var finder = PeripheralFinder(
+        scanServices: [service], discoveryServices: [service, batteryServiceUUID],
+        say: say, matches: { _ in true },
+        foundMessage: { "Found \($0.advertisedName(default: "Zwift Click")) at \($0.rssi) dBm. Connecting." }
+    )
+
+    func start() { central = CBCentralManager(delegate: self, queue: .main) }
 
     private func stamp() -> String {
         let now = Date()
@@ -75,7 +77,7 @@ extension ClickTrace: CBCentralManagerDelegate {
         switch central.state {
         case .poweredOn:
             say("Scanning for a Zwift Click. Wake it by pressing a button.")
-            central.scanForPeripherals(withServices: [service])
+            finder.startScanning(with: central)
         case .unauthorized:
             say("""
             Bluetooth permission was refused.
@@ -83,10 +85,10 @@ extension ClickTrace: CBCentralManagerDelegate {
             Grant it to whichever program is running this, in
             System Settings > Privacy & Security > Bluetooth, then run it again.
             """)
-            exit(1)
+            finish(1)
         case .poweredOff:
             say("Bluetooth is switched off on this Mac.")
-            exit(1)
+            finish(1)
         default:
             break
         }
@@ -98,20 +100,14 @@ extension ClickTrace: CBCentralManagerDelegate {
         advertisementData: [String: Any],
         rssi RSSI: NSNumber
     ) {
-        let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String
-            ?? peripheral.name ?? "Zwift Click"
-        say("Found \(name) at \(RSSI) dBm. Connecting.")
-        central.stopScan()
-        click = peripheral
-        peripheral.delegate = self
-        central.connect(peripheral)
+        finder.connectFirstMatch(
+            from: central, peripheral: peripheral,
+            advertisementData: advertisementData, rssi: RSSI, delegate: self
+        )
     }
 
-    func centralManager(
-        _ central: CBCentralManager,
-        didConnect peripheral: CBPeripheral
-    ) {
-        peripheral.discoverServices([service, batteryServiceUUID])
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        finder.discoverServices(on: peripheral)
     }
 
     func centralManager(
@@ -120,7 +116,7 @@ extension ClickTrace: CBCentralManagerDelegate {
         error: Error?
     ) {
         say("\nThe Click disconnected. \(error?.localizedDescription ?? "")")
-        exit(0)
+        finish(0)
     }
 }
 
@@ -129,7 +125,7 @@ extension ClickTrace: CBPeripheralDelegate {
         guard let services = peripheral.services,
               services.contains(where: { $0.uuid == service }) else {
             say("This device has no Zwift Click service.")
-            exit(1)
+            finish(1)
         }
         for found in services {
             if found.uuid == service {
