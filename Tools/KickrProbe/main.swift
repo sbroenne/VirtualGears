@@ -305,8 +305,12 @@ final class KickrProbe: NSObject {
         say(
             """
 
-            Now turn the pedals by hand and keep them going. It should be light.
-            Stop straight away if it is not. Waiting for movement.
+            Now turn the pedals by hand and keep them going.
+
+            It will take some effort even with no resistance: a direct-drive
+            flywheel is heavy, and that is normal. What is not normal is the
+            trainer pushing back harder the faster you go. Stop if that happens.
+            Waiting for movement.
             """
         )
         try await waitForMovement()
