@@ -71,35 +71,24 @@ public struct AppConfiguration: Codable, Equatable {
         return Self.isSafe(drivetrain)
     }
 
-    /// Confirms every gear of a drivetrain encodes inside the range that was
-    /// actually staged on the trainer. Nothing reaches the KICKR without this.
+    /// Confirms every gear of a drivetrain can be built and encoded at both
+    /// ends of the wheel sizes a riding app may ask for. Nothing reaches the
+    /// KICKR without this.
     public static func isSafe(_ drivetrain: Drivetrain) -> Bool {
-        guard (try? ConfirmedGearEngine(
-            drivetrain: drivetrain,
-            baselineCircumferenceMillimeters:
-                TrainerSafety.referenceCircumferenceMillimeters
-        )) != nil else {
-            return false
-        }
-
-        return drivetrain.gears.allSatisfy { gear in
-            guard let circumference = try? WheelCircumferenceScaler
-                .effectiveCircumference(
-                    neutralCircumference:
-                        TrainerSafety.referenceCircumferenceMillimeters,
-                    referenceRatio: drivetrain.referenceGear.ratio,
-                    selectedRatio: gear.ratio
-                ),
-                let command = try? WahooKickrCommand.setWheelCircumference(
-                    millimeters: circumference
-                ) else {
-                return false
-            }
-            let bytes = Array(command)
-            let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
-            let proven = TrainerSafety.provenCircumferenceMillimeters
-            return (Int(proven.lowerBound * 10)...Int(proven.upperBound * 10))
-                .contains(encoded)
+        // Building the gears is the check. The engine scales every gear and
+        // encodes every command, so anything it accepts can be staged.
+        //
+        // Both ends of the supported window are tried, not just the reference
+        // wheel size, because a drivetrain that fits around 2070 mm can still
+        // put its hardest gear out of reach once a riding app asks for 2400 mm.
+        // Checking only the middle is how a drivetrain used to pass setup and
+        // then fail mid-ride.
+        let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
+        return [window.lowerBound, window.upperBound].allSatisfy { wheelSize in
+            (try? ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: wheelSize
+            )) != nil
         }
     }
 

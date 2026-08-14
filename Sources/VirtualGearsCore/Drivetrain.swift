@@ -22,6 +22,18 @@ public struct Drivetrain: Equatable, Sendable {
     /// An even ladder of twenty-four virtual ratios that belongs to no real
     /// bike. The lower half extends farther than the common 0.75-based ladder
     /// so first gear is genuinely easy without sacrificing the harder half.
+    /// Gear 12 of the ladder, ratio 2.40, is the gear the trainer sits at when
+    /// nothing has been shifted, and it is a product decision rather than a
+    /// calculated one.
+    ///
+    /// It used to be calculated: the ladder was centred inside whatever range
+    /// the trainer was believed to accept. That made the gears every rider
+    /// feels move whenever an unrelated safety number was edited — widening
+    /// that range once made the easiest gear 13% harder, silently. The starting
+    /// gear is now stated here and the range only has to be wide enough to hold
+    /// it.
+    public static let virtualReferenceIndex = 11
+
     public static let virtualRatiosHundredths = [
         60, 68, 77, 88, 100, 113, 129, 146,
         165, 187, 212, 240, 261, 282, 303, 324,
@@ -31,15 +43,16 @@ public struct Drivetrain: Equatable, Sendable {
     /// Built as ratios out of one hundred rather than real teeth, because these
     /// gears are not parts anyone can buy.
     public static func virtualLadder(
-        scaleRange: ClosedRange<Double> = TrainerSafety.provenScaleRange
+        scaleRange: ClosedRange<Double> = TrainerSafety.supportedScaleRange
     ) throws -> Drivetrain {
         let gears = try virtualRatiosHundredths
             .sorted()
             .map { try VirtualGear(chainring: $0, cog: 100) }
-        guard let reference = centredReferenceIndex(
-            of: gears,
-            scaleRange: scaleRange
-        ) else {
+        let reference = virtualReferenceIndex
+        let referenceRatio = gears[reference].ratio
+        let easiest = gears[0].ratio / referenceRatio
+        let hardest = gears[gears.count - 1].ratio / referenceRatio
+        guard scaleRange.contains(easiest), scaleRange.contains(hardest) else {
             throw DrivetrainError.rangeTooWideForTrainer(
                 span: (gears.last?.ratio ?? 0) / (gears.first?.ratio ?? 1),
                 widest: scaleRange.upperBound / scaleRange.lowerBound
@@ -66,7 +79,7 @@ public struct Drivetrain: Equatable, Sendable {
     public static func build(
         chainrings: [Int],
         cassetteCogs: [Int],
-        scaleRange: ClosedRange<Double> = TrainerSafety.provenScaleRange
+        scaleRange: ClosedRange<Double> = TrainerSafety.supportedScaleRange
     ) throws -> Drivetrain {
         guard !chainrings.isEmpty else {
             throw DrivetrainError.emptyChainrings

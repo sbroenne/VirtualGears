@@ -63,3 +63,32 @@ A riding app connected. Timing starts now.
   430.5s  0x00 request control
   440.4s  0x00 request control
   450.5s  0x00 request control
+
+=== What the riding app did ===
+Watched for 1854 seconds.
+
+  0x00 sent 44 times
+  0x04 sent 3 times
+  0x07 sent 3 times
+  0x11 sent 393 times
+  0x12 sent 2 times
+
+Wheel size was set 2 time(s):
+  at 17.9s into the ride: 2200.0 mm
+  at 148.1s into the ride: 2200.0 mm
+
+1 arrived more than a minute in, so this app really does change the wheel size during a ride.
+app-tap finished
+
+--- Note added after this capture, not part of it ---
+The verdict line above is wrong and the tool has been corrected.
+
+Both wheel sizes arrived within half a second of FulGaz sending "start or
+resume". The second one is at 148.1s because the rider restarted the ride, not
+because FulGaz moved the wheel size mid-ride. The tool used to call anything
+after the first minute a mid-ride change; it now compares each wheel size
+against the riding app's own ride starts.
+
+What this capture actually shows: FulGaz sets the wheel size once per ride, at
+the start, and never touches it again -- 393 terrain updates and 31 minutes
+without a second 0x12.

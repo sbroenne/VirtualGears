@@ -192,20 +192,24 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertEqual(coordinator.sessionBaselineMillimeters, 2_105)
     }
 
-    /// Room to rebuild the gears is not unlimited, so a wheel size far outside
-    /// it must still leave the rider able to start. The ride falls back to the
-    /// neutral size rather than refusing to begin.
-    func testAParkedWheelSizeTooLargeForTheGearsStillLetsTheNextRideStart()
+    /// Virtual Gears supports the wheel sizes real bicycles have, so a wheel
+    /// size well outside that must still leave the rider able to start. The
+    /// ride falls back to the neutral size rather than refusing to begin.
+    ///
+    /// 3000 mm is not a wheel anyone rides; it is here because a riding app can
+    /// send any number the command can carry, and the rider should not be
+    /// stranded by one.
+    func testAParkedWheelSizeNoBicycleHasStillLetsTheNextRideStart()
         async throws
     {
         try await startRide()
         await coordinator.stopRide()
 
         _ = await ridingApp.send(
-            .setWheelCircumference(tenthsOfMillimeter: 24_000)
+            .setWheelCircumference(tenthsOfMillimeter: 30_000)
         )
         try await settle {
-            self.trainer.currentWheelSizeMillimeters == 2_400
+            self.trainer.currentWheelSizeMillimeters == 3_000
         }
 
         try await startRide()

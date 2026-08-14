@@ -8,62 +8,46 @@ Demo Mode is separate from this hardware path. It uses local simulated gear
 state, does not use Bluetooth, does not run the interrupted-ride baseline reset
 and cannot send a command to exercise equipment.
 
-## The range was measured, not guessed
+## The trainer has no wheel-size limit we could find
 
-The wheel sizes Virtual Gears actually sends were confirmed on a physical
-KICKR V5, with the 2070 mm reference reset between every probe.
+This is worth stating plainly, because Virtual Gears got it wrong for a long
+time.
 
-Ten values from 647 mm to 4800 mm were confirmed in the first run. A later run
-covered the easy end the gears reach — 517.5, 525, 550, 575, 600, 625 and
-647 mm — and the trainer acknowledged every one, in 60 to 180 ms. That run is
-recorded in `docs/kickr-wheel-size-sweep.log` in the repository.
+A physical KICKR V5 was probed across the whole span the command can express,
+and it acknowledged **every value from 0.1 mm to 6553.5 mm**. 6553.5 mm is
+simply the largest number that fits in the command. Six later runs staged
+sixty-four more values — 425 to 500 mm, 500 to 647 mm, 647 to 4800 mm, 4800 to
+5350 mm, and 5350 to 5525 mm — with the 2070 mm reference reset between every
+probe. Not one was refused, and replies came back in 58 to 268 ms.
 
-Those two runs stopped at 517.5 mm, while the app's own operating range went
-down to 500 mm. A third run closed that gap: 500, 502.5, 505, 507.5, 510, 512.5,
-515 and 517.5 mm were all acknowledged, in 58 to 181 ms, and it is recorded in
-`docs/kickr-wheel-size-sweep-low-end.log`. The bottom of the range is now
-measured rather than assumed.
+The runs are recorded in `docs/kickr-wheel-size-sweep.log`,
+`docs/kickr-wheel-size-sweep-low-end.log`,
+`docs/kickr-wheel-size-sweep-high-end.log`,
+`docs/kickr-wheel-size-sweep-fulgaz.log` and
+`docs/kickr-wheel-size-sweep-full-window.log`.
 
-A fourth run raised the top. It stepped from 4800 mm to 5000 mm in 25 mm steps
-— nine values, every one acknowledged in 59 to 152 ms, none refused — and is
-recorded in `docs/kickr-wheel-size-sweep-high-end.log`.
+So there is exactly one hard limit, and it belongs to the protocol rather than
+the trainer: a wheel size larger than 6553.5 mm cannot be expressed at all.
 
-A fifth run raised it again, from 5000 mm to 5350 mm in 25 mm steps. Fifteen
-values, every one acknowledged in 61 to 239 ms, none refused, recorded in
-`docs/kickr-wheel-size-sweep-fulgaz.log`. Why it was needed is described below.
+Virtual Gears used to carry a narrower range and describe it as what the trainer
+had been "proven to accept". That was not true. It was a record of which values
+someone had happened to probe, and it was quietly doing a second job it was
+never designed for — see below. It has been removed.
 
-The 24 virtual gears span 517.5 mm to 4735.1 mm at a 2070 mm reference, so both
-ends of the ladder have been confirmed on real hardware. These are the edges we
-chose to test, not a claim that the KICKR rejects values outside them. Virtual
-Gears keeps its own operating range at 500–5350 mm and never asks for anything
-outside it. Every value at both edges of that range has been confirmed.
+## What Virtual Gears supports, and why that is a decision
 
-## Why the range is wider than the gears need
+Because the trainer takes anything, the only question left is which wheel sizes
+make sense for a bicycle. Virtual Gears accepts wheel sizes from a riding app
+between **1800 mm and 2400 mm**.
 
-The gears themselves only reach 517.5 mm to 4735.1 mm, so the range looks
-generous at both ends. That spare room is not for gears; it is for the riding
-app.
-
-A riding app may set its own wheel size, and real ones do. Virtual Gears
-rebuilds the whole ladder around whatever size it is given, so the range has to
-hold not just the ladder but the ladder shifted up or down by that request. At a
-4800 mm ceiling the ladder could only be rebuilt for wheels between 2000 mm and
-2098 mm, which turned a 700x25c wheel at 2105 mm — an ordinary road wheel — into
-a refusal. Raising the ceiling to 5000 mm widened that window to 2000–2186 mm.
-
-That was still not enough, and guessing would not have found it. FulGaz was
-watched directly, by having a Mac pretend to be the trainer it connects to, and
-it asks for **2200 mm** as part of starting a ride. A 5000 mm ceiling refused
-that, which meant Virtual Gears and FulGaz could not have worked together at
-all. The capture is recorded in `docs/fulgaz-app-tap-run.log`. Measuring the
-trainer up to 5350 mm widens the window to 1999.9–2338.8 mm, which accepts it.
-
-Measured against real wheel sizes, that window now covers the road sizes and a
-29er:
+That is a product decision, not a measurement, and it is stated in one place in
+the code with a test that walks every tenth of a millimetre in it and checks all
+24 gears can be built. Its width is bounded by one real thing: at 2400 mm the
+hardest gear reaches 5490 mm, and the command stops at 6553.5 mm.
 
 | Wheel | Circumference | Accepted |
 | --- | --- | --- |
-| 650b | 1900 mm | no |
+| 650b | 1900 mm | yes |
 | 26 inch | 2070 mm | yes |
 | 700x23c | 2096 mm | yes |
 | 700x25c | 2105 mm | yes |
@@ -72,18 +56,27 @@ Measured against real wheel sizes, that window now covers the road sizes and a
 | FulGaz | 2200 mm | yes |
 | 29 inch | 2326 mm | yes |
 
-A 650b is still refused. That is a real limitation, not an oversight, and
-raising the ceiling cannot fix it: at 1900 mm the easiest gear would need
-475 mm, and only 500 mm has been measured. Covering it would mean measuring
-further down the trainer's range, which has not been done.
+### Why this needed fixing
 
-Nothing here is a limit of the gears or of the trainer. Both would go further —
-the trainer acknowledged 5350 mm on the first ask. It is a limit of what has
-been measured, which is the only thing this app is willing to send.
+Virtual Gears rebuilds its whole gear ladder around whatever wheel size the
+riding app asks for. The wheel sizes it would accept were never written down
+anywhere. They fell out of where the 24 gears happened to sit inside that old
+"proven range", so nobody could look them up, and nothing failed until a real
+riding app asked for one that did not fit.
 
-A request that falls outside the window is refused rather than clamped, and the
-trainer keeps the wheel size it already had. Nothing unproven is ever sent. The
-rider is not told when this happens; it appears only in the app's own log.
+It kept costing real riders, one at a time. A 700x25c wheel at 2105 mm — an
+ordinary road wheel — was refused. So was a 650b. And FulGaz, which was watched
+directly by having a Mac pretend to be the trainer it connects to, asks for
+**2200 mm** whenever a ride starts; that was refused too, which meant Virtual
+Gears and FulGaz could not have worked together at all. The capture is in
+`docs/fulgaz-app-tap-run.log`.
+
+All three are now accepted, and the window is declared rather than emergent, so
+the next one cannot be discovered by a rider.
+
+A request outside the window is still refused rather than clamped, and the
+trainer keeps the wheel size it already had. The rider is not told when this
+happens; it appears only in the app's own log.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

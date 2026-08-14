@@ -787,11 +787,16 @@ public final class ProxyCoordinator {
                 baselineCircumferenceMillimeters: millimeters
             )
         } catch let error as VirtualGearError {
+            let window = TrainerSafety
+                .supportedRidingAppCircumferenceMillimeters
+            let lowest = Int(window.lowerBound)
+            let highest = Int(window.upperBound)
+            let asked = Int(millimeters.rounded())
+            let kept = Int((sessionBaselineMillimeters ?? 0).rounded())
             log(
-                "Riding app asked for a \(Int(millimeters.rounded())) mm wheel. "
-                    + "Gears built around it would reach outside the range "
-                    + "proven safe on this trainer (\(error)). Keeping "
-                    + "\(Int((sessionBaselineMillimeters ?? 0).rounded())) mm.",
+                "Riding app asked for a \(asked) mm wheel, which is outside "
+                    + "the \(lowest)-\(highest) mm Virtual Gears supports "
+                    + "(\(error)). Keeping \(kept) mm.",
                 .warning
             )
             return .init(result: .invalidParameter, status: nil)

@@ -125,11 +125,11 @@ final class DrivetrainTests: XCTestCase {
         let easiest = drivetrain.gears.first!.ratio
         XCTAssertLessThanOrEqual(
             hardest / reference,
-            TrainerSafety.provenScaleRange.upperBound
+            TrainerSafety.supportedScaleRange.upperBound
         )
         XCTAssertGreaterThanOrEqual(
             easiest / reference,
-            TrainerSafety.provenScaleRange.lowerBound
+            TrainerSafety.supportedScaleRange.lowerBound
         )
         XCTAssertGreaterThan(
             drivetrain.referenceIndex,
@@ -322,7 +322,7 @@ final class DrivetrainTests: XCTestCase {
         )
     }
     /// The gears a rider gets before describing any bike at all.
-    func testVirtualLadderIsTwentyFourGearsInsideTheProvenRange() throws {
+    func testVirtualLadderIsTwentyFourGearsEveryOneEncodable() throws {
         let drivetrain = try Drivetrain.virtualLadder()
 
         XCTAssertEqual(drivetrain.gears.count, 24)
@@ -358,12 +358,11 @@ final class DrivetrainTests: XCTestCase {
                     referenceRatio: reference,
                     selectedRatio: gear.ratio
                 )
-            XCTAssertTrue(
-                TrainerSafety.provenCircumferenceMillimeters.contains(
-                    TrainerSafety.circumferenceAsSent(circumference)
-                ),
+            XCTAssertLessThanOrEqual(
+                circumference,
+                WahooKickrCommand.maximumCircumferenceMillimeters,
                 "Virtual gear \(gear.chainring)/\(gear.cog) would ask for "
-                    + "\(circumference) mm, outside the proven range"
+                    + "\(circumference) mm, which the command cannot express"
             )
         }
         let ratios = drivetrain.gears.map(\.ratio)
@@ -405,18 +404,69 @@ final class DrivetrainTests: XCTestCase {
         )
     }
 
-    /// The other end is not covered, and saying so out loud keeps anyone from
-    /// assuming the range stretches further than it was measured to.
-    func testAWheelSizeBelowTheMeasuredBottomIsStillRefused() throws {
+    /// A 650b wheel at 1900 mm used to be refused, because the old range
+    /// stopped at 500 mm and the easiest gear needs 475 mm. Nothing about the
+    /// trainer required that: it acknowledged 425 mm and, in an earlier probe,
+    /// 0.1 mm. The limit was our own record-keeping, and this is the wheel it
+    /// cost.
+    func testA650bWheelIsAccepted() throws {
         let drivetrain = try Drivetrain.virtualLadder()
-        XCTAssertThrowsError(
+        XCTAssertNoThrow(
             try ConfirmedGearEngine(
                 drivetrain: drivetrain,
                 baselineCircumferenceMillimeters: 1_900
-            ),
-            "A 650b wheel needs 475 mm at the easiest gear and only 500 mm has "
-                + "been measured, so it has to be refused rather than guessed at"
+            )
         )
+    }
+
+    /// The guard that stops this whole class of bug coming back.
+    ///
+    /// Virtual Gears kept discovering it was too narrow one riding app at a
+    /// time — a 700x25c wheel, then the 2200 mm FulGaz sends — because the
+    /// wheel sizes it accepted were never declared anywhere. They fell out of
+    /// where the gear ladder happened to sit inside an unrelated range, so
+    /// nothing failed until a real app asked.
+    ///
+    /// This walks every wheel size Virtual Gears claims to support, in tenths
+    /// of a millimetre, and insists all twenty-four gears build and encode at
+    /// each one. Widening the gears or narrowing the window now breaks the
+    /// build instead of a ride.
+    func testEveryGearEncodesAtEverySupportedWheelSize() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
+        let steps = Int(
+            ((window.upperBound - window.lowerBound)
+                / TrainerSafety.commandStepMillimeters).rounded()
+        )
+        for step in 0...steps {
+            let wheelSize = window.lowerBound
+                + Double(step) * TrainerSafety.commandStepMillimeters
+            XCTAssertNoThrow(
+                try ConfirmedGearEngine(
+                    drivetrain: drivetrain,
+                    baselineCircumferenceMillimeters: wheelSize
+                ),
+                "Virtual Gears says it supports a \(wheelSize) mm wheel, but "
+                    + "cannot build its gears around one"
+            )
+        }
+    }
+
+    /// The window is a decision, so it has to stay a decision someone can
+    /// defend. These are the wheels it exists for.
+    func testTheSupportedWindowCoversEveryRealBicycleWheel() {
+        let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
+        for (wheel, millimeters) in [
+            ("650b", 1_900.0),
+            ("700x25c", 2_105.0),
+            ("the size FulGaz asks for", 2_200.0),
+            ("29er", 2_326.0)
+        ] {
+            XCTAssertTrue(
+                window.contains(millimeters),
+                "A rider on \(wheel) at \(millimeters) mm would be refused"
+            )
+        }
     }
 
 }

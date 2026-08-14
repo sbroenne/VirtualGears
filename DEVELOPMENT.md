@@ -112,8 +112,35 @@ A third run closed a gap the first two left: `TrainerSafety` declared an
 operating range starting at 500 mm, but nothing below 517.5 mm had ever been
 sent to a trainer. Eight values from 500 mm to 517.5 mm in 2.5 mm steps were all
 confirmed, in 58 to 181 ms, with the reference reset between each and again at
-the end. The output is in `docs/kickr-wheel-size-sweep-low-end.log`. The bottom
-of the declared range is now measured rather than assumed.
+the end. The output is in `docs/kickr-wheel-size-sweep-low-end.log`.
+
+Two further runs pushed the top to 5350 mm and then covered both ends at once,
+425 to 500 mm and 5350 to 5525 mm. Every value was confirmed. They are in
+`docs/kickr-wheel-size-sweep-fulgaz.log` and
+`docs/kickr-wheel-size-sweep-full-window.log`.
+
+### The range these runs were measuring did not exist
+
+All of this was chasing a limit the trainer does not have.
+
+An earlier boundary probe had already shown the KICKR V5 acknowledging values
+from **0.1 mm to 6553.5 mm** — the entire span the command can express. That
+result was never written into the code or the docs, so the app went on carrying
+a narrow range described as what the trainer had been "proven to accept", and
+went on being widened one refused wheel at a time.
+
+Worse, that number was doing a second job nobody had noticed. The 24 gears are
+positioned inside it, so its width silently decided which wheel sizes a riding
+app was allowed to set. That is why every widening was triggered by a real rider
+or a real app hitting a refusal.
+
+Both jobs are now separated and stated outright. `TrainerSafety` declares the
+wheel sizes Virtual Gears supports — 1800 mm to 2400 mm — and a test walks every
+tenth of a millimetre of that window checking all 24 gears build. The only limit
+left on the trainer side is the one that is real: 6553.5 mm is the largest wheel
+size the command can carry. The starting gear was pinned at the same time, after
+changing the range was found to move the shipped gears and make the easiest one
+13% harder.
 
 The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
@@ -357,9 +384,9 @@ wheel size mid-ride from our point of view. The rebuilding machinery is
 therefore still needed. What is wrong is the explanation attached to it, not the
 code.
 
-**FulGaz asks for 2200 mm**, which the app refused until the proven range
-reached 5350 mm. Virtual Gears and FulGaz could not have worked together at all,
-and no amount of reading the code would have found it. See `docs/safety.md`.
+**FulGaz asks for 2200 mm**, which the app refused. Virtual Gears and FulGaz
+could not have worked together at all, and no amount of reading the code would
+have found it. See `docs/safety.md`.
 
 Beyond the wheel size, FulGaz re-requests control every ten seconds for the
 whole ride, and drives resistance through simulation parameters rather than

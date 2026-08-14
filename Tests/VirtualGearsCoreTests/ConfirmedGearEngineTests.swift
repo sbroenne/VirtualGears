@@ -273,16 +273,11 @@ final class ConfirmedGearEngineTests: XCTestCase {
                         )
                     )
                     let encoded = Int(bytes[1]) | Int(bytes[2]) << 8
-                    let safeEncodedRange = Int(
-                        TrainerSafety.provenCircumferenceMillimeters.lowerBound * 10
-                    )...Int(
-                        TrainerSafety.provenCircumferenceMillimeters.upperBound * 10
-                    )
                     XCTAssertTrue(
-                        safeEncodedRange.contains(encoded),
+                        (1...Int(UInt16.max)).contains(encoded),
                         "\(chainring.name) with \(cassette.name), gear "
                             + "\(gear.chainring)x\(gear.cog) encodes \(encoded), "
-                            + "outside the proven range"
+                            + "which the command cannot express"
                     )
                 }
             }
@@ -363,7 +358,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         ) { error in
             XCTAssertEqual(
                 error as? VirtualGearError,
-                .outsideProvenRange
+                .outsideSupportedRange
             )
         }
         XCTAssertThrowsError(
@@ -371,7 +366,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         ) { error in
             XCTAssertEqual(
                 error as? VirtualGearError,
-                .outsideProvenRange
+                .outsideSupportedRange
             )
         }
     }

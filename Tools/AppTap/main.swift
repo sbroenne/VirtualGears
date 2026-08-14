@@ -82,7 +82,12 @@ final class TrainerTap: NSObject {
     /// this tool exists to draw.
     private var rideStart: Date?
     private var commandCount: [UInt8: Int] = [:]
-    private var wheelSizeMoments: [(seconds: TimeInterval, millimetres: Double)] = []
+    private var wheelSizeMoments:
+        [(seconds: TimeInterval, millimetres: Double, sinceStart: TimeInterval?)] = []
+    /// When the riding app last said "start or resume". A wheel size arriving
+    /// just after one belongs to that ride starting, however far into the
+    /// watch it happens to fall.
+    private var lastStartSeconds: TimeInterval?
     private var simulationCount = 0
     private var lastSimulationReport = 0
 
@@ -209,7 +214,10 @@ final class TrainerTap: NSObject {
         switch request {
         case let .setWheelCircumference(tenths):
             let millimetres = Double(tenths) / 10
-            wheelSizeMoments.append((secondsIntoRide(), millimetres))
+            let now = secondsIntoRide()
+            wheelSizeMoments.append(
+                (now, millimetres, lastStartSeconds.map { now - $0 })
+            )
             say(
                 "\(stamp())  \(opcode) SET WHEEL SIZE \(millimetres) mm"
                     + "   <- this is the one that matters"
@@ -223,6 +231,7 @@ final class TrainerTap: NSObject {
         case let .setTargetPower(watts):
             say("\(stamp())  \(opcode) set target power \(watts) W")
         case .startOrResume:
+            lastStartSeconds = secondsIntoRide()
             say("\(stamp())  \(opcode) start or resume")
         case let .stopOrPause(value):
             say("\(stamp())  \(opcode) stop or pause \(value)")
@@ -271,24 +280,47 @@ final class TrainerTap: NSObject {
         }
         say("Wheel size was set \(wheelSizeMoments.count) time(s):")
         for moment in wheelSizeMoments {
+            let when: String
+            if let sinceStart = moment.sinceStart {
+                when = String(
+                    format: "%.1fs after the riding app started a ride",
+                    sinceStart
+                )
+            } else {
+                when = "with no ride start seen before it"
+            }
             say(
                 String(
-                    format: "  at %.1fs into the ride: %.1f mm",
+                    format: "  at %.1fs into the watch: %.1f mm, ",
                     moment.seconds,
                     moment.millimetres
-                )
+                ) + when
             )
         }
-        let afterStart = wheelSizeMoments.filter { $0.seconds > 60 }
+        // Judged against the riding app's own ride starts, not against the
+        // clock. An earlier version called anything after the first minute a
+        // mid-ride change, and then reported that FulGaz changes wheel size
+        // mid-ride when all it had done was start a second ride.
+        let startGrace: TimeInterval = 5
+        let midRide = wheelSizeMoments.filter { moment in
+            guard let sinceStart = moment.sinceStart else { return true }
+            return sinceStart > startGrace
+        }
         say("")
-        if afterStart.isEmpty {
+        if midRide.isEmpty {
             say(
-                "All of them arrived in the first minute, so this app sets the "
-                    + "wheel size at the start and then leaves it alone."
+                "Every one arrived within \(Int(startGrace)) seconds of the "
+                    + "riding app starting a ride, so this app sets the wheel "
+                    + "size when its ride starts and then leaves it alone."
+            )
+            say(
+                "Note that its ride starting is not the same moment as Virtual "
+                    + "Gears starting, so a wheel size can still arrive while "
+                    + "gears are already engaged."
             )
         } else {
             say(
-                "\(afterStart.count) arrived more than a minute in, so this app "
+                "\(midRide.count) arrived well after a ride start, so this app "
                     + "really does change the wheel size during a ride."
             )
         }
