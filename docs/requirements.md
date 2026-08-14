@@ -84,6 +84,23 @@ anywhere, but your riding app then has the wrong gradient, so your speed and the
 course profile drift away from the truth. Virtual Gears changes the trainer's own
 idea of the bike and leaves the road alone.
 
+## Which riding apps work
+
+Virtual Gears appears as an ordinary FTMS trainer, so a riding app needs no
+special support for it. Two have been ridden end to end on real hardware:
+
+| Riding app | Status |
+|---|---|
+| FulGaz | Works |
+| RealVelo | Works |
+| MyWhoosh | **Does not work** |
+| Others | Expected to work, not tested |
+
+MyWhoosh pairs and sends the trainer its hill instructions, but shows no power
+and no cadence, so your rider does not move. This has been reproduced with the
+real app and trainer. We do not yet know why, and until we do it is not
+something you can work around.
+
 ## Your first ride
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.

@@ -74,6 +74,8 @@ final class TrainerTap: NSObject {
 
     private var published = false
     private var elapsedSeconds: UInt16 = 0
+    private var rideDataSent = 0
+    private var rideDataDropped = 0
     private var dataTimer: Timer?
     /// Which characteristics each connected app is listening to. Tracked so the
     /// tool can tell that the riding app has gone away and report by itself:
@@ -223,11 +225,19 @@ final class TrainerTap: NSObject {
             heartRateBPM: nil,
             elapsedTimeSeconds: elapsedSeconds
         )
-        _ = manager.updateValue(
+        let accepted = manager.updateValue(
             data.encode(),
             for: bikeDataCharacteristic,
             onSubscribedCentrals: nil
         )
+        if accepted { rideDataSent &+= 1 } else { rideDataDropped &+= 1 }
+        // Only the first few, so a long ride does not bury the interesting part.
+        if rideDataSent + rideDataDropped <= 3 {
+            say(
+                "\(stamp())  sent 30 km/h, 85 rpm, 200 W"
+                    + (accepted ? "" : " (Bluetooth was busy, it did not go)")
+            )
+        }
     }
 
     private func secondsIntoRide() -> TimeInterval {
@@ -342,6 +352,12 @@ final class TrainerTap: NSObject {
             return
         }
         say(String(format: "Watched for %.0f seconds.", secondsIntoRide()))
+        say(
+            "Sent \(rideDataSent) updates of speed, cadence and power"
+                + (rideDataDropped > 0
+                    ? "; \(rideDataDropped) did not go out because Bluetooth "
+                        + "was busy." : ".")
+        )
         say("")
         for (opcode, count) in commandCount.sorted(by: { $0.key < $1.key }) {
             let name = "0x" + String(format: "%02X", opcode)
@@ -471,8 +487,21 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         farewellTask?.cancel()
         farewellTask = nil
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
+        say("\(stamp())  listening to \(channelName(characteristic.uuid))")
         if characteristic.uuid == bikeDataUUID {
             startSendingRideData()
+        }
+    }
+
+    /// Which channels a riding app listens to says as much as what it writes. An
+    /// app that never subscribes to the bike data is not reading speed, cadence
+    /// or power from this trainer at all, however connected it looks on screen.
+    private func channelName(_ uuid: CBUUID) -> String {
+        switch uuid {
+        case controlUUID: return "the control point, where commands arrive"
+        case bikeDataUUID: return "the bike data: speed, cadence and power"
+        case statusUUID: return "the status channel"
+        default: return uuid.uuidString
         }
     }
 

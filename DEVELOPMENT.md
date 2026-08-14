@@ -362,9 +362,10 @@ This mode changes nothing and leaves the trainer on 2070 mm.
 
 Before the proxy was built, the diagnostic app was made to pretend to be a
 simple indoor bike, with nothing connected to the KICKR at the time. It was run
-against RealVelo. Zwift and MyWhoosh speak the same standard FTMS interface, but
-the probe was not run against them and they are not covered by what follows.
-FulGaz is covered separately in the next section.
+against RealVelo. Zwift speaks the same standard FTMS interface, but the probe
+was not run against it and it is not covered by what follows. MyWhoosh is
+covered in "MyWhoosh does not read what Virtual Gears sends" below, and it does
+not work. FulGaz is covered separately in the next section.
 
 RealVelo found the foreground iPhone as a Bluetooth FTMS trainer, showed the
 fixed speed, cadence, and power it published, and followed those values as they
@@ -398,8 +399,8 @@ involved. Run it with `./Tools/AppTap/run.sh`.
 Bluetooth advertisements back to itself, so a riding app running on this Mac can
 never see a tap advertising from this Mac — it will happily find the phone
 instead and report itself connected while the tap sits silent. FulGaz and
-RealVelo were traced from another device for this reason. MyWhoosh is installed
-on this Mac and cannot be traced from it.
+RealVelo were traced from another device for this reason. MyWhoosh was traced
+from an iPad against the Mac.
 
 It advertises as "AppTap", not as "Virtual Gears". The phone is usually
 advertising the real name a few feet away, and a riding app that picks the phone
@@ -407,6 +408,14 @@ instead looks exactly like a tap that sees nothing: connected on one screen,
 silent on the other. Pass `--name "Virtual Gears"` to check whether a riding app
 treats the real name differently — for RealVelo it did not — and quit the app on
 the phone first when doing so.
+
+That check only covers the **advertised** name. Once a riding app connects it
+reads the GAP Device Name, which macOS fixes to the name of the Mac, exactly as
+iOS fixes it to the name of the phone (see "What name a riding app shows for
+Virtual Gears"). So a pairing list will show "AppTap" while it is scanning and
+switch to the Mac's own name once connected, and both entries can sit in the
+list at the same time. They are the same machine. Nothing the tap does can
+change the connected name, so no `--name` run has ever tested it.
 
 It also calls out anything unusual as it happens, so a surprise is not left
 buried in a list of opcodes: a reset, repeated control requests, commands sent
@@ -548,6 +557,35 @@ part-way through fired the callback that cancels it. A cancelled task's sleeps
 return immediately, so every timed wait collapsed. The figures above are from
 after that was fixed. Treat any hardware evidence recorded before it with
 suspicion.
+
+## MyWhoosh does not read what Virtual Gears sends
+
+Measured on 2026-08-14, twice: once with `Tools/AppTap` on the Mac and MyWhoosh
+on an iPad, and once with the shipping app on the phone driving the real KICKR.
+Both showed **0 W and 0 rpm** in MyWhoosh. FulGaz and RealVelo both work, so
+this is specific to MyWhoosh.
+
+The tap capture is in `docs/mywhoosh-app-tap-run.log`. What MyWhoosh did:
+
+- subscribed to all three channels — bike data, control point and status
+- sent `0x00 request control` at 0.4 s
+- sent one `0x11 indoor bike simulation parameters` (terrain)
+- never set a wheel size, and never sent start or resume
+- stayed connected for the whole 1608-second run and accepted **1608** indoor
+  bike data notifications without complaint
+
+So MyWhoosh treats the app as a controllable trainer and steers it, but does not
+take speed, cadence or power from it. Nothing on our side explains that: the
+feature characteristic declares cadence and power measurement, the packet is a
+spec-shaped Indoor Bike Data notification, and Bluetooth accepted every push.
+
+**The cause is not known.** One untested idea is that MyWhoosh reads power from
+a Cycling Power Service (0x1818), which the app consumes from the KICKR but has
+never published to the riding app. That is a guess and has not been tried, so it
+must not be written down anywhere as the reason.
+
+Until it is understood and fixed, MyWhoosh must not be listed as a riding app
+that works.
 
 ## What name a riding app shows for Virtual Gears
 

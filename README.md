@@ -43,6 +43,11 @@ direct-drive KICKR models are expected to work but have not yet been physically
 tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
 supported.
 
+On the riding-app side, FulGaz and RealVelo have been ridden end to end.
+**MyWhoosh does not work**: it pairs and steers the trainer, but shows no power
+or cadence. The cause is not yet understood. Other FTMS riding apps are expected
+to work but have not been tested.
+
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
 
 ## Your first ride
