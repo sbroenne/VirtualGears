@@ -9,7 +9,7 @@ operating system, demonstrating the app's functionality". Demo Mode lets a
 reviewer navigate the product without a trainer, but it did not spare us the
 recording. Nothing can be resubmitted until this exists.
 
-Aim for **90 seconds**. Longer and the reviewer stops watching.
+Aim for **two minutes**. Longer and the reviewer stops watching.
 
 !!! warning "Simulation is not hardware evidence"
 
@@ -28,25 +28,32 @@ Their wording, and what it means here:
 - **It must show the typical user flow through the core features.** For this app
   that is: connect to the trainer, appear to a riding app, and shift gears.
 - **It must include any prompt asking for sensitive data or device
-  capabilities.** Virtual Gears asks for Bluetooth. Record on a phone that has
-  not granted it yet, or reset it first with Settings → General → Transfer or
-  Reset iPhone → Reset → Reset Location & Privacy, so the Bluetooth prompt
-  appears on camera.
+  capabilities.** Virtual Gears asks for Bluetooth, and that is the only prompt
+  it ever shows. iOS only asks once per install, so the app has to be deleted
+  and reinstalled before recording — see below.
 
 The remaining items in their list — account registration, purchases,
 user-generated content — do not exist in this app. There is nothing to film.
 
 ## Before you start
 
-- Bike on the trainer, trainer plugged in and awake.
-- Riding app open on the computer, not yet paired.
+**Delete the app from the phone first.** Deleting it takes its Bluetooth
+permission with it, so the prompt appears again on the next launch, and the app
+starts with no remembered trainer — exactly what an App Review device sees.
+Then install 1.0 (6) again from TestFlight, but **do not open it**. The
+recording has to start from the Home screen.
+
+Also:
+
+- Trainer plugged in and awake. Turn the pedals once to wake it. You do not need
+  to ride: the trainer confirms a gear change whether or not you are pedalling.
 - iPhone in Do Not Disturb, screen brightness up, battery over 50%.
-- If you have a Zwift Click, fit it. If not, skip shots 7 and 8.
+- If you have a Zwift Click, fit it and switch it on.
+- Riding app open on the computer only if you want the optional act 4.
 
 Record the phone with **iOS screen recording** (Control Centre → the record
-button), not a camera pointed at the screen. For the two shots that need the
-bike in frame, record those separately on a second phone or a camera and cut
-them in.
+button), not a camera pointed at the screen. For the chain shot, record that
+separately on a camera and cut it in.
 
 !!! tip "Turn the microphone on"
 
@@ -56,29 +63,54 @@ them in.
 
 ## The shot list
 
+### Act 1 — launch and connect (required by Apple)
+
 | # | Shot | What to say |
 |---|---|---|
 | 1 | Home screen, tap Virtual Gears | "This is Virtual Gears. It gives an indoor trainer gears it doesn't have." |
-| 2 | The Bluetooth permission prompt appears. Allow it. | "It asks for Bluetooth, because that is how it reaches the trainer. That is the only permission it ever asks for." |
-| 3 | The app finds and connects to the trainer on its own | "It finds my trainer and connects by itself. There's nothing to set up." |
-| 4 | Cut to the computer: the riding app's pairing list, showing the iPhone offered as a trainer. Pair it. | "On the computer, my riding app sees the iPhone as a trainer, and pairs with it." |
-| 5 | Back to the phone: the ride screen, power and cadence moving as you pedal | "Now I'm riding. Power and cadence come from the trainer, through the phone, to the riding app." |
-| 6 | Pedal steadily, tap the harder button four or five times. Let the number change be visible. | "Shifting up. The trainer gets harder, and my chain hasn't moved." |
-| 7 | Same again with the Zwift Click, if you have one | "The same gears, from a shifter on the handlebar." |
-| 8 | Hold the Click button down, then let go | "Holding it sweeps through the gears and stops when I let go." |
-| 9 | Camera shot of the bike: point at the chain, unmoving, in one gear | "The chain stays where it is all ride. No noise, no wear." |
-| 10 | Phone: open the gears screen, switch to a real bike drivetrain | "I can ride the 24 virtual gears, or describe a real bike and ride its gears instead." |
-| 11 | Phone: stop shifting | "Virtual shifting is now off." |
+| 2 | The Bluetooth permission prompt appears. Allow it. | "It asks for Bluetooth, because that's how it reaches the trainer. That's the only permission it ever asks for." |
+| 3 | The app finds and connects to the trainer on its own | "It finds my Wahoo KICKR and connects by itself. There's nothing to set up." |
 
-## What physical hardware evidence should show
+### Act 2 — the core feature, on the real trainer
 
-Make these three points unmistakable:
+No pedalling needed. The trainer acknowledges each gear either way.
 
-1. **The iPhone appearing in the riding app's trainer list** (shot 4). This
-   proves the app does what the description claims.
-2. **The trainer responding to a shift** (shot 6) — the resistance changing
-   while you pedal, with the gear number visible.
-3. **The ride ending cleanly** (shot 11), which is the safety story.
+| # | Shot | What to say |
+|---|---|---|
+| 4 | Tap Harder four or five times, slowly enough that each number lands | "Shifting. Each gear resizes the trainer's wheel, and the trainer confirms it before the number changes." |
+| 5 | Tap Easier back down again | "And back down. My chain hasn't moved once." |
+| 6 | With a Zwift Click: shift with the handlebar buttons, then hold one down | "The same gears from a shifter on the handlebar. Holding it sweeps through them." |
+| 7 | Camera shot of the bike: the chain, unmoving, in one gear | "The chain stays where it is. No shifting noise, no wear." |
+| 8 | Stop shifting | "Stopping puts the trainer's wheel size back where it was." |
+
+### Act 3 — how a reviewer tests it with no hardware
+
+This is the part that matters for App Review, because they have no trainer.
+
+| # | Shot | What to say |
+|---|---|---|
+| 9 | On the first screen, tap **Try Demo** | "Nobody reviewing this will have a trainer, so the app ships a demo. It's on the first screen." |
+| 10 | The Demo Mode banner | "It says plainly that it's simulated and uses no Bluetooth." |
+| 11 | Shift Easier and Harder a few times | "This is the real gear engine. The wheel sizes and the command bytes on screen are the exact ones the app just sent to the trainer — only the radio is simulated." |
+| 12 | Open the gears screen, switch to a real-bike drivetrain, come back | "24 virtual gears, or describe a real bike and ride its gears instead." |
+| 13 | Open Settings, then Exit Demo | "Everything else in the app is reachable from here too." |
+
+### Act 4 — the riding app (optional, only if one is running)
+
+| # | Shot | What to say |
+|---|---|---|
+| 14 | Cut to the computer: the riding app's pairing list, with the iPhone offered as a trainer. Pair it. | "On the computer, my riding app sees the iPhone as a standard trainer and pairs with it." |
+
+## What the video must make unmistakable
+
+Three things, or it will not do its job:
+
+1. **It starts on the Home screen** and the Bluetooth prompt is on camera.
+   Apple asked for both in as many words.
+2. **The real trainer confirms a shift** (act 2), with the gear number visible.
+   This is the app doing its actual job on real hardware.
+3. **Try Demo is reachable from the first screen** (act 3). This is the answer
+   to "how do we review an app that needs a trainer we don't have?"
 
 ## Where to put the file
 
@@ -111,10 +143,18 @@ video:
 
 > Thank you. A screen recording made on a physical iPhone 17 Pro running iOS 26.6
 > is attached. It starts by launching the app from the Home screen, shows the
-> Bluetooth permission prompt, the app finding and connecting to the trainer on
-> its own, the iPhone appearing in the riding app's trainer list on a computer,
-> gears being shifted while pedalling with the trainer's resistance changing,
-> and shifting being stopped cleanly at the end.
+> Bluetooth permission prompt, the app finding and connecting to a Wahoo KICKR V5
+> trainer on its own, gears being shifted on that trainer with each change
+> confirmed by the trainer before it appears on screen, and shifting being
+> stopped cleanly at the end, which returns the trainer's wheel size to where it
+> was.
+>
+> The recording then shows Demo Mode, which is how the app can be reviewed
+> without a trainer. Demo Mode is reached with the "Try Demo" button on the first
+> screen. It runs the shipping gear engine, the shipping command encoder and the
+> shipping response decoder, so the wheel sizes and command bytes it displays are
+> the real ones; only the Bluetooth radio is simulated, and the screen says so.
+> No hardware, account or sample file is needed to use it.
 >
 > The app has no account registration, login, account deletion, paid content,
 > purchases, subscriptions or user-generated content, so there are none of those
