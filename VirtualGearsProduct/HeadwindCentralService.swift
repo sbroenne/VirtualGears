@@ -68,7 +68,7 @@ final class HeadwindCentralService: NSObject {
     private var isIgnoringConflictingHeadwindState = false
     /// Whether a ride is what is asking for the fan. Connecting on its own is
     /// not, so the saved preference stays on the shelf until a ride starts.
-    private var isRideDrivingFan = false
+    private var isDrivingTheFan = false
     private var hasStoredControlPreference: Bool
 
     private(set) var connectionIsStalled = false
@@ -428,21 +428,21 @@ final class HeadwindCentralService: NSObject {
     /// Applies the rider's saved fan preference. Called when a ride starts, not
     /// when the fan connects: simply opening the app must never spin a fan up.
     func applySavedControlPreference() {
-        isRideDrivingFan = true
+        isDrivingTheFan = true
         guard isReady else { return }
         reconcileControlPreference()
     }
 
     /// Hands the fan back once the ride is over, so a later reconnect is just a
     /// connection again rather than a reason to start blowing.
-    func releaseRideFanControl() {
-        isRideDrivingFan = false
+    func releaseFanControl() {
+        isDrivingTheFan = false
     }
 
     private func reconcileControlPreference() {
         let commands = HeadwindControlPolicy.commands(
             for: HeadwindSituation(
-                rideIsDrivingFan: isRideDrivingFan,
+                weAreDrivingTheFan: isDrivingTheFan,
                 isHandingBack: deferredAction != nil,
                 wantsManualControl: requestedManual,
                 desiredManualSpeed: desiredManualSpeed,

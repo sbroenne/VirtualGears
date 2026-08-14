@@ -380,7 +380,7 @@ final class DrivetrainTests: XCTestCase {
             XCTAssertNoThrow(
                 try ConfirmedGearEngine(
                     drivetrain: drivetrain,
-                    baselineCircumferenceMillimeters: millimeters
+                    wheelSizeMillimeters: millimeters
                 ),
                 "A riding app asking for a \(Int(millimeters)) mm wheel must not "
                     + "be refused: the ladder has to leave room for it"
@@ -401,7 +401,7 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertNoThrow(
             try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: 2_200
+                wheelSizeMillimeters: 2_200
             ),
             "A rider set this in FulGaz and it was sent at ride start. "
                 + "Refusing it leaves them with no gears at all"
@@ -418,7 +418,7 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertNoThrow(
             try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: 1_900
+                wheelSizeMillimeters: 1_900
             )
         )
     }
@@ -448,7 +448,7 @@ final class DrivetrainTests: XCTestCase {
             XCTAssertNoThrow(
                 try ConfirmedGearEngine(
                     drivetrain: drivetrain,
-                    baselineCircumferenceMillimeters: wheelSize
+                    wheelSizeMillimeters: wheelSize
                 ),
                 "Virtual Gears says it supports a \(wheelSize) mm wheel, but "
                     + "cannot build its gears around one"

@@ -12,7 +12,7 @@
 		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
 		A00000000000000000000002 /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* SetupView.swift */; };
 		A00000000000000000000003 /* VirtualGearsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 900000000000000000000001 /* VirtualGearsCore */; };
-		A00000000000000000000004 /* RideHardwareConformances.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* RideHardwareConformances.swift */; };
+		A00000000000000000000004 /* EquipmentConformances.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* EquipmentConformances.swift */; };
 		A00000000000000000000005 /* KickrCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* KickrCentralService.swift */; };
 		A00000000000000000000006 /* ClickCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* ClickCentralService.swift */; };
 		A00000000000000000000007 /* FTMSPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FTMSPeripheral.swift */; };
@@ -29,7 +29,7 @@
 		A10000000000000000000001 /* AppConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfiguration.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		A1000000000000000000000B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		A10000000000000000000004 /* RideHardwareConformances.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideHardwareConformances.swift; sourceTree = "<group>"; };
+		A10000000000000000000004 /* EquipmentConformances.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EquipmentConformances.swift; sourceTree = "<group>"; };
 		A10000000000000000000005 /* KickrCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KickrCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000006 /* ClickCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClickCentralService.swift; sourceTree = "<group>"; };
 		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
@@ -65,7 +65,7 @@
 				A10000000000000000000001 /* AppConfiguration.swift */,
 				A10000000000000000000002 /* SetupView.swift */,
 				A1000000000000000000000B /* PrivacyInfo.xcprivacy */,
-				A10000000000000000000004 /* RideHardwareConformances.swift */,
+				A10000000000000000000004 /* EquipmentConformances.swift */,
 				A10000000000000000000005 /* KickrCentralService.swift */,
 				A10000000000000000000006 /* ClickCentralService.swift */,
 				A10000000000000000000007 /* FTMSPeripheral.swift */,
@@ -164,7 +164,7 @@
 				100000000000000000000009 /* VirtualGearsHomeView.swift in Sources */,
 				A00000000000000000000001 /* AppConfiguration.swift in Sources */,
 				A00000000000000000000002 /* SetupView.swift in Sources */,
-				A00000000000000000000004 /* RideHardwareConformances.swift in Sources */,
+				A00000000000000000000004 /* EquipmentConformances.swift in Sources */,
 				A00000000000000000000005 /* KickrCentralService.swift in Sources */,
 				A00000000000000000000006 /* ClickCentralService.swift in Sources */,
 				A00000000000000000000007 /* FTMSPeripheral.swift in Sources */,

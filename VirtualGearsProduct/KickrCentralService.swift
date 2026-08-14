@@ -338,11 +338,11 @@ final class KickrCentralService: NSObject {
             disconnectOnCommandFailure = true
             enqueue(
                 .wahoo(data: data, circumference: value),
-                name: "Reset baseline circumference",
+                name: "Reset wheel size to neutral",
                 disconnectAfterCompletion: true
             )
         } catch {
-            log("Could not reset baseline circumference: \(error)", level: .error)
+            log("Could not reset wheel size to neutral: \(error)", level: .error)
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
         }

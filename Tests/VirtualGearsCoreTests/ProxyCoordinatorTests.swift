@@ -58,8 +58,8 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// Runs a ride up to the point where the riding app is connected.
-    private func startRide(virtualGears: Bool = true) async throws {
-        coordinator.startRide(
+    private func startShifting(virtualGears: Bool = true) async throws {
+        coordinator.startShifting(
             configuration: makeConfiguration(virtualGears: virtualGears)
         )
         try await settle { self.coordinator.state == .active }
@@ -83,11 +83,11 @@ final class ProxyCoordinatorTests: XCTestCase {
     // MARK: - What the trainer is left on
 
     func testStoppingPutsTheTrainerBackOnTheSizeItStartedWith() async throws {
-        try await startRide()
+        try await startShifting()
         coordinator.shift(.harder)
         try await settle { self.coordinator.confirmedGearIndex ?? 0 > 0 }
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, neutral)
     }
@@ -96,7 +96,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// set through the standard interface is therefore the neutral setting to
     /// leave in place; overwriting it would change a ride another app still owns.
     func testStoppingVirtualShiftingPreservesTheRidingAppsWheelSize() async throws {
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         // What a riding app really sends: a 700x25c wheel, in tenths.
         let ridingAppWheelSize: Double = 2_105
 
@@ -109,7 +109,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             self.coordinator.wheelSizeGearsAreBuiltAround == ridingAppWheelSize
         }
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, ridingAppWheelSize)
     }
@@ -121,14 +121,14 @@ final class ProxyCoordinatorTests: XCTestCase {
     func testNormalStopAndCrashRecoveryAgreeOnTheRidingAppsWheelSize()
         async throws
     {
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
         try await settle {
             self.coordinator.wheelSizeGearsAreBuiltAround == 2_105
         }
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         let afterNormalStop = trainer.currentWheelSizeMillimeters
         XCTAssertEqual(afterNormalStop, 2_105)
 
@@ -137,7 +137,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         // is the case where the record can go stale.
         makeCoordinator()
         let survivingDefaults = defaults!
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
@@ -153,7 +153,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             screen: FakeScreen(),
             defaults: survivingDefaults
         )
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
         // The record is removed only once the trainer confirms, so its absence
         // is the signal that recovery actually finished.
         try await settle {
@@ -174,8 +174,8 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// to build the gears around the wheel the rider actually asked for, so it
     /// is kept.
     func testAParkedOrdinaryWheelSizeIsKeptForTheNextRide() async throws {
-        try await startRide()
-        await coordinator.stopRide()
+        try await startShifting()
+        await coordinator.stopShifting()
 
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
@@ -184,7 +184,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             self.trainer.currentWheelSizeMillimeters == 2_105
         }
 
-        try await startRide()
+        try await startShifting()
 
         XCTAssertEqual(coordinator.state, .active)
         XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
@@ -200,8 +200,8 @@ final class ProxyCoordinatorTests: XCTestCase {
     func testAParkedWheelSizeNoBicycleHasStillLetsTheNextRideStart()
         async throws
     {
-        try await startRide()
-        await coordinator.stopRide()
+        try await startShifting()
+        await coordinator.stopShifting()
 
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 30_000)
@@ -210,34 +210,34 @@ final class ProxyCoordinatorTests: XCTestCase {
             self.trainer.currentWheelSizeMillimeters == 3_000
         }
 
-        try await startRide()
+        try await startShifting()
 
         XCTAssertEqual(coordinator.state, .active)
         XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, neutral)
     }
 
-    func testAnUnfinishedRideIsForgottenOnceTheTrainerIsPutRight() async throws {
-        try await startRide()
+    func testAnInterruptedRunIsForgottenOnceTheTrainerIsPutRight() async throws {
+        try await startShifting()
         XCTAssertNotNil(
             defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters")
         )
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         XCTAssertNil(
             defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters")
         )
     }
 
-    func testDemoSuspendsRecoveryWithoutForgettingTheInterruptedRide() async throws {
+    func testDemoSuspendsRecoveryWithoutForgettingInterruptedShifting() async throws {
         let key = "VirtualGears.unfinishedRideBaselineMillimeters"
         defaults.set(neutral, forKey: key)
         trainer.isReady = false
         trainer.state = .disconnected
 
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
         await Task.yield()
-        coordinator.suspendInterruptedRideBaselineRecovery()
+        coordinator.suspendInterruptedWheelSizeRecovery()
         trainer.isReady = true
         trainer.state = .ready
         try await Task.sleep(for: .milliseconds(150))
@@ -252,12 +252,12 @@ final class ProxyCoordinatorTests: XCTestCase {
         trainer.isReady = false
         trainer.state = .disconnected
 
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
         await Task.yield()
-        coordinator.suspendInterruptedRideBaselineRecovery()
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.suspendInterruptedWheelSizeRecovery()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
         try await Task.sleep(for: .milliseconds(150))
-        coordinator.suspendInterruptedRideBaselineRecovery()
+        coordinator.suspendInterruptedWheelSizeRecovery()
         trainer.isReady = true
         trainer.state = .ready
         try await Task.sleep(for: .milliseconds(150))
@@ -274,7 +274,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// holding did nothing. The sweep is now paced by the trainer instead.
     func testHoldingKeepsShiftingWhileTheTrainerIsSlow() async throws {
         trainer.wahooConfirmationDelay = .milliseconds(40)
-        try await startRide()
+        try await startShifting()
         let startIndex = coordinator.confirmedGearIndex ?? 0
 
         coordinator.beginHold(.harder)
@@ -292,7 +292,7 @@ final class ProxyCoordinatorTests: XCTestCase {
 
     func testLettingGoStopsTheSweep() async throws {
         trainer.wahooConfirmationDelay = .milliseconds(20)
-        try await startRide()
+        try await startShifting()
 
         coordinator.beginHold(.harder)
         try await settle { (self.coordinator.confirmedGearIndex ?? 0) >= 2 }
@@ -308,7 +308,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testAFailedShiftEndsTheSweepRatherThanRunningOn() async throws {
-        try await startRide()
+        try await startShifting()
 
         coordinator.beginHold(.harder)
         trainer.failNextWahooCommand = true
@@ -325,7 +325,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testHoldingStopsAtTheHardestGear() async throws {
-        try await startRide()
+        try await startShifting()
 
         coordinator.beginHold(.harder)
         try await Task.sleep(for: .seconds(1))
@@ -343,7 +343,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// removes the service the riding app is connected to. The rider lost their
     /// session and had to go back to the PC because they changed a setting.
     func testChangingGearsDoesNotDropTheRidingApp() async throws {
-        try await startRide()
+        try await startShifting()
         XCTAssertEqual(ridingApp.advertisingStopCount, 0)
 
         var updated = makeConfiguration()
@@ -360,7 +360,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testChangingGearsActuallyChangesTheGears() async throws {
-        try await startRide()
+        try await startShifting()
         let before = coordinator.gearSequence
 
         var updated = makeConfiguration()
@@ -372,8 +372,8 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// A trainer that refuses the new gears must not cost the rider their ride.
-    func testARefusedGearChangeKeepsTheRideAndTheOldGears() async throws {
-        try await startRide()
+    func testARefusedGearChangeKeepsShiftingAndTheOldGears() async throws {
+        try await startShifting()
         let before = coordinator.gearSequence
 
         var updated = makeConfiguration()
@@ -390,7 +390,7 @@ final class ProxyCoordinatorTests: XCTestCase {
 
     func testTheRidingAppOnlyAppearsOnceTheTrainerIsConnected() async throws {
         trainer.isReady = false
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
         try await Task.sleep(for: .milliseconds(200))
 
         XCTAssertFalse(
@@ -405,10 +405,10 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testTheScreenIsKeptAwakeWhileRidingAndReleasedAfterwards() async throws {
-        try await startRide()
+        try await startShifting()
         XCTAssertTrue(screen.keepAwake)
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         XCTAssertFalse(screen.keepAwake)
     }
@@ -419,7 +419,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// lock the riding app out for the rest of the ride while every link still
     /// looks healthy.
     func testATrainerBlipLeavesTheRidingAppInControl() async throws {
-        try await startRide()
+        try await startShifting()
         let ridingAppID = UUID()
         let claimed = await ridingApp.send(.requestControl, from: ridingAppID)
         XCTAssertEqual(claimed?.result, .success)
@@ -452,11 +452,11 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testNormalStopKeepsEveryBluetoothLinkReady() async throws {
-        try await startRide()
+        try await startShifting()
         ridingApp.subscribedAppCount = 1
         let data = Data([0x01, 0x02])
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         trainer.eventHandler?(.rawBikeData(data))
 
         XCTAssertFalse(ridingApp.didStopAcceptingCommands)
@@ -470,10 +470,10 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testStartingAgainReusesTheRidingAppLink() async throws {
-        try await startRide()
+        try await startShifting()
         let ridingAppID = UUID()
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         let whileStopped = await ridingApp.send(.startOrResume, from: ridingAppID)
         XCTAssertEqual(whileStopped?.result, .success)
         XCTAssertFalse(
@@ -481,7 +481,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             "Virtual Gears Stop must not stop the riding app's session"
         )
 
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
         try await settle { self.coordinator.state == .active }
         let afterRestart = await ridingApp.send(.requestControl, from: ridingAppID)
 
@@ -490,12 +490,12 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertEqual(ridingApp.advertisingStopCount, 0)
     }
 
-    func testPCWheelSizeDuringRestartWaitsAndRebasesTheNewRide() async throws {
-        try await startRide(virtualGears: false)
-        await coordinator.stopRide()
+    func testPCWheelSizeDuringRestartWaitsAndRebasesTheNewRun() async throws {
+        try await startShifting(virtualGears: false)
+        await coordinator.stopShifting()
         trainer.wahooConfirmationDelay = .milliseconds(50)
 
-        coordinator.startRide(configuration: makeConfiguration(virtualGears: false))
+        coordinator.startShifting(configuration: makeConfiguration(virtualGears: false))
         let command = Task {
             await self.ridingApp.send(
                 .setWheelCircumference(tenthsOfMillimeter: 21_050)
@@ -507,29 +507,29 @@ final class ProxyCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(result?.result, .success)
         XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
     }
 
     func testRestartKeepsTheRidingAppsBaselineWithoutAskingItToResend() async throws {
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
         try await settle { self.coordinator.wheelSizeGearsAreBuiltAround == 2_105 }
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
-        coordinator.startRide(configuration: makeConfiguration(virtualGears: false))
+        coordinator.startShifting(configuration: makeConfiguration(virtualGears: false))
         try await settle { self.coordinator.state == .active }
 
         XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
         XCTAssertTrue(coordinator.ridingAppSetWheelSize)
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
     }
 
     func testStopWaitsForAnInFlightPCWheelSizeWithoutRejectingIt() async throws {
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         trainer.wahooConfirmationDelay = .milliseconds(100)
 
         let command = Task {
@@ -538,7 +538,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             )
         }
         try await settle { self.trainer.wahooCommandCount == 2 }
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         let result = await command.value
         XCTAssertEqual(result?.result, .success)
@@ -546,10 +546,10 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testPCCommandArrivingDuringStopRunsAfterTheBaselineReset() async throws {
-        try await startRide()
+        try await startShifting()
         trainer.wahooConfirmationDelay = .milliseconds(100)
 
-        let stop = Task { await self.coordinator.stopRide() }
+        let stop = Task { await self.coordinator.stopShifting() }
         try await settle { self.coordinator.state == .stopping }
         let command = Task {
             await self.ridingApp.send(
@@ -564,11 +564,11 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testQueuedCommandFromADisconnectedRidingAppNeverReachesTheTrainer() async throws {
-        try await startRide()
+        try await startShifting()
         trainer.wahooConfirmationDelay = .milliseconds(100)
         let app = UUID()
 
-        let stop = Task { await self.coordinator.stopRide() }
+        let stop = Task { await self.coordinator.stopShifting() }
         try await settle { self.coordinator.state == .stopping }
         let command = Task {
             await self.ridingApp.send(
@@ -587,18 +587,18 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testFailedStopRecoveryUsesTheLiveRidingAppBaseline() async throws {
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
         try await settle { self.coordinator.wheelSizeGearsAreBuiltAround == 2_105 }
         trainer.failNextWahooCommand = true
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         guard case .failed = coordinator.state else {
-            return XCTFail("The refused baseline reset must remain visible")
+            return XCTFail("The refused wheelSize reset must remain visible")
         }
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
         try await settle {
             self.trainer.currentWheelSizeMillimeters == 2_105
                 && self.defaults.object(
@@ -610,10 +610,10 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testShutdownWaitsForAnExistingStopBeforeDisconnecting() async throws {
-        try await startRide()
+        try await startShifting()
         trainer.wahooConfirmationDelay = .milliseconds(100)
 
-        let stop = Task { await self.coordinator.stopRide() }
+        let stop = Task { await self.coordinator.stopShifting() }
         try await settle { self.coordinator.state == .stopping }
         await coordinator.shutdown()
         await stop.value
@@ -624,7 +624,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     func testFullShutdownDisconnectsOwnedEquipmentButNotTheRidingApp() async throws {
-        try await startRide()
+        try await startShifting()
 
         await coordinator.shutdown()
 
@@ -640,7 +640,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// three ways a ride can end, and the one most easily forgotten.
     func testAFailedStartStillPutsTheTrainerBack() async throws {
         trainer.failNextWahooCommand = true
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
         try await settle {
             if case .failed = self.coordinator.state { return true }
             return false
@@ -651,7 +651,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters"),
             "A trainer that has been put right should leave nothing to recover"
         )
-        XCTAssertEqual(coordinator.failure?.trainerNeedsBaselineReset, false)
+        XCTAssertEqual(coordinator.failure?.trainerNeedsWheelSizeReset, false)
         XCTAssertFalse(screen.keepAwake)
         XCTAssertFalse(trainer.didDisconnect)
     }
@@ -665,19 +665,19 @@ final class ProxyCoordinatorTests: XCTestCase {
     ///
     /// The failing start puts the trainer back itself. If the stop then runs its
     /// whole body against the dead session it ends by telling the rider the
-    /// baseline could not be reset, when it just was.
+    /// wheel size could not be reset, when it just was.
     func testStoppingWhileTheStartIsFailingDoesNotInventAResetProblem() async throws {
         trainer.deniesFTMSControl = true
         trainer.wahooConfirmationDelay = .milliseconds(200)
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
 
         // The window is narrow and exact. Stop has to land after the failing
-        // start has committed to resetting the baseline - its reset write
+        // start has committed to resetting the wheel size - its reset write
         // is the one Wahoo command a denied start makes - but before it has
         // finished and torn the session down. Tapping any earlier and the
         // start's own catch stands down instead.
         try await settle { self.trainer.wahooCommandCount == 1 }
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         try await Task.sleep(for: .milliseconds(400))
 
         XCTAssertEqual(
@@ -690,7 +690,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         }
         XCTAssertFalse(
             message.contains("could not be reset"),
-            "The baseline was reset. Recording another fault would be wrong: "
+            "The wheelSize was reset. Recording another fault would be wrong: "
                 + message
         )
         XCTAssertTrue(
@@ -709,11 +709,11 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// the wait is removed.
     func testStoppingWhileTheFirstGearIsInFlightLeavesTheTrainerNeutral() async throws {
         trainer.wahooConfirmationDelay = .milliseconds(200)
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
         // Stop the instant the first gear is on the wire, not before it.
         try await settle { self.trainer.wahooCommandCount == 1 }
 
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
 
         XCTAssertEqual(
             trainer.wheelSizeHistory.last,
@@ -730,12 +730,12 @@ final class ProxyCoordinatorTests: XCTestCase {
     func testStoppingWhileStillConnectingDoesNotLeaveAGearOnTheTrainer() async throws {
         trainer.isReady = false
         trainer.wahooConfirmationDelay = .milliseconds(50)
-        coordinator.startRide(configuration: makeConfiguration())
+        coordinator.startShifting(configuration: makeConfiguration())
         try await settle { self.coordinator.state == .connecting }
 
         // The trainer wakes at the same moment the rider gives up.
         trainer.isReady = true
-        await coordinator.stopRide()
+        await coordinator.stopShifting()
         try await Task.sleep(for: .milliseconds(300))
 
         XCTAssertEqual(
@@ -754,7 +754,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// running to the end of the cassette with nobody touching the button.
     func testLettingGoIsObeyedEvenWhileTheGearsAreBeingRebuilt() async throws {
         trainer.wahooConfirmationDelay = .milliseconds(30)
-        try await startRide(virtualGears: false)
+        try await startShifting(virtualGears: false)
 
         coordinator.beginHold(.harder)
         try await settle { (self.coordinator.confirmedGearIndex ?? 0) >= 1 }

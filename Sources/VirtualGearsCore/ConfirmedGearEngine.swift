@@ -9,7 +9,7 @@ public struct PendingGearChange: Equatable, Sendable {
 
 public struct ConfirmedGearEngine: Equatable, Sendable {
     public let drivetrain: Drivetrain
-    public let baselineCircumferenceMillimeters: Double
+    public let wheelSizeMillimeters: Double
 
     public private(set) var requestedIndex: Int
     public private(set) var confirmedIndex: Int
@@ -19,13 +19,13 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
 
     public init(
         drivetrain: Drivetrain,
-        baselineCircumferenceMillimeters: Double
+        wheelSizeMillimeters: Double
     ) throws {
         // Where a riding app's wheel size is accepted or turned away. This is
         // the only place that decides it, so the answer cannot differ between
         // setup, a ride, and a riding app changing its mind mid-ride.
         guard TrainerSafety.supportedRidingAppCircumferenceMillimeters
-            .contains(baselineCircumferenceMillimeters)
+            .contains(wheelSizeMillimeters)
         else {
             throw VirtualGearError.outsideSupportedRange
         }
@@ -35,7 +35,7 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
             let circumference =
                 try WheelCircumferenceScaler.effectiveCircumference(
                     neutralCircumference:
-                        baselineCircumferenceMillimeters,
+                        wheelSizeMillimeters,
                     referenceRatio: referenceRatio,
                     selectedRatio: gear.ratio
                 )
@@ -53,8 +53,8 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
         }
 
         self.drivetrain = drivetrain
-        self.baselineCircumferenceMillimeters =
-            baselineCircumferenceMillimeters
+        self.wheelSizeMillimeters =
+            wheelSizeMillimeters
         requestedIndex = drivetrain.referenceIndex
         confirmedIndex = drivetrain.referenceIndex
         pendingChange = nil
@@ -83,11 +83,11 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
     /// Recalculates effective circumferences while preserving the displayed gear.
     /// Any unconfirmed requested shifts are intentionally discarded.
     public func rebased(
-        baselineCircumferenceMillimeters: Double
+        wheelSizeMillimeters: Double
     ) throws -> Self {
         var result = try Self(
             drivetrain: drivetrain,
-            baselineCircumferenceMillimeters: baselineCircumferenceMillimeters
+            wheelSizeMillimeters: wheelSizeMillimeters
         )
         result.requestedIndex = confirmedIndex
         result.confirmedIndex = confirmedIndex

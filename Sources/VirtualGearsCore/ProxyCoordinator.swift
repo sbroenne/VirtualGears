@@ -4,9 +4,9 @@ import Observation
 @MainActor
 @Observable
 public final class ProxyCoordinator {
-    /// Where the ride has got to, and every rule that follows from it. Kept in
+    /// Where shifting has got to, and every rule that follows from it. Kept in
     /// the package so those rules can be checked without a trainer.
-    public private(set) var lifecycle = RideLifecycle()
+    public private(set) var lifecycle = ShiftingLifecycle()
     public private(set) var displayedGear: VirtualGear?
     public private(set) var confirmedGearIndex: Int?
     /// The gear the rider asked for. It differs from `confirmedGearIndex` only
@@ -16,12 +16,12 @@ public final class ProxyCoordinator {
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
     /// The wheel size the gears are currently built around. A riding app can
-    /// supply a new one while a ride is under way, so it is not the size the
+    /// supply a new one while shifting is under way, so it is not the size the
     /// trainer gets back on Stop.
     ///
     /// That is not because riding apps change the wheel size part-way through a
     /// ride. FulGaz was watched for five minutes and sent it only as part of
-    /// starting a ride, twice, never in between; the capture is
+    /// starting shifting, twice, never in between; the capture is
     /// docs/fulgaz-app-tap-run.log. It is because a riding app sends it when
     /// *its* ride starts, and that need not line up with ours: a rider who
     /// starts Virtual Gears first and then starts a course gets a new wheel
@@ -30,10 +30,10 @@ public final class ProxyCoordinator {
     /// the size every gear is scaled away from.
     ///
     /// There is one of these because there is one trainer. It used to be two
-    /// numbers, one for "this ride" and one "parked" between rides, which were
+    /// numbers, one for "this time" and one "parked" between runs, which were
     /// handed back and forth and had to be kept in step by hand. Virtual Gears
-    /// is a piece of gear on the bike rather than a ride of its own: the riding
-    /// app has rides, and this is simply the wheel size we last agreed on.
+    /// is a piece of gear on the bike rather than shifting of its own: the riding
+    /// app has runs, and this is simply the wheel size we last agreed on.
     ///
     /// nil means nobody has told us anything yet, so the 2070 mm reference is
     /// used.
@@ -42,7 +42,7 @@ public final class ProxyCoordinator {
     /// Whether the wheel size above came from a riding app rather than from us.
     private var wheelSizeCameFromRidingApp = false
 
-    /// The wheel size this ride's gears are built around, or nil when no gears
+    /// The wheel size this time's gears are built around, or nil when no gears
     /// are engaged.
     public var wheelSizeGearsAreBuiltAround: Double? {
         gearEngine == nil ? nil : trainerWheelSizeMillimeters
@@ -52,7 +52,7 @@ public final class ProxyCoordinator {
     public var ridingAppSetWheelSize: Bool {
         gearEngine != nil && wheelSizeCameFromRidingApp
     }
-    /// Whether a virtual gear has actually reached the trainer this ride. Until
+    /// Whether a virtual gear has actually reached the trainer this time. Until
     /// it has, there is nothing to put right and nothing to report as unreset.
     private var hasAppliedVirtualGear = false
 
@@ -63,7 +63,7 @@ public final class ProxyCoordinator {
     private let defaults: UserDefaults
     private var gearEngine: ConfirmedGearEngine?
     private var shiftTask: Task<Void, Never>?
-    /// The run of a ride that is still getting going. A stop waits for this to
+    /// The run of shifting that is still getting going. A stop waits for this to
     /// finish before it puts the trainer back, so the two can never be writing
     /// wheel sizes to the trainer at the same time.
     private var startTask: Task<Void, Never>?
@@ -78,9 +78,9 @@ public final class ProxyCoordinator {
     /// Shifting stands aside for it, and only one rebuild runs at a time: two
     /// would each be working from a picture of the gears the other had already
     /// changed, leaving the rider shown a gear the trainer is not on.
-    private var baselineUpdateInProgress = false
-    private var baselineResetTask: Task<Void, Never>?
-    private var baselineResetGeneration: UUID?
+    private var wheelSizeUpdateInProgress = false
+    private var wheelSizeResetTask: Task<Void, Never>?
+    private var wheelSizeResetGeneration: UUID?
     /// A normal Stop has to reset Virtual Gears' current gear without racing
     /// the riding app's command queue. Commands already executing finish first;
     /// new ones wait and continue transparently after the reset.
@@ -90,30 +90,33 @@ public final class ProxyCoordinator {
     private var pcCommandIdleWaiters: [CheckedContinuation<Void, Never>] = []
     private var stopCompletionWaiters: [CheckedContinuation<Void, Never>] = []
 
-    /// How many terrain updates have arrived this ride. Only used to give the
+    /// How many terrain updates have arrived this time. Only used to give the
     /// log a sense of scale: a wheel-size command arriving after thousands of
     /// terrain updates is plainly mid-ride, one arriving after a handful is
     /// plainly part of starting up.
     private var terrainUpdateCount = 0
 
 
-    /// The baseline used to build a ride's gears, written down before the ride
-    /// starts. A ride normally sends it again on Stop and clears this, so a value
+    /// The wheel size used to build shifting's gears, written down before shifting
+    /// starts. Shifting normally sends it again on Stop and clears this, so a value
     /// still here at launch means the last ride never got to remove its gear.
-    private let unfinishedRideKey = "VirtualGears.unfinishedRideBaselineMillimeters"
+    /// The stored name keeps its old wording on purpose. Renaming it would
+    /// orphan the record on a phone that is carrying one right now, and that
+    /// record is the only thing that can put the trainer back.
+    private let interruptedShiftingKey = "VirtualGears.unfinishedRideBaselineMillimeters"
 
-    public var state: ProxySessionState { lifecycle.state }
-    public var failure: RideFailure? { lifecycle.failure }
+    public var state: ShiftingState { lifecycle.state }
+    public var failure: ShiftingFailure? { lifecycle.failure }
     public var lastShiftFeedback: ShiftFeedbackKind { feedback.latest }
 
-    public var isRidePresented: Bool { lifecycle.isRidePresented }
+    public var isShiftingPresented: Bool { lifecycle.isShiftingPresented }
 
     public var canShiftEasier: Bool {
-        lifecycle.isRiding && (confirmedGearIndex ?? 0) > 0
+        lifecycle.isShifting && (confirmedGearIndex ?? 0) > 0
     }
 
     public var canShiftHarder: Bool {
-        lifecycle.isRiding
+        lifecycle.isShifting
             && (confirmedGearIndex ?? Int.max) < gearSequence.count - 1
     }
 
@@ -147,49 +150,49 @@ public final class ProxyCoordinator {
         }
     }
 
-    /// Resets the baseline after a ride that never got to stop.
+    /// Resets the wheel size after shifting that never got to stop.
     ///
-    /// A ride normally resets to its baseline on Stop. If iOS ends the app
+    /// Shifting normally resets to its wheel size on Stop. If iOS ends the app
     /// first, that never runs and the trainer keeps the last gear's wheel size,
     /// which would quietly distort its speed and distance for anything else that
-    /// connects to it. The ride's baseline is written down before the ride
+    /// connects to it. Shifting's wheel size is written down before shifting
     /// starts, so the next launch can finish the reset.
     ///
     /// Nothing is reported to the rider. This is tidying up after an interruption
-    /// they did not cause and cannot act on, and the ride they are about to start
+    /// they did not cause and cannot act on, and shifting they are about to start
     /// sets its own gear regardless.
-    public func resetInterruptedRideBaselineIfNeeded() {
-        guard baselineResetTask == nil, lifecycle.isBetweenRides else { return }
+    public func resetInterruptedWheelSizeIfNeeded() {
+        guard wheelSizeResetTask == nil, lifecycle.isNotShifting else { return }
         let generation = UUID()
-        baselineResetGeneration = generation
-        baselineResetTask = Task { [weak self] in
-            await self?.resetInterruptedRideBaseline()
-            guard self?.baselineResetGeneration == generation else { return }
-            self?.baselineResetTask = nil
-            self?.baselineResetGeneration = nil
+        wheelSizeResetGeneration = generation
+        wheelSizeResetTask = Task { [weak self] in
+            await self?.resetInterruptedWheelSize()
+            guard self?.wheelSizeResetGeneration == generation else { return }
+            self?.wheelSizeResetTask = nil
+            self?.wheelSizeResetGeneration = nil
         }
     }
 
     /// Pauses launch-time recovery while the local demo is open.
     ///
-    /// The saved baseline remains in place, so returning to the real startup
+    /// The saved wheel size remains in place, so returning to the real startup
     /// flow can try again. Demo Mode must never be the reason a trainer command
     /// is sent.
-    public func suspendInterruptedRideBaselineRecovery() {
-        baselineResetTask?.cancel()
-        baselineResetTask = nil
-        baselineResetGeneration = nil
+    public func suspendInterruptedWheelSizeRecovery() {
+        wheelSizeResetTask?.cancel()
+        wheelSizeResetTask = nil
+        wheelSizeResetGeneration = nil
     }
 
-    private func resetInterruptedRideBaseline() async {
-        guard lifecycle.isBetweenRides else { return }
-        let token = lifecycle.baselineResetToken
-        guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
-        let baseline = trainerWheelSizeMillimeters
-            ?? defaults.double(forKey: unfinishedRideKey)
-        guard baseline > 0 else {
-            defaults.removeObject(forKey: unfinishedRideKey)
-            trainerWheelSizeMillimeters = baseline
+    private func resetInterruptedWheelSize() async {
+        guard lifecycle.isNotShifting else { return }
+        let token = lifecycle.wheelSizeResetToken
+        guard defaults.object(forKey: interruptedShiftingKey) != nil else { return }
+        let wheelSize = trainerWheelSizeMillimeters
+            ?? defaults.double(forKey: interruptedShiftingKey)
+        guard wheelSize > 0 else {
+            defaults.removeObject(forKey: interruptedShiftingKey)
+            trainerWheelSizeMillimeters = wheelSize
             return
         }
         for _ in 0..<100 {
@@ -203,22 +206,22 @@ public final class ProxyCoordinator {
                 let control = try await kickr.execute(.requestControl)
                 guard control.result == .success else { return }
             }
-            // A ride can have started while control was being asked for. Its
+            // Shifting can have started while control was being asked for. Its
             // own gear is the wheel size that should win, and it owns the
             // record below, so the reset stands down rather than overwrite
             // either.
             guard isStillWanted(token) else { return }
             let command = try WahooKickrCommand.setWheelCircumference(
-                millimeters: baseline
+                millimeters: wheelSize
             )
             let response = try await kickr.executeWahoo(command)
             guard response.confirmsSuccess(for: command) else { return }
             guard isStillWanted(token) else { return }
-            defaults.removeObject(forKey: unfinishedRideKey)
-            log("Reset the baseline after an interrupted ride")
+            defaults.removeObject(forKey: interruptedShiftingKey)
+            log("Reset the wheel size after interrupted shifting")
         } catch {
             log(
-                "Could not yet reset the baseline after an interrupted ride: "
+                "Could not yet reset the wheel size after interrupted shifting: "
                     + error.localizedDescription,
                 .warning
             )
@@ -226,20 +229,20 @@ public final class ProxyCoordinator {
     }
 
     private func isStillWanted(_ token: UUID) -> Bool {
-        !Task.isCancelled && lifecycle.isBaselineResetWanted(token)
+        !Task.isCancelled && lifecycle.isWheelSizeResetWanted(token)
     }
 
-    /// Starts a ride immediately so the UI can switch to the ride screen in the
+    /// Starts shifting immediately so the UI can switch to the ride screen in the
     /// same update. The state transition is synchronous, so a second tap is
     /// rejected by the same guard that protected the previous async entry point.
-    public func startRide(configuration: AppConfiguration) {
+    public func startShifting(configuration: AppConfiguration) {
         guard lifecycle.canStart else { return }
-        // A ride sets its own wheel size and puts it back on Stop, so it does
+        // Shifting sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
         // gear they did not choose.
-        baselineResetTask?.cancel()
-        baselineResetTask = nil
-        lifecycle.abandonBaselineReset()
+        wheelSizeResetTask?.cancel()
+        wheelSizeResetTask = nil
+        lifecycle.abandonWheelSizeReset()
         // A Click is deliberately absent from this check. It is an optional
         // accessory that may be asleep, and the on-screen buttons always shift.
         guard configuration.setupComplete,
@@ -258,7 +261,7 @@ public final class ProxyCoordinator {
                 self.reopenPCCommandGate()
                 return
             }
-            await self.runRide(configuration: configuration, sessionID: id)
+            await self.runRide(configuration: configuration, shiftingID: id)
             self.reopenPCCommandGate()
             self.startTask = nil
         }
@@ -266,7 +269,7 @@ public final class ProxyCoordinator {
 
     private func runRide(
         configuration: AppConfiguration,
-        sessionID id: UUID
+        shiftingID id: UUID
     ) async {
         do {
             guard let drivetrain = configuration.drivetrain,
@@ -278,25 +281,25 @@ public final class ProxyCoordinator {
             let reference = Double(
                 configuration.neutralCircumferenceMillimeters
             )
-            // A wheel size the riding app parked between rides is only usable
+            // A wheel size the riding app parked between runs is only usable
             // if the gears still fit around it. Falling back to the reference
             // keeps Start working instead of failing for the whole launch.
-            var baseline = trainerWheelSizeMillimeters ?? reference
-            if !canBuildGears(around: baseline, drivetrain: drivetrain) {
+            var wheelSize = trainerWheelSizeMillimeters ?? reference
+            if !canBuildGears(around: wheelSize, drivetrain: drivetrain) {
                 log(
-                    "Your riding app left a \(Int(baseline.rounded())) mm wheel "
+                    "Your riding app left a \(Int(wheelSize.rounded())) mm wheel "
                         + "size. Gears built around it would reach outside the "
                         + "range proven safe on this trainer, so this ride "
                         + "starts from \(Int(reference.rounded())) mm instead.",
                     .warning
                 )
-                baseline = reference
+                wheelSize = reference
                 wheelSizeCameFromRidingApp = false
             }
-            trainerWheelSizeMillimeters = baseline
+            trainerWheelSizeMillimeters = wheelSize
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: baseline
+                wheelSizeMillimeters: wheelSize
             )
             gearSequence = drivetrain.gears
             updateDisplayedGear()
@@ -308,7 +311,7 @@ public final class ProxyCoordinator {
             // sleep here hides the one thing they are waiting for. Every exit
             // path below hands control of this back.
             screen.keepAwake = true
-            try await waitUntilReady(kickr, named: "KICKR", sessionID: id)
+            try await waitUntilReady(kickr, named: "KICKR", shiftingID: id)
             guard startMayProceed(id) else { throw CancellationError() }
             let response = try await kickr.execute(.requestControl)
             guard startMayProceed(id) else { throw CancellationError() }
@@ -335,10 +338,10 @@ public final class ProxyCoordinator {
             // earlier makes a stop during connection report a fault that never
             // happened, and leaves a force-quit reset a trainer we never moved.
             hasAppliedVirtualGear = true
-            defaults.set(baseline, forKey: unfinishedRideKey)
+            defaults.set(wheelSize, forKey: interruptedShiftingKey)
             guard startMayProceed(id) else { throw CancellationError() }
             peripheral.startAdvertising()
-            try await waitUntilPeripheralReady(sessionID: id)
+            try await waitUntilPeripheralReady(shiftingID: id)
             lifecycle.markActive()
             log("Ride session started")
         } catch {
@@ -352,18 +355,18 @@ public final class ProxyCoordinator {
     /// The virtual gear is removed before the active gear session is cleared.
     /// Virtual Gears does not send Stop for the riding app, reject its commands,
     /// or remove the service it is connected to.
-    public func stopRide() async {
-        await stopRide(disconnectWhenFinished: false)
+    public func stopShifting() async {
+        await stopShifting(disconnectWhenFinished: false)
     }
 
     /// Ends any gear session and drops equipment Virtual Gears owns. The riding
     /// app's link is deliberately left alone; ending that app's session is the
     /// riding app's job.
     public func shutdown() async {
-        await stopRide(disconnectWhenFinished: true)
+        await stopShifting(disconnectWhenFinished: true)
     }
 
-    private func stopRide(disconnectWhenFinished: Bool) async {
+    private func stopShifting(disconnectWhenFinished: Bool) async {
         closePCCommandGate()
         defer { reopenPCCommandGate() }
         await waitForPCCommandsToFinish()
@@ -379,7 +382,7 @@ public final class ProxyCoordinator {
         defer { signalStopFinished() }
         shiftTask?.cancel()
         recoveryTask?.cancel()
-        // A ride that is still connecting has its own trainer writes to make.
+        // Shifting that is still connecting has its own trainer writes to make.
         // Letting them run alongside the reset below is how a trainer ends up
         // left on a gear's wheel size with the recovery record already deleted,
         // so the stop waits for the start to notice it has been called off.
@@ -388,15 +391,15 @@ public final class ProxyCoordinator {
         // The start may have been failing rather than connecting, in which case
         // it has already put the trainer back, said so honestly, and torn the
         // session down while this waited. Carrying on would walk the whole stop
-        // through a ride that no longer exists and end by telling the rider the
-        // baseline could not be reset when it just was - on the one message
+        // through shifting that no longer exists and end by telling the rider the
+        // wheel size could not be reset when it just was - on the one message
         // in this app that has to be believable.
         guard lifecycle.owns(id) else { return }
         var failures: [String] = []
 
         if !kickr.isReady {
             do {
-                try await waitUntilKickrReadyForStop(sessionID: id)
+                try await waitUntilKickrReadyForStop(shiftingID: id)
             } catch {
                 failures.append(error.localizedDescription)
             }
@@ -418,7 +421,7 @@ public final class ProxyCoordinator {
         }
 
         // Ending Virtual Gears is not ending the PC app's ride. Remove the
-        // virtual gear by returning to the latest baseline the riding app asked
+        // virtual gear by returning to the latest wheel size the riding app asked
         // for. If it never supplied one, use the 2070 mm reference.
         if let neutral = wheelSizeGearsAreBuiltAround, kickr.isReady {
             do {
@@ -428,31 +431,31 @@ public final class ProxyCoordinator {
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
                     throw ProductBluetoothError.commandFailed(
-                        "KICKR did not confirm the baseline reset"
+                        "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: unfinishedRideKey)
+                defaults.removeObject(forKey: interruptedShiftingKey)
             } catch {
                 failures.append(
-                    "Baseline reset failed: \(error.localizedDescription)"
+                    "Wheel size reset failed: \(error.localizedDescription)"
                 )
             }
         } else if hasAppliedVirtualGear {
-            failures.append("Trainer baseline could not be reset")
+            failures.append("Trainer wheel size could not be reset")
         }
 
         if disconnectWhenFinished { disconnectOwnedEquipment() }
         screen.keepAwake = false
-        clearRideData()
+        clearShiftingData()
         // The record is only removed once the trainer confirms the original
         // wheel size is back, so its presence is the honest answer to whether
         // the trainer still needs putting right.
         let stillSet = defaults
-            .object(forKey: unfinishedRideKey) != nil
+            .object(forKey: interruptedShiftingKey) != nil
         failures.forEach { log($0, .error) }
         lifecycle.finishStop(
             failures: failures,
-            trainerNeedsBaselineReset: stillSet
+            trainerNeedsWheelSizeReset: stillSet
         )
         if failures.isEmpty { log("Ride session stopped") }
     }
@@ -506,7 +509,7 @@ public final class ProxyCoordinator {
         waiters.forEach { $0.resume() }
     }
 
-    private func clearRideData() {
+    private func clearShiftingData() {
         gearEngine = nil
         heldDirection = nil
         displayedGear = nil
@@ -531,9 +534,9 @@ public final class ProxyCoordinator {
         handleShiftRequest(.holdEnded)
     }
 
-    /// Applies a new set of gears without ending the ride.
+    /// Applies a new set of gears without ending shifting.
     ///
-    /// This used to stop the ride and start it again, which tears the fitness
+    /// This used to stop shifting and start it again, which tears the fitness
     /// machine service out from under the riding app and disconnects it. The
     /// rider had to go back to their PC and reconnect, mid-ride, because they
     /// changed a gear. The gears are rebuilt in place instead, exactly as they
@@ -542,10 +545,10 @@ public final class ProxyCoordinator {
     ///
     /// Returns whether the new gears are the ones now in use, so the rider's
     /// settings can be put back if they are not. Settings quietly claiming
-    /// gears the ride is not using is its own kind of wrong answer.
+    /// gears shifting is not using is its own kind of wrong answer.
     @discardableResult
     public func changeDrivetrain(_ configuration: AppConfiguration) async -> Bool {
-        guard lifecycle.isRiding, let id = lifecycle.sessionID,
+        guard lifecycle.isShifting, let id = lifecycle.shiftingID,
               let drivetrain = configuration.drivetrain,
               AppConfiguration.isSafe(drivetrain) else { return false }
         // Nothing may suspend between the wait and the claim below. Two
@@ -554,26 +557,26 @@ public final class ProxyCoordinator {
             log("Gears did not settle in time; keeping the gears in use", .warning)
             return false
         }
-        baselineUpdateInProgress = true
-        defer { baselineUpdateInProgress = false }
+        wheelSizeUpdateInProgress = true
+        defer { wheelSizeUpdateInProgress = false }
         heldDirection = nil
-        guard let baseline = wheelSizeGearsAreBuiltAround else {
+        guard let wheelSize = wheelSizeGearsAreBuiltAround else {
             log("New gears were not applied: the ride had already ended", .warning)
             return false
         }
         do {
             let rebuilt = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: baseline
+                wheelSizeMillimeters: wheelSize
             )
             let command = rebuilt.confirmedSetting.command
-            // The ride can be stopped while the trainer is answering. Writing
+            // Shifting can be stopped while the trainer is answering. Writing
             // a gear's wheel size after the stop has put the trainer back is
             // exactly what leaves it carrying one, with nothing recorded to put
             // it right at the next launch.
-            guard stillRiding(id) else { return false }
+            guard stillShifting(id) else { return false }
             let response = try await kickr.executeWahoo(command)
-            guard stillRiding(id) else {
+            guard stillShifting(id) else {
                 log("New gears were dropped: the ride ended first", .warning)
                 return false
             }
@@ -589,7 +592,7 @@ public final class ProxyCoordinator {
             log("Applied new gears without interrupting the ride")
             return true
         } catch {
-            // The ride carries on with the gears it already had. Ending it
+            // Shifting carries on with the gears it already had. Ending it
             // would cost the rider their session over a settings change.
             log(
                 "Could not apply the new gears: \(error.localizedDescription)",
@@ -599,41 +602,41 @@ public final class ProxyCoordinator {
         }
     }
 
-    /// Whether the ride this work belongs to is still the one running. Every
+    /// Whether shifting this work belongs to is still the one running. Every
     /// step that suspends has to ask again afterwards: a stop can be claimed
     /// while the trainer is mid-answer, and it owns putting the trainer back.
     /// Whether a full gear ladder still encodes inside the trainer's range
     /// around this wheel size. A riding app is free to set any size it likes.
     /// This is not a limit of the gears or the trainer — either could be built
     /// around far more — but of what has been proven safe, so a size that would
-    /// push a gear outside that must not carry into a ride.
+    /// push a gear outside that must not carry into shifting.
     private func canBuildGears(
         around millimeters: Double,
         drivetrain: Drivetrain
     ) -> Bool {
         (try? ConfirmedGearEngine(
             drivetrain: drivetrain,
-            baselineCircumferenceMillimeters: millimeters
+            wheelSizeMillimeters: millimeters
         )) != nil
     }
 
-    private func stillRiding(_ id: UUID) -> Bool {
-        lifecycle.owns(id) && lifecycle.isRiding && !lifecycle.isStopping
+    private func stillShifting(_ id: UUID) -> Bool {
+        lifecycle.owns(id) && lifecycle.isShifting && !lifecycle.isStopping
     }
 
     /// Waits for shifting to finish and for any other gear rebuild to let go.
     /// Bounded, because a wait that cannot end would leave a riding app's
-    /// command unanswered for the rest of the ride.
+    /// command unanswered for the rest of shifting.
     private func waitForGearsToSettle(_ id: UUID) async -> Bool {
         for _ in 0..<250 {
-            guard stillRiding(id) else { return false }
-            if shiftTask == nil, !baselineUpdateInProgress { return true }
+            guard stillShifting(id) else { return false }
+            if shiftTask == nil, !wheelSizeUpdateInProgress { return true }
             try? await Task.sleep(for: .milliseconds(20))
         }
         return false
     }
 
-    /// Whether a ride that is still getting going may carry on. A claimed stop
+    /// Whether shifting that is still getting going may carry on. A claimed stop
     /// always wins: the alternative is two different wheel sizes racing to the
     /// trainer, with whichever lands last deciding what it is left on.
     private func startMayProceed(_ id: UUID) -> Bool {
@@ -643,10 +646,10 @@ public final class ProxyCoordinator {
     private func waitUntilReady(
         _ service: any ConnectableLink,
         named name: String,
-        sessionID: UUID
+        shiftingID: UUID
     ) async throws {
         for _ in 0..<300 {
-            guard startMayProceed(sessionID) else { throw CancellationError() }
+            guard startMayProceed(shiftingID) else { throw CancellationError() }
             if service.isReady { return }
             if case let .failed(message) = service.state {
                 throw ProductBluetoothError.unavailable("\(name): \(message)")
@@ -656,9 +659,9 @@ public final class ProxyCoordinator {
         throw ProductBluetoothError.unavailable("\(name) did not become ready")
     }
 
-    private func waitUntilPeripheralReady(sessionID: UUID) async throws {
+    private func waitUntilPeripheralReady(shiftingID: UUID) async throws {
         for _ in 0..<100 {
-            guard startMayProceed(sessionID) else { throw CancellationError() }
+            guard startMayProceed(shiftingID) else { throw CancellationError() }
             if peripheral.isAdvertising { return }
             if case let .failed(message) = peripheral.latestEvent {
                 throw ProductBluetoothError.unavailable("Riding app link: \(message)")
@@ -670,9 +673,9 @@ public final class ProxyCoordinator {
         )
     }
 
-    private func waitUntilKickrReadyForStop(sessionID: UUID) async throws {
+    private func waitUntilKickrReadyForStop(shiftingID: UUID) async throws {
         for _ in 0..<100 {
-            guard lifecycle.owns(sessionID) else { throw CancellationError() }
+            guard lifecycle.owns(shiftingID) else { throw CancellationError() }
             if kickr.isReady { return }
             try await Task.sleep(nanoseconds: 100_000_000)
         }
@@ -707,10 +710,10 @@ public final class ProxyCoordinator {
             return .init(result: .opcodeNotSupported, status: nil)
         }
         do {
-            // Between Virtual Gears rides this remains a transparent trainer
+            // Between Virtual Gears runs this remains a transparent trainer
             // proxy. Stopping the gear UI must not pause, stop, or otherwise
             // take ownership of the PC riding app's session.
-            guard lifecycle.isRiding else {
+            guard lifecycle.isShifting else {
                 if case let .setWheelCircumference(tenths) = request {
                     let millimeters = Double(tenths) / 10
                     let command = try WahooKickrCommand.setWheelCircumference(
@@ -734,7 +737,7 @@ public final class ProxyCoordinator {
                 return .success(status: status(for: request))
             }
             if case let .setWheelCircumference(tenths) = request {
-                return try await setBaseline(
+                return try await setWheelSize(
                     millimeters: Double(tenths) / 10
                 )
             }
@@ -762,11 +765,11 @@ public final class ProxyCoordinator {
     ///
     /// It is honoured only as far as it is safe: if the gears would no longer
     /// fit inside what the trainer was proven to accept, the request is refused
-    /// and the ride carries on at the wheel size it already had.
-    private func setBaseline(
+    /// and shifting carries on at the wheel size it already had.
+    private func setWheelSize(
         millimeters: Double
     ) async throws -> FTMSPeripheralCommandResult {
-        guard let id = lifecycle.sessionID else {
+        guard let id = lifecycle.shiftingID else {
             return .init(result: .operationFailed, status: nil)
         }
         // Waits for shifting to finish, and for the rider's own gear change to
@@ -775,8 +778,8 @@ public final class ProxyCoordinator {
         guard await waitForGearsToSettle(id) else {
             return .init(result: .operationFailed, status: nil)
         }
-        baselineUpdateInProgress = true
-        defer { baselineUpdateInProgress = false }
+        wheelSizeUpdateInProgress = true
+        defer { wheelSizeUpdateInProgress = false }
         guard let engine = gearEngine else {
             throw ProductBluetoothError.commandFailed(
                 "Gear engine is unavailable"
@@ -785,7 +788,7 @@ public final class ProxyCoordinator {
         let rebased: ConfirmedGearEngine
         do {
             rebased = try engine.rebased(
-                baselineCircumferenceMillimeters: millimeters
+                wheelSizeMillimeters: millimeters
             )
         } catch let error as VirtualGearError {
             let window = TrainerSafety
@@ -806,11 +809,11 @@ public final class ProxyCoordinator {
         // Stopping only turns away commands still queued; this one is already
         // in the handler. Without these checks a wheel size can reach the
         // trainer after the stop has put it back.
-        guard stillRiding(id) else {
+        guard stillShifting(id) else {
             return .init(result: .operationFailed, status: nil)
         }
         let effectiveResponse = try await kickr.executeWahoo(effectiveCommand)
-        guard stillRiding(id) else {
+        guard stillShifting(id) else {
             return .init(result: .operationFailed, status: nil)
         }
         guard effectiveResponse.confirmsSuccess(for: effectiveCommand) else {
@@ -821,9 +824,9 @@ public final class ProxyCoordinator {
         trainerWheelSizeMillimeters = millimeters
         wheelSizeCameFromRidingApp = true
         // The reset target just moved. Without this the record left for a
-        // force-quit still names the ride's starting size, so recovery would
+        // force-quit still names shifting's starting size, so recovery would
         // put the trainer somewhere a normal Stop never would.
-        defaults.set(millimeters, forKey: unfinishedRideKey)
+        defaults.set(millimeters, forKey: interruptedShiftingKey)
         gearEngine = rebased
         updateDisplayedGear()
         return .success(status: .wheelCircumferenceChanged(
@@ -836,7 +839,7 @@ public final class ProxyCoordinator {
             peripheral.relayIndoorBikeData(data)
             return
         }
-        guard lifecycle.sessionID != nil else { return }
+        guard lifecycle.shiftingID != nil else { return }
         if event == .status(.controlPermissionLost) {
             beginRecovery()
         }
@@ -849,7 +852,7 @@ public final class ProxyCoordinator {
             return
         }
         guard lifecycle.isReconnecting, recoveryTask == nil else { return }
-        let id = lifecycle.sessionID
+        let id = lifecycle.shiftingID
         recoveryTask = Task { [weak self] in
             guard let self else { return }
             do {
@@ -898,7 +901,7 @@ public final class ProxyCoordinator {
         // A stop in progress is already putting the trainer back, and a KICKR
         // commonly drops the control grant while it stops. Recovering here
         // would re-apply the gear's wheel size behind the stop's back and
-        // leave the trainer holding it. Only a live ride is worth recovering.
+        // leave the trainer holding it. Only live shifting is worth recovering.
         guard lifecycle.canRecover else { return }
         lifecycle.markReconnecting()
         // The riding app's control claim is a relationship with Virtual Gears,
@@ -906,7 +909,7 @@ public final class ProxyCoordinator {
         // Telling the app it has lost control forces it to ask again, and that
         // request is answered from `handleCommand`, which refuses everything
         // while the trainer is away. A riding app that runs out of retries in
-        // that window never gets control back for the rest of the ride, with
+        // that window never gets control back for the rest of shifting, with
         // every link still looking healthy. Commands during the blip already
         // fail honestly on their own.
         shiftTask?.cancel()
@@ -936,7 +939,7 @@ public final class ProxyCoordinator {
             heldDirection = nil
             return
         }
-        guard lifecycle.isRiding, !baselineUpdateInProgress else { return }
+        guard lifecycle.isShifting, !wheelSizeUpdateInProgress else { return }
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
         switch request {
@@ -982,7 +985,7 @@ public final class ProxyCoordinator {
                     // engine's pending change while this line is suspended.
                     // Carrying on would put that change straight back into an
                     // engine no task is driving any more, and every later shift
-                    // would then be refused for the rest of the ride.
+                    // would then be refused for the rest of shifting.
                     guard !Task.isCancelled else { break }
                     guard response.confirmsSuccess(for: current.command),
                           var engine = self.gearEngine else {
@@ -1059,7 +1062,7 @@ public final class ProxyCoordinator {
         // trainer works out speed and distance from it. Leaving it there would
         // quietly distort the PC ride that continues through the proxy, so it
         // goes back while the trainer connection is still available.
-        var baselineReset = true
+        var wheelSizeReset = true
         if let neutral = wheelSizeGearsAreBuiltAround, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
@@ -1068,12 +1071,12 @@ public final class ProxyCoordinator {
                 let response = try await kickr.executeWahoo(command)
                 guard response.confirmsSuccess(for: command) else {
                     throw ProductBluetoothError.commandFailed(
-                        "KICKR did not confirm the baseline reset"
+                        "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: unfinishedRideKey)
+                defaults.removeObject(forKey: interruptedShiftingKey)
             } catch {
-                baselineReset = false
+                wheelSizeReset = false
                 log(
                     "Could not put the wheel size back after a failed start: "
                         + error.localizedDescription,
@@ -1081,13 +1084,13 @@ public final class ProxyCoordinator {
                 )
             }
         } else if wheelSizeGearsAreBuiltAround != nil {
-            baselineReset = false
+            wheelSizeReset = false
         }
         screen.keepAwake = false
-        clearRideData()
+        clearShiftingData()
         lifecycle.failStart(
             error.localizedDescription,
-            trainerNeedsBaselineReset: !baselineReset
+            trainerNeedsWheelSizeReset: !wheelSizeReset
         )
         log("Ride start failed: \(error.localizedDescription)", .error)
     }
@@ -1149,12 +1152,12 @@ extension ProxyCoordinator {
         guard let drivetrain = configuration.drivetrain,
               let engine = try? ConfirmedGearEngine(
                   drivetrain: drivetrain,
-                  baselineCircumferenceMillimeters:
+                  wheelSizeMillimeters:
                       TrainerSafety.referenceCircumferenceMillimeters
               )
         else { return }
 
-        lifecycle = RideLifecycle()
+        lifecycle = ShiftingLifecycle()
         _ = lifecycle.beginConnecting()
         lifecycle.markActive()
         gearEngine = engine

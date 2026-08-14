@@ -4,7 +4,7 @@
 public struct HeadwindSituation: Equatable, Sendable {
     /// Whether a ride is what is asking for the fan. Merely being connected is
     /// not: opening the app to change a setting must never start it blowing.
-    public var rideIsDrivingFan: Bool
+    public var weAreDrivingTheFan: Bool
     /// Whether the app is on its way out and giving the fan back to its own
     /// sensor, which it must do even when it would otherwise stay quiet.
     public var isHandingBack: Bool
@@ -17,7 +17,7 @@ public struct HeadwindSituation: Equatable, Sendable {
     public var observedManualSpeed: Int
 
     public init(
-        rideIsDrivingFan: Bool = false,
+        weAreDrivingTheFan: Bool = false,
         isHandingBack: Bool = false,
         wantsManualControl: Bool = false,
         desiredManualSpeed: Int = 50,
@@ -25,7 +25,7 @@ public struct HeadwindSituation: Equatable, Sendable {
         observedMode: HeadwindMode? = nil,
         observedManualSpeed: Int = 0
     ) {
-        self.rideIsDrivingFan = rideIsDrivingFan
+        self.weAreDrivingTheFan = weAreDrivingTheFan
         self.isHandingBack = isHandingBack
         self.wantsManualControl = wantsManualControl
         self.desiredManualSpeed = desiredManualSpeed
@@ -52,7 +52,7 @@ public enum HeadwindControlPolicy {
             return [.setMode(situation.lastSensorMode)]
         }
         // Only a ride speaks for the rider. A connection does not.
-        guard situation.rideIsDrivingFan else { return [] }
+        guard situation.weAreDrivingTheFan else { return [] }
         // Only a manual preference is worth asserting. Sensor control means the
         // fan answers to its own sensor, so there is nothing of the app's to
         // put back and no reason to send a mode command.
