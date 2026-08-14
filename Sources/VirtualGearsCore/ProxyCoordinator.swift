@@ -71,6 +71,13 @@ public final class ProxyCoordinator {
     private var parkedBaselineMillimeters: Double?
     private var parkedBaselineCameFromRidingApp = false
 
+    /// How many terrain updates have arrived this ride. Only used to give the
+    /// log a sense of scale: a wheel-size command arriving after thousands of
+    /// terrain updates is plainly mid-ride, one arriving after a handful is
+    /// plainly part of starting up.
+    private var terrainUpdateCount = 0
+
+
     /// The baseline used to build a ride's gears, written down before the ride
     /// starts. A ride normally sends it again on Stop and clears this, so a value
     /// still here at launch means the last ride never got to remove its gear.
@@ -668,6 +675,7 @@ public final class ProxyCoordinator {
         _ request: FitnessMachineControlPointRequest,
         from source: RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult {
+        logRidingAppCommand(request)
         await waitForPCCommandGate()
         guard peripheral.isControlSubscriber(source) else {
             return .init(result: .controlNotPermitted, status: nil)
@@ -1076,6 +1084,49 @@ public final class ProxyCoordinator {
         _ level: ProductLogLevel = .info
     ) {
         ProductLogger.record(message, source: "Proxy", level: level)
+    }
+
+    /// Every command a riding app sends, written down as it arrives.
+
+    ///
+    /// The app's design assumes a riding app may change the wheel size at any
+    /// moment, including mid-ride, and a good deal of machinery exists to cope
+    /// with that. Nobody has ever checked whether it happens. This is the one
+    /// place every riding-app command passes through, so recording them here
+    /// turns that assumption into something a single ride can settle.
+    ///
+    /// Simulation parameters arrive several times a second on a hilly course
+    /// and would bury everything else, so they are counted rather than listed.
+    private func logRidingAppCommand(
+        _ request: FitnessMachineControlPointRequest
+    ) {
+        if case .setIndoorBikeSimulationParameters = request {
+            terrainUpdateCount &+= 1
+            return
+        }
+        let opcode = "0x" + String(format: "%02X", request.opcode)
+        switch request {
+        case let .setWheelCircumference(tenths):
+            log(
+                "Riding app sent \(opcode) set wheel circumference "
+                    + "\(Double(tenths) / 10) mm"
+                    + " (terrain updates so far: \(terrainUpdateCount))"
+            )
+        case .requestControl:
+            log("Riding app sent \(opcode) request control")
+        case .reset:
+            log("Riding app sent \(opcode) reset")
+        case let .setTargetResistanceLevel(value):
+            log("Riding app sent \(opcode) set resistance \(value)")
+        case let .setTargetPower(watts):
+            log("Riding app sent \(opcode) set target power \(watts) W")
+        case .startOrResume:
+            log("Riding app sent \(opcode) start or resume")
+        case let .stopOrPause(value):
+            log("Riding app sent \(opcode) stop or pause \(value)")
+        case .setIndoorBikeSimulationParameters:
+            break
+        }
     }
 }
 
