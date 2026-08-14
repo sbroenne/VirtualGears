@@ -46,11 +46,31 @@ range has to hold not just the ladder but the ladder shifted up or down by that
 request. At a 4800 mm ceiling the ladder could only be rebuilt for wheels
 between 2000 mm and 2098 mm, which turned a 700x25c wheel at 2105 mm — an
 ordinary road wheel — into a refusal. Raising the ceiling to 5000 mm widens that
-window to 2000–2185 mm, which covers the usual road sizes including 700x28c.
+window to 2000–2186 mm.
 
-A request that still falls outside the window is refused rather than clamped,
-and the trainer keeps the wheel size it already had. Nothing unproven is ever
-sent.
+Measured against real wheel sizes, that window now covers the road sizes:
+
+| Wheel | Circumference | Accepted |
+| --- | --- | --- |
+| 650b | 1900 mm | no |
+| 26 inch | 2070 mm | yes |
+| 700x23c | 2096 mm | yes |
+| 700x25c | 2105 mm | yes |
+| 700x28c | 2136 mm | yes |
+| 700x38c | 2180 mm | yes |
+| 29 inch | 2300 mm | no |
+
+A 29er and a 650b are still refused. That is a real limitation, not an
+oversight: covering them would mean either measuring a wider range on the
+trainer or narrowing the gears, and neither has been done.
+
+Nothing here is a limit of the gears or of the trainer. Both would go further —
+the trainer acknowledged 5000 mm on the first ask. It is a limit of what has
+been measured, which is the only thing this app is willing to send.
+
+A request that falls outside the window is refused rather than clamped, and the
+trainer keeps the wheel size it already had. Nothing unproven is ever sent. The
+rider is not told when this happens; it appears only in the app's own log.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

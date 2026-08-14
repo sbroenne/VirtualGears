@@ -20,9 +20,20 @@ public enum TrainerSafety {
     /// width is also the room a riding app has to set its own wheel size. At
     /// 4800 mm the ladder left a baseline window of 2000-2098 mm, which refused
     /// a 700x25c wheel at 2105 mm — an ordinary road wheel, and one the
-    /// reference riding app really does send. The extra 200 mm is headroom for
-    /// that, not a wider spread of gears. This intentionally remains much
-    /// narrower than the command's encodable limits.
+    /// reference riding app really does send. The window is now 2000-2186 mm.
+    ///
+    /// Be aware that this one number does three jobs, so widening it for the
+    /// third changed the other two. It gates what may be sent to the trainer,
+    /// it is the budget the virtual ladder is centred in, and it is the room a
+    /// riding app has. The virtual ladder itself did not move — its ratios are
+    /// a fixed list, so the reference gear and all 24 wheel sizes are identical
+    /// before and after — but three more custom drivetrain combinations now
+    /// pass the safety check, 613 of 616 rather than 610. That is a real
+    /// consequence of widening the range, not a separate decision.
+    ///
+    /// This intentionally remains much narrower than the command's encodable
+    /// limits. Nothing here is a limit of the gears or the trainer; both would
+    /// go further. It is a limit of what has been measured.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
         500...5_000
 

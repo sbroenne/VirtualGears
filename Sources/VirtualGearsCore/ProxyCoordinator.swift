@@ -259,8 +259,9 @@ public final class ProxyCoordinator {
             if !canBuildGears(around: baseline, drivetrain: drivetrain) {
                 log(
                     "Your riding app left a \(Int(baseline.rounded())) mm wheel "
-                        + "size, which these gears cannot be built around. "
-                        + "Starting from \(Int(reference.rounded())) mm instead.",
+                        + "size. Gears built around it would reach outside the "
+                        + "range proven safe on this trainer, so this ride "
+                        + "starts from \(Int(reference.rounded())) mm instead.",
                     .warning
                 )
                 baseline = reference
@@ -585,8 +586,10 @@ public final class ProxyCoordinator {
     /// step that suspends has to ask again afterwards: a stop can be claimed
     /// while the trainer is mid-answer, and it owns putting the trainer back.
     /// Whether a full gear ladder still encodes inside the trainer's range
-    /// around this wheel size. A riding app is free to set any size it likes,
-    /// but a size the gears cannot be built around must not carry into a ride.
+    /// around this wheel size. A riding app is free to set any size it likes.
+    /// This is not a limit of the gears or the trainer — either could be built
+    /// around far more — but of what has been proven safe, so a size that would
+    /// push a gear outside that must not carry into a ride.
     private func canBuildGears(
         around millimeters: Double,
         drivetrain: Drivetrain
@@ -768,9 +771,9 @@ public final class ProxyCoordinator {
             )
         } catch let error as VirtualGearError {
             log(
-                "Riding app asked for a \(Int(millimeters.rounded())) mm wheel, "
-                    + "which your gears cannot be built around safely "
-                    + "(\(error)). Keeping "
+                "Riding app asked for a \(Int(millimeters.rounded())) mm wheel. "
+                    + "Gears built around it would reach outside the range "
+                    + "proven safe on this trainer (\(error)). Keeping "
                     + "\(Int((sessionBaselineMillimeters ?? 0).rounded())) mm.",
                 .warning
             )
