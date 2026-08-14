@@ -453,9 +453,26 @@ rider stopped and restarted part-way through. The capture is in
     2.0s  0x07 start or resume
 ```
 
-**RealVelo never sets a wheel size at all**, in 281 seconds and 147 terrain
-updates. So one riding app sends the wheel size at every ride start and another
-never sends it; the app cannot assume either.
+That first run advertised as "AppTap" so the rider could tell it apart from the
+real thing, which is a deviation worth ruling out: a riding app may treat a
+trainer name it does not recognise differently. It was run again under the
+shipping name "Virtual Gears" and behaved identically, down to the order and the
+timing — `docs/realvelo-app-tap-run-shipping-name.log`:
+
+```
+    1.3s  0x00 request control
+    1.5s  0x01 reset
+    1.6s  0x00 request control
+    1.7s  0x07 start or resume
+```
+
+**There is no name-dependent behaviour here.** What follows was seen in both
+runs.
+
+**RealVelo never sets a wheel size at all**: not once in 281 seconds and 147
+terrain updates, nor in the second run's 137 seconds and 58. So one riding app
+sends the wheel size at every ride start and another never sends it; the app
+cannot assume either.
 
 **It sends a reset while connecting.** By the FTMS rules a reset returns a
 machine to its defaults, which would include the wheel size the gears ride on,

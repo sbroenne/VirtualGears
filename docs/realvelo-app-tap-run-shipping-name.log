@@ -1,0 +1,29 @@
+Pretending to be a trainer called "Virtual Gears".
+Pair this Mac in your riding app, then ride for a few minutes.
+Quit the riding app when you are done and the findings appear here.
+It also stops on its own after 30 minutes.
+
+A riding app connected. Timing starts now.
+    1.3s  0x00 request control
+    1.5s  0x01 reset
+    1.5s  ! sent a reset, which puts a trainer back to its defaults - including the wheel size Virtual Gears shifts with.
+    1.6s  0x00 request control
+    1.6s  ! asked for control again, 2 times in all. A trainer that refuses a repeat request can lock the riding app out for the rest of the ride.
+    1.7s  0x07 start or resume
+  101.7s  (50 terrain updates so far)
+
+=== What the riding app did ===
+Watched for 137 seconds.
+
+  0x00 sent 2 times
+  0x01 sent 1 time
+  0x07 sent 1 time
+  0x11 sent 58 times
+
+The riding app never set a wheel size.
+So the machinery for a wheel size changing mid-ride was not needed here.
+
+=== Anything unusual ===
+  at 1.5s: sent a reset, which puts a trainer back to its defaults - including the wheel size Virtual Gears shifts with.
+  at 1.6s: asked for control again, 2 times in all. A trainer that refuses a repeat request can lock the riding app out for the rest of the ride.
+app-tap finished
