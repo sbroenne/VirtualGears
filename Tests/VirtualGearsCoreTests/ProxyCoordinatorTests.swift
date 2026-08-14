@@ -106,10 +106,8 @@ final class ProxyCoordinatorTests: XCTestCase {
             )
         )
         try await settle {
-            self.coordinator.sessionBaselineMillimeters == ridingAppWheelSize
+            self.coordinator.wheelSizeGearsAreBuiltAround == ridingAppWheelSize
         }
-
-        XCTAssertEqual(coordinator.preGearBaselineMillimeters, neutral)
 
         await coordinator.stopRide()
 
@@ -128,7 +126,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
         try await settle {
-            self.coordinator.sessionBaselineMillimeters == 2_105
+            self.coordinator.wheelSizeGearsAreBuiltAround == 2_105
         }
         await coordinator.stopRide()
         let afterNormalStop = trainer.currentWheelSizeMillimeters
@@ -144,7 +142,7 @@ final class ProxyCoordinatorTests: XCTestCase {
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
         try await settle {
-            self.coordinator.sessionBaselineMillimeters == 2_105
+            self.coordinator.wheelSizeGearsAreBuiltAround == 2_105
         }
 
         trainer = FakeTrainer()
@@ -189,7 +187,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         try await startRide()
 
         XCTAssertEqual(coordinator.state, .active)
-        XCTAssertEqual(coordinator.sessionBaselineMillimeters, 2_105)
+        XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
     }
 
     /// Virtual Gears supports the wheel sizes real bicycles have, so a wheel
@@ -215,7 +213,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         try await startRide()
 
         XCTAssertEqual(coordinator.state, .active)
-        XCTAssertEqual(coordinator.sessionBaselineMillimeters, neutral)
+        XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, neutral)
     }
 
     func testAnUnfinishedRideIsForgottenOnceTheTrainerIsPutRight() async throws {
@@ -508,7 +506,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         let result = await command.value
 
         XCTAssertEqual(result?.result, .success)
-        XCTAssertEqual(coordinator.sessionBaselineMillimeters, 2_105)
+        XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
         await coordinator.stopRide()
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
     }
@@ -518,13 +516,13 @@ final class ProxyCoordinatorTests: XCTestCase {
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
-        try await settle { self.coordinator.sessionBaselineMillimeters == 2_105 }
+        try await settle { self.coordinator.wheelSizeGearsAreBuiltAround == 2_105 }
         await coordinator.stopRide()
 
         coordinator.startRide(configuration: makeConfiguration(virtualGears: false))
         try await settle { self.coordinator.state == .active }
 
-        XCTAssertEqual(coordinator.sessionBaselineMillimeters, 2_105)
+        XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2_105)
         XCTAssertTrue(coordinator.ridingAppSetWheelSize)
         await coordinator.stopRide()
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
@@ -593,7 +591,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         _ = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 21_050)
         )
-        try await settle { self.coordinator.sessionBaselineMillimeters == 2_105 }
+        try await settle { self.coordinator.wheelSizeGearsAreBuiltAround == 2_105 }
         trainer.failNextWahooCommand = true
 
         await coordinator.stopRide()

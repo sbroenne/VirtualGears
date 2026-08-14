@@ -26,17 +26,32 @@ public final class ProxyCoordinator {
     /// *its* ride starts, and that need not line up with ours: a rider who
     /// starts Virtual Gears first and then starts a course gets a new wheel
     /// size with the gears already engaged.
-    public private(set) var sessionBaselineMillimeters: Double?
-    /// The baseline selected before the first virtual gear is applied. This is
-    /// either 2070 mm or the latest size supplied by the riding app; FTMS does
-    /// not expose the trainer's current wheel circumference for reading. It is
-    /// deliberately separate from
-    /// `sessionBaselineMillimeters`: a riding app that sets its own wheel size
-    /// changes what the gears are scaled around.
-    public private(set) var preGearBaselineMillimeters: Double?
-    /// True once a riding app has set its own wheel size, so the ride screen can
-    /// say whose number the gears are built around.
-    public private(set) var ridingAppSetWheelSize = false
+    /// The wheel size the trainer sits at with no virtual gear applied, and
+    /// the size every gear is scaled away from.
+    ///
+    /// There is one of these because there is one trainer. It used to be two
+    /// numbers, one for "this ride" and one "parked" between rides, which were
+    /// handed back and forth and had to be kept in step by hand. Virtual Gears
+    /// is a piece of gear on the bike rather than a ride of its own: the riding
+    /// app has rides, and this is simply the wheel size we last agreed on.
+    ///
+    /// nil means nobody has told us anything yet, so the 2070 mm reference is
+    /// used.
+    private var trainerWheelSizeMillimeters: Double?
+
+    /// Whether the wheel size above came from a riding app rather than from us.
+    private var wheelSizeCameFromRidingApp = false
+
+    /// The wheel size this ride's gears are built around, or nil when no gears
+    /// are engaged.
+    public var wheelSizeGearsAreBuiltAround: Double? {
+        gearEngine == nil ? nil : trainerWheelSizeMillimeters
+    }
+    /// True while gears are engaged around a wheel size a riding app chose, so
+    /// the ride screen can say whose number they are built around.
+    public var ridingAppSetWheelSize: Bool {
+        gearEngine != nil && wheelSizeCameFromRidingApp
+    }
     /// Whether a virtual gear has actually reached the trainer this ride. Until
     /// it has, there is nothing to put right and nothing to report as unreset.
     private var hasAppliedVirtualGear = false
@@ -74,11 +89,6 @@ public final class ProxyCoordinator {
     private var pcCommandGateWaiters: [CheckedContinuation<Void, Never>] = []
     private var pcCommandIdleWaiters: [CheckedContinuation<Void, Never>] = []
     private var stopCompletionWaiters: [CheckedContinuation<Void, Never>] = []
-    /// The riding app's current neutral size survives between Virtual Gears gear
-    /// sessions. A retained PC connection is not required to resend it merely
-    /// because the rider stopped and restarted virtual shifting.
-    private var parkedBaselineMillimeters: Double?
-    private var parkedBaselineCameFromRidingApp = false
 
     /// How many terrain updates have arrived this ride. Only used to give the
     /// log a sense of scale: a wheel-size command arriving after thousands of
@@ -175,11 +185,11 @@ public final class ProxyCoordinator {
         guard lifecycle.isBetweenRides else { return }
         let token = lifecycle.baselineResetToken
         guard defaults.object(forKey: unfinishedRideKey) != nil else { return }
-        let baseline = parkedBaselineMillimeters
+        let baseline = trainerWheelSizeMillimeters
             ?? defaults.double(forKey: unfinishedRideKey)
         guard baseline > 0 else {
             defaults.removeObject(forKey: unfinishedRideKey)
-            parkedBaselineMillimeters = baseline
+            trainerWheelSizeMillimeters = baseline
             return
         }
         for _ in 0..<100 {
@@ -271,7 +281,7 @@ public final class ProxyCoordinator {
             // A wheel size the riding app parked between rides is only usable
             // if the gears still fit around it. Falling back to the reference
             // keeps Start working instead of failing for the whole launch.
-            var baseline = parkedBaselineMillimeters ?? reference
+            var baseline = trainerWheelSizeMillimeters ?? reference
             if !canBuildGears(around: baseline, drivetrain: drivetrain) {
                 log(
                     "Your riding app left a \(Int(baseline.rounded())) mm wheel "
@@ -281,18 +291,15 @@ public final class ProxyCoordinator {
                     .warning
                 )
                 baseline = reference
-                parkedBaselineCameFromRidingApp = false
+                wheelSizeCameFromRidingApp = false
             }
-            parkedBaselineMillimeters = baseline
+            trainerWheelSizeMillimeters = baseline
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
                 baselineCircumferenceMillimeters: baseline
             )
             gearSequence = drivetrain.gears
             updateDisplayedGear()
-            sessionBaselineMillimeters = baseline
-            preGearBaselineMillimeters = baseline
-            ridingAppSetWheelSize = parkedBaselineCameFromRidingApp
 
             kickr.resumeSavedConnection()
             if usesClick { click.resumeSavedConnection() }
@@ -413,9 +420,7 @@ public final class ProxyCoordinator {
         // Ending Virtual Gears is not ending the PC app's ride. Remove the
         // virtual gear by returning to the latest baseline the riding app asked
         // for. If it never supplied one, use the 2070 mm reference.
-        let parkedBaseline =
-            sessionBaselineMillimeters ?? preGearBaselineMillimeters
-        if let neutral = parkedBaseline, kickr.isReady {
+        if let neutral = wheelSizeGearsAreBuiltAround, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
                     millimeters: neutral
@@ -427,7 +432,6 @@ public final class ProxyCoordinator {
                     )
                 }
                 defaults.removeObject(forKey: unfinishedRideKey)
-                parkedBaselineMillimeters = neutral
             } catch {
                 failures.append(
                     "Baseline reset failed: \(error.localizedDescription)"
@@ -454,8 +458,8 @@ public final class ProxyCoordinator {
     }
 
     private func disconnectOwnedEquipment() {
-        parkedBaselineMillimeters = nil
-        parkedBaselineCameFromRidingApp = false
+        trainerWheelSizeMillimeters = nil
+        wheelSizeCameFromRidingApp = false
         click.disconnect()
         kickr.disconnect(resettingCircumferenceMillimeters: nil)
     }
@@ -510,9 +514,6 @@ public final class ProxyCoordinator {
         requestedGearIndex = nil
         gearSequence = []
         feedback.clear()
-        sessionBaselineMillimeters = nil
-        preGearBaselineMillimeters = nil
-        ridingAppSetWheelSize = false
         hasAppliedVirtualGear = false
     }
 
@@ -556,7 +557,7 @@ public final class ProxyCoordinator {
         baselineUpdateInProgress = true
         defer { baselineUpdateInProgress = false }
         heldDirection = nil
-        guard let baseline = sessionBaselineMillimeters else {
+        guard let baseline = wheelSizeGearsAreBuiltAround else {
             log("New gears were not applied: the ride had already ended", .warning)
             return false
         }
@@ -719,8 +720,8 @@ public final class ProxyCoordinator {
                     guard response.confirmsSuccess(for: command) else {
                         return .init(result: .operationFailed, status: nil)
                     }
-                    parkedBaselineMillimeters = millimeters
-                    parkedBaselineCameFromRidingApp = true
+                    trainerWheelSizeMillimeters = millimeters
+                    wheelSizeCameFromRidingApp = true
                     return .success(status: .wheelCircumferenceChanged(
                         tenthsOfMillimeter: tenths
                     ))
@@ -792,7 +793,7 @@ public final class ProxyCoordinator {
             let lowest = Int(window.lowerBound)
             let highest = Int(window.upperBound)
             let asked = Int(millimeters.rounded())
-            let kept = Int((sessionBaselineMillimeters ?? 0).rounded())
+            let kept = Int((wheelSizeGearsAreBuiltAround ?? 0).rounded())
             log(
                 "Riding app asked for a \(asked) mm wheel, which is outside "
                     + "the \(lowest)-\(highest) mm Virtual Gears supports "
@@ -817,10 +818,8 @@ public final class ProxyCoordinator {
                 "KICKR did not confirm rescaled gear"
             )
         }
-        sessionBaselineMillimeters = millimeters
-        ridingAppSetWheelSize = true
-        parkedBaselineMillimeters = millimeters
-        parkedBaselineCameFromRidingApp = true
+        trainerWheelSizeMillimeters = millimeters
+        wheelSizeCameFromRidingApp = true
         // The reset target just moved. Without this the record left for a
         // force-quit still names the ride's starting size, so recovery would
         // put the trainer somewhere a normal Stop never would.
@@ -1061,7 +1060,7 @@ public final class ProxyCoordinator {
         // quietly distort the PC ride that continues through the proxy, so it
         // goes back while the trainer connection is still available.
         var baselineReset = true
-        if let neutral = preGearBaselineMillimeters, kickr.isReady {
+        if let neutral = wheelSizeGearsAreBuiltAround, kickr.isReady {
             do {
                 let command = try WahooKickrCommand.setWheelCircumference(
                     millimeters: neutral
@@ -1081,7 +1080,7 @@ public final class ProxyCoordinator {
                     .error
                 )
             }
-        } else if preGearBaselineMillimeters != nil {
+        } else if wheelSizeGearsAreBuiltAround != nil {
             baselineReset = false
         }
         screen.keepAwake = false
@@ -1160,9 +1159,7 @@ extension ProxyCoordinator {
         lifecycle.markActive()
         gearEngine = engine
         gearSequence = drivetrain.gears
-        sessionBaselineMillimeters =
-            TrainerSafety.referenceCircumferenceMillimeters
-        preGearBaselineMillimeters =
+        trainerWheelSizeMillimeters =
             TrainerSafety.referenceCircumferenceMillimeters
         updateDisplayedGear()
     }
