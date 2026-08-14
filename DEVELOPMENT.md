@@ -392,15 +392,20 @@ service shape on a hunch.
 Rather than reason about this, a riding app was watched. `Tools/AppTap` makes a
 Mac pretend to be an indoor trainer, so a riding app pairs with it directly and
 every command it sends is written down and timed. No phone, trainer or bike is
-involved. Run it with `./Tools/AppTap/run.sh --name "Virtual Gears"`.
+involved. Run it with `./Tools/AppTap/run.sh`.
+
+It advertises as "AppTap", not as "Virtual Gears". The phone is usually
+advertising the real name a few feet away, and a riding app that picks the phone
+instead looks exactly like a tap that sees nothing: connected on one screen,
+silent on the other. Pass `--name "Virtual Gears"` to check whether a riding app
+treats the real name differently — for RealVelo it did not — and quit the app on
+the phone first when doing so.
 
 It also calls out anything unusual as it happens, so a surprise is not left
 buried in a list of opcodes: a reset, repeated control requests, commands sent
 without asking for control first, commands after a stop or pause, a wheel size
 that is implausible or that changes mid-ride, command bytes it does not
-recognise, and writes to characteristics that are not the control point. Keep
-the default name unless there is a reason not to — a riding app may behave
-differently towards a trainer it does not recognise.
+recognise, and writes to characteristics that are not the control point.
 
 FulGaz was observed for five minutes across two rides. The full capture is in
 `docs/fulgaz-app-tap-run.log`. It starts a ride with the same four commands in

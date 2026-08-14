@@ -26,10 +26,15 @@ log.clear()
 private func say(_ text: String) { log.say(text) }
 
 private let arguments = CommandLine.arguments
+/// Never "Virtual Gears" by default. The phone is usually advertising that very
+/// name a few feet away, and a riding app that picks the phone instead looks
+/// exactly like a tap that sees nothing: connected on one screen, silent on the
+/// other. Pass --name to check a riding app's behaviour against the real name,
+/// which for RealVelo changed nothing.
 private let advertisedName: String = {
     guard let index = arguments.firstIndex(of: "--name"),
         index + 1 < arguments.count
-    else { return "Virtual Gears" }
+    else { return "AppTap" }
     return arguments[index + 1]
 }()
 private let runMinutes: Int = {
