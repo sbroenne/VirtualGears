@@ -394,6 +394,13 @@ Mac pretend to be an indoor trainer, so a riding app pairs with it directly and
 every command it sends is written down and timed. No phone, trainer or bike is
 involved. Run it with `./Tools/AppTap/run.sh`.
 
+**The riding app has to be on a different machine.** macOS does not loop
+Bluetooth advertisements back to itself, so a riding app running on this Mac can
+never see a tap advertising from this Mac — it will happily find the phone
+instead and report itself connected while the tap sits silent. FulGaz and
+RealVelo were traced from another device for this reason. MyWhoosh is installed
+on this Mac and cannot be traced from it.
+
 It advertises as "AppTap", not as "Virtual Gears". The phone is usually
 advertising the real name a few feet away, and a riding app that picks the phone
 instead looks exactly like a tap that sees nothing: connected on one screen,
