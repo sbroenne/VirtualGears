@@ -337,7 +337,7 @@ final class KickrProbe: NSObject {
         say("\n== How long does one gear change take to confirm? ==")
         var engine = try ConfirmedGearEngine(
             drivetrain: try Drivetrain.virtualLadder(),
-            baselineCircumferenceMillimeters: neutral
+            wheelSizeMillimeters: neutral
         )
         var times: [TimeInterval] = []
         for _ in 0..<8 {

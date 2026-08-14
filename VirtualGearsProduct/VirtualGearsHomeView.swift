@@ -22,8 +22,8 @@ struct VirtualGearsHomeView: View {
                 DemoModeView {
                     exitDemoMode()
                 }
-            } else if coordinator.isRidePresented {
-                ActiveRideView(
+            } else if coordinator.isShiftingPresented {
+                ShiftingView(
                     store: store,
                     kickr: kickr,
                     click: click,
@@ -50,10 +50,10 @@ struct VirtualGearsHomeView: View {
     }
 
     private func enterDemoMode() {
-        guard !coordinator.isRidePresented else { return }
+        guard !coordinator.isShiftingPresented else { return }
         // Disconnect without changing saved identities or resetting equipment.
         // The interrupted-ride record stays in place for the real startup flow.
-        coordinator.suspendInterruptedRideBaselineRecovery()
+        coordinator.suspendInterruptedWheelSizeRecovery()
         // Stop parks the proxy with the riding app still connected, so demo
         // entry can take the trainer service away from it. Remember that so
         // exit can hand it straight back.
@@ -75,7 +75,7 @@ struct VirtualGearsHomeView: View {
             demoInterruptedAdvertising = false
             coordinator.peripheral.startAdvertising()
         }
-        coordinator.resetInterruptedRideBaselineIfNeeded()
+        coordinator.resetInterruptedWheelSizeIfNeeded()
     }
 
     private func discoverOptionalEquipment() async {
@@ -436,10 +436,10 @@ struct StartupView: View {
 
     private func failureCard(_ message: String) -> some View {
         let failure =
-            coordinator.failure ?? .starting(trainerNeedsBaselineReset: false)
+            coordinator.failure ?? .starting(trainerNeedsWheelSizeReset: false)
         let heading = failure.happenedWhileStopping
             ? "Virtual shifting stopped"
-            : "Ride could not start"
+            : "Shifting could not start"
         let detail = failure.happenedWhileStopping
             ? "Your trainer stopped responding before Virtual Gears finished."
             : plainEnglish(message)
@@ -481,7 +481,7 @@ struct StartupView: View {
     private var retryButton: some View {
         Button {
             headwind.applySavedControlPreference()
-            coordinator.startRide(configuration: store.configuration)
+            coordinator.startShifting(configuration: store.configuration)
         } label: {
             Label("Start Shifting", systemImage: "bicycle")
                 .font(.title2.bold())
@@ -515,7 +515,7 @@ struct StartupView: View {
         kickr.stopScanning()
         mustChoose = false
         headwind.applySavedControlPreference()
-        coordinator.startRide(configuration: store.configuration)
+        coordinator.startShifting(configuration: store.configuration)
     }
 }
 
@@ -621,7 +621,7 @@ struct DemoModeView: View {
             Text(
                 "No trainer is connected. This demo stays on your iPhone and "
                     + "does not use Bluetooth. The wheel sizes and commands "
-                    + "below are the real ones a ride would send."
+                    + "below are the real ones a shift would send."
             )
             .font(.subheadline)
         }
@@ -1026,7 +1026,7 @@ private struct DemoHeadwindControlView: View {
 }
 
 
-struct ActiveRideView: View {
+struct ShiftingView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
@@ -1232,8 +1232,8 @@ struct ActiveRideView: View {
         ) {
             Button("Stop Shifting", role: .destructive) {
                 onRiderStop()
-                headwind.releaseRideFanControl()
-                Task { await coordinator.stopRide() }
+                headwind.releaseFanControl()
+                Task { await coordinator.stopShifting() }
             }
             Button("Cancel", role: .cancel) {}
         }
@@ -1626,10 +1626,10 @@ struct ActiveRideView: View {
         if isChangingGears { return "Changing gears" }
         switch coordinator.state {
         case .connecting: return "Connecting equipment"
-        case .active: return "Ride active"
+        case .active: return "Gears ready"
         case .reconnecting: return "Control lost · reconnecting"
-        case .stopping: return "Stopping safely"
-        case .idle: return "Shifting stopped"
+        case .stopping: return "Stopping…"
+        case .idle: return "Shifting off"
         case let .failed(message): return message
         }
     }

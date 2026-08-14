@@ -63,7 +63,7 @@ struct SetupView: View {
 
             if !store.configuration.hasValidKickr || !kickr.isReady {
                 Label(
-                    "Your trainer is not connected, so a ride cannot start yet.",
+                    "Your trainer is not connected, so shifting cannot start yet.",
                     systemImage: "exclamationmark.triangle.fill"
                 )
                 .font(.callout)
@@ -241,7 +241,7 @@ private struct ShiftingSetupView: View {
         Form {
             Section {
                 Label(
-                    "The two large buttons on the ride screen always shift, "
+                    "The two large buttons on the shifting screen always shift, "
                         + "whatever else is connected.",
                     systemImage: "hand.tap.fill"
                 )

@@ -78,7 +78,7 @@ struct VirtualGearsApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active, !isDemoMode,
-                  !coordinator.isRidePresented else { return }
+                  !coordinator.isShiftingPresented else { return }
             kickr.autoConnectSavedDevice()
             if configurationStore.configuration.usesClick {
                 click.autoConnectSavedDevice()
@@ -86,7 +86,7 @@ struct VirtualGearsApp: App {
             if configurationStore.configuration.usesHeadwind {
                 headwind.autoConnectSavedDevice()
             }
-            coordinator.resetInterruptedRideBaselineIfNeeded()
+            coordinator.resetInterruptedWheelSizeIfNeeded()
         }
     }
 }
@@ -140,7 +140,7 @@ private struct ScreenshotFixtureView: View {
                     beginsDiscovery: false
                 )
             case .ride:
-                ActiveRideView(
+                ShiftingView(
                     store: store,
                     kickr: kickr,
                     click: click,

@@ -26,7 +26,7 @@ final class FakeTrainer: TrainerLink {
     private(set) var disconnectResetRequest: Double??
     private(set) var ftmsRequests: [FitnessMachineControlPointRequest] = []
 
-    /// What the trainer is left on. The whole point of the baseline-reset rules.
+    /// What the trainer is left on. The whole point of the wheel size-reset rules.
     var currentWheelSizeMillimeters: Double? { wheelSizeHistory.last }
 
     /// Set to make the next Wahoo command fail, as a trainer that has gone to

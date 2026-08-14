@@ -53,7 +53,6 @@ hardest gear reaches 5490 mm, and the command stops at 6553.5 mm.
 | 700x25c | 2105 mm | yes |
 | 700x28c | 2136 mm | yes |
 | 700x38c | 2180 mm | yes |
-| FulGaz | 2200 mm | yes |
 | 29 inch | 2326 mm | yes |
 
 ### Why this needed fixing
@@ -65,11 +64,16 @@ anywhere. They fell out of where the 24 gears happened to sit inside that old
 riding app asked for one that did not fit.
 
 It kept costing real riders, one at a time. A 700x25c wheel at 2105 mm — an
-ordinary road wheel — was refused. So was a 650b. And FulGaz, which was watched
-directly by having a Mac pretend to be the trainer it connects to, asks for
-**2200 mm** whenever a ride starts; that was refused too, which meant Virtual
-Gears and FulGaz could not have worked together at all. The capture is in
+ordinary road wheel — was refused. So was a 650b. FulGaz was then watched
+directly, by having a Mac pretend to be the trainer it connects to, and the
+wheel size it sent was refused as well, which meant Virtual Gears and FulGaz
+could not have worked together at all. The capture is in
 `docs/fulgaz-app-tap-run.log`.
+
+That last one also settled how riding apps behave here. The wheel size is
+whatever the rider has typed into the riding app's own settings, so there is no
+per-app value to design around — only a range wide enough for the wheels people
+actually ride.
 
 All three are now accepted, and the window is declared rather than emergent, so
 the next one cannot be discovered by a rider.

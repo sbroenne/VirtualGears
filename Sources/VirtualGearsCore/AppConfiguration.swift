@@ -87,7 +87,7 @@ public struct AppConfiguration: Codable, Equatable {
         return [window.lowerBound, window.upperBound].allSatisfy { wheelSize in
             (try? ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                baselineCircumferenceMillimeters: wheelSize
+                wheelSizeMillimeters: wheelSize
             )) != nil
         }
     }

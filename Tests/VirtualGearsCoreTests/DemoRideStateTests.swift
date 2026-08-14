@@ -72,7 +72,7 @@ final class DemoRideStateTests: XCTestCase {
         let reference = drivetrain.referenceGear.ratio
 
         XCTAssertEqual(
-            state.baselineMillimeters,
+            state.wheelSizeMillimeters,
             TrainerSafety.referenceCircumferenceMillimeters
         )
 

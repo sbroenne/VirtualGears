@@ -8,7 +8,7 @@ import XCTest
 final class HeadwindControlPolicyTests: XCTestCase {
     func testConnectingWithASavedManualSpeedSendsNothing() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: false,
+            weAreDrivingTheFan: false,
             wantsManualControl: true,
             desiredManualSpeed: 100,
             observedMode: .heartRate
@@ -18,7 +18,7 @@ final class HeadwindControlPolicyTests: XCTestCase {
 
     func testStartingARideRestoresTheSavedManualSpeed() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: true,
+            weAreDrivingTheFan: true,
             wantsManualControl: true,
             desiredManualSpeed: 60,
             observedMode: .heartRate
@@ -29,9 +29,9 @@ final class HeadwindControlPolicyTests: XCTestCase {
         )
     }
 
-    func testARideLeavesSensorControlAlone() {
+    func testShiftingLeavesSensorControlAlone() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: true,
+            weAreDrivingTheFan: true,
             wantsManualControl: false,
             lastSensorMode: .heartRate,
             observedMode: .manual
@@ -41,7 +41,7 @@ final class HeadwindControlPolicyTests: XCTestCase {
 
     func testAFanAlreadyAtTheWantedSpeedIsLeftAlone() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: true,
+            weAreDrivingTheFan: true,
             wantsManualControl: true,
             desiredManualSpeed: 60,
             observedMode: .manual,
@@ -52,7 +52,7 @@ final class HeadwindControlPolicyTests: XCTestCase {
 
     func testAFanInManualAtTheWrongSpeedIsOnlyRespeeded() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: true,
+            weAreDrivingTheFan: true,
             wantsManualControl: true,
             desiredManualSpeed: 60,
             observedMode: .manual,
@@ -67,7 +67,7 @@ final class HeadwindControlPolicyTests: XCTestCase {
     /// Refusing to start a fan must never become refusing to stop one.
     func testHandingTheFanBackHappensEvenOutsideARide() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: false,
+            weAreDrivingTheFan: false,
             isHandingBack: true,
             wantsManualControl: true,
             lastSensorMode: .speed,
@@ -96,7 +96,7 @@ final class HeadwindControlPolicyTests: XCTestCase {
 
     func testAFanThatHasNotSaidAnythingYetIsStillSetUpForARide() {
         let situation = HeadwindSituation(
-            rideIsDrivingFan: true,
+            weAreDrivingTheFan: true,
             wantsManualControl: true,
             desiredManualSpeed: 40,
             observedMode: nil

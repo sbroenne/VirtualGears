@@ -13,20 +13,20 @@ final class ConfirmedGearEngineTests: XCTestCase {
         _ = engine.requestShift(by: 2)
 
         let rebased = try engine.rebased(
-            baselineCircumferenceMillimeters: 2_100
+            wheelSizeMillimeters: 2_100
         )
 
         XCTAssertEqual(rebased.confirmedGear, engine.confirmedGear)
         XCTAssertEqual(rebased.requestedGear, engine.confirmedGear)
         XCTAssertNil(rebased.pendingChange)
-        XCTAssertEqual(rebased.baselineCircumferenceMillimeters, 2_100)
+        XCTAssertEqual(rebased.wheelSizeMillimeters, 2_100)
     }
 
     func testStartsAtReferenceWithNoPendingChange() throws {
         let drivetrain = try makeDrivetrain()
         let engine = try ConfirmedGearEngine(
             drivetrain: drivetrain,
-            baselineCircumferenceMillimeters: 2_100
+            wheelSizeMillimeters: 2_100
         )
 
         XCTAssertEqual(engine.requestedIndex, drivetrain.referenceIndex)
@@ -120,7 +120,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         )
         var engine = try ConfirmedGearEngine(
             drivetrain: drivetrain,
-            baselineCircumferenceMillimeters: 2_100
+            wheelSizeMillimeters: 2_100
         )
 
         XCTAssertNil(engine.requestShift(by: -1))
@@ -214,14 +214,14 @@ final class ConfirmedGearEngineTests: XCTestCase {
         XCTAssertThrowsError(
             try ConfirmedGearEngine(
                 drivetrain: makeDrivetrain(),
-                baselineCircumferenceMillimeters:
+                wheelSizeMillimeters:
                     WahooKickrCommand.maximumCircumferenceMillimeters
             )
         )
         XCTAssertThrowsError(
             try ConfirmedGearEngine(
                 drivetrain: makeDrivetrain(),
-                baselineCircumferenceMillimeters: .nan
+                wheelSizeMillimeters: .nan
             )
         )
     }
@@ -255,7 +255,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
                 built += 1
                 _ = try ConfirmedGearEngine(
                     drivetrain: drivetrain,
-                    baselineCircumferenceMillimeters:
+                    wheelSizeMillimeters:
                         TrainerSafety.referenceCircumferenceMillimeters
                 )
 
@@ -308,7 +308,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(drivetrain.gears.count, 12)
         _ = try ConfirmedGearEngine(
             drivetrain: drivetrain,
-            baselineCircumferenceMillimeters:
+            wheelSizeMillimeters:
                 TrainerSafety.referenceCircumferenceMillimeters
         )
     }
@@ -351,10 +351,10 @@ final class ConfirmedGearEngineTests: XCTestCase {
         let engine = try makeEngine()
 
         XCTAssertNoThrow(
-            try engine.rebased(baselineCircumferenceMillimeters: 2_096)
+            try engine.rebased(wheelSizeMillimeters: 2_096)
         )
         XCTAssertThrowsError(
-            try engine.rebased(baselineCircumferenceMillimeters: 4_600)
+            try engine.rebased(wheelSizeMillimeters: 4_600)
         ) { error in
             XCTAssertEqual(
                 error as? VirtualGearError,
@@ -362,7 +362,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
             )
         }
         XCTAssertThrowsError(
-            try engine.rebased(baselineCircumferenceMillimeters: 500)
+            try engine.rebased(wheelSizeMillimeters: 500)
         ) { error in
             XCTAssertEqual(
                 error as? VirtualGearError,
@@ -376,7 +376,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
     func testRebaseScalesEveryGearFromTheAppsWheelSize() throws {
         let engine = try makeEngine()
         let rebased = try engine.rebased(
-            baselineCircumferenceMillimeters: 2_096
+            wheelSizeMillimeters: 2_096
         )
         let reference = rebased.drivetrain.referenceGear.ratio
 
@@ -397,7 +397,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
     private func makeEngine() throws -> ConfirmedGearEngine {
         try ConfirmedGearEngine(
             drivetrain: makeDrivetrain(),
-            baselineCircumferenceMillimeters: 2_100
+            wheelSizeMillimeters: 2_100
         )
     }
 
@@ -434,7 +434,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
     func testAFreshEngineIsSettled() throws {
         let engine = try ConfirmedGearEngine(
             drivetrain: try Drivetrain.virtualLadder(),
-            baselineCircumferenceMillimeters: 2070
+            wheelSizeMillimeters: 2070
         )
         XCTAssertTrue(engine.isSettled)
     }
@@ -445,7 +445,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
     func testAnUnconfirmedShiftLeavesTheEngineUnsettled() throws {
         var engine = try ConfirmedGearEngine(
             drivetrain: try Drivetrain.virtualLadder(),
-            baselineCircumferenceMillimeters: 2070
+            wheelSizeMillimeters: 2070
         )
         let change = try XCTUnwrap(engine.requestShift(by: 1))
         XCTAssertFalse(engine.isSettled)
@@ -463,7 +463,7 @@ final class ConfirmedGearEngineTests: XCTestCase {
     func testCancellingPendingChangesSettlesTheEngine() throws {
         var engine = try ConfirmedGearEngine(
             drivetrain: try Drivetrain.virtualLadder(),
-            baselineCircumferenceMillimeters: 2070
+            wheelSizeMillimeters: 2070
         )
         engine.requestShift(by: 1)
         XCTAssertFalse(engine.isSettled)

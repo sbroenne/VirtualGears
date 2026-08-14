@@ -78,7 +78,7 @@ public struct DemoRideState: Equatable, Sendable {
         engine = drivetrain.flatMap {
             try? ConfirmedGearEngine(
                 drivetrain: $0,
-                baselineCircumferenceMillimeters:
+                wheelSizeMillimeters:
                     TrainerSafety.referenceCircumferenceMillimeters
             )
         }
@@ -118,8 +118,8 @@ public struct DemoRideState: Equatable, Sendable {
 
     /// The wheel size the gears are built around, as a real riding app would
     /// have left it.
-    public var baselineMillimeters: Double {
-        engine?.baselineCircumferenceMillimeters
+    public var wheelSizeMillimeters: Double {
+        engine?.wheelSizeMillimeters
             ?? TrainerSafety.referenceCircumferenceMillimeters
     }
 
