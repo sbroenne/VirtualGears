@@ -16,7 +16,16 @@ public final class ProxyCoordinator {
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
     /// The wheel size the gears are currently built around. A riding app can
-    /// move it mid-ride, so it is not the size the trainer gets back on Stop.
+    /// supply a new one while a ride is under way, so it is not the size the
+    /// trainer gets back on Stop.
+    ///
+    /// That is not because riding apps change the wheel size part-way through a
+    /// ride. FulGaz was watched for five minutes and sent it only as part of
+    /// starting a ride, twice, never in between; the capture is
+    /// docs/fulgaz-app-tap-run.log. It is because a riding app sends it when
+    /// *its* ride starts, and that need not line up with ours: a rider who
+    /// starts Virtual Gears first and then starts a course gets a new wheel
+    /// size with the gears already engaged.
     public private(set) var sessionBaselineMillimeters: Double?
     /// The baseline selected before the first virtual gear is applied. This is
     /// either 2070 mm or the latest size supplied by the riding app; FTMS does

@@ -389,4 +389,34 @@ final class DrivetrainTests: XCTestCase {
         }
     }
 
+    /// 2200 mm is not a guess. FulGaz was watched sending exactly this, twice,
+    /// as part of starting a ride; the capture is docs/fulgaz-app-tap-run.log.
+    /// It was refused until the proven range reached 5350 mm, which meant
+    /// Virtual Gears and FulGaz could not work together at all.
+    func testTheWheelSizeFulGazAsksForIsAccepted() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        XCTAssertNoThrow(
+            try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: 2_200
+            ),
+            "FulGaz sends 2200 mm when a ride starts. Refusing it leaves the "
+                + "rider with no gears at all"
+        )
+    }
+
+    /// The other end is not covered, and saying so out loud keeps anyone from
+    /// assuming the range stretches further than it was measured to.
+    func testAWheelSizeBelowTheMeasuredBottomIsStillRefused() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        XCTAssertThrowsError(
+            try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: 1_900
+            ),
+            "A 650b wheel needs 475 mm at the easiest gear and only 500 mm has "
+                + "been measured, so it has to be refused rather than guessed at"
+        )
+    }
+
 }

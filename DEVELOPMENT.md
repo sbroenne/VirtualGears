@@ -301,21 +301,69 @@ This mode changes nothing and leaves the trainer on 2070 mm.
 
 Before the proxy was built, the diagnostic app was made to pretend to be a
 simple indoor bike, with nothing connected to the KICKR at the time. It was run
-against RealVelo, which is the reference app here. Zwift, FulGaz, and MyWhoosh
-speak the same standard FTMS interface, but the probe was not run against them
-and they are not covered by what follows.
+against RealVelo. Zwift and MyWhoosh speak the same standard FTMS interface, but
+the probe was not run against them and they are not covered by what follows.
+FulGaz is covered separately in the next section.
 
 RealVelo found the foreground iPhone as a Bluetooth FTMS trainer, showed the
 fixed speed, cadence, and power it published, and followed those values as they
-were moved. It drove its normal start, pause, stop, ERG, resistance, simulation,
-and wheel-circumference controls through it. It subscribed to the Control Point
-before requesting control, and after a disconnect and reconnect it found the
-probe again and repeated the same subscriptions and control request.
+were moved. It drove its normal start, pause, stop, ERG, resistance, and
+simulation controls through it. It subscribed to the Control Point before
+requesting control, and after a disconnect and reconnect it found the probe
+again and repeated the same subscriptions and control request.
+
+This section used to claim RealVelo drove wheel-circumference controls too.
+That was wrong: RealVelo does not support setting the wheel size at all. The
+claim mattered more than a stray sentence should, because it was the only
+evidence behind the app's assumption that a riding app can change the wheel size
+at any moment, and a good deal of state exists to cope with that. Nothing else
+supported it. It has been replaced by the measurement below.
 
 That is the shape the shipping app presents today, and it is why the proxy works
 at all. If a riding app stops seeing Virtual Gears, the app's own diagnostic log
 records the same writes in the same order, so read that before changing the FTMS
 service shape on a hunch.
+
+## When a riding app sets the wheel size
+
+Rather than reason about this, a riding app was watched. `Tools/AppTap` makes a
+Mac pretend to be an indoor trainer, so a riding app pairs with it directly and
+every command it sends is written down and timed. No phone, trainer or bike is
+involved. Run it with `./Tools/AppTap/run.sh --name "Virtual Gears"`.
+
+FulGaz was observed for five minutes across two rides. The full capture is in
+`docs/fulgaz-app-tap-run.log`. It starts a ride with the same four commands in
+the same order:
+
+```
+147.7s  0x00 request control
+147.9s  0x07 start or resume
+148.1s  0x12 SET WHEEL SIZE 2200.0 mm
+148.2s  0x04 set resistance 0
+```
+
+Two things follow from this, and both matter.
+
+**The wheel size is sent when a ride starts, and never again.** It was sent at
+17.9 s and again at 148.1 s, each time within a fifth of a second of a start
+command, and not once in between despite hundreds of terrain updates. So no
+riding app has yet been seen changing the wheel size part-way through its own
+ride.
+
+That is *not* the same as saying it never arrives while Virtual Gears is already
+running. FulGaz sends it when *its* ride starts, which need not line up with
+ours: a rider who starts Virtual Gears first and then starts a course gets the
+wheel size mid-ride from our point of view. The rebuilding machinery is
+therefore still needed. What is wrong is the explanation attached to it, not the
+code.
+
+**FulGaz asks for 2200 mm**, which the app refused until the proven range
+reached 5350 mm. Virtual Gears and FulGaz could not have worked together at all,
+and no amount of reading the code would have found it. See `docs/safety.md`.
+
+Beyond the wheel size, FulGaz re-requests control every ten seconds for the
+whole ride, and drives resistance through simulation parameters rather than
+resistance commands — it sent exactly one of those, at startup.
 
 ## What name a riding app shows for Virtual Gears
 

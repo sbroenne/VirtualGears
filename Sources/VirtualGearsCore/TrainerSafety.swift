@@ -8,34 +8,44 @@ public enum TrainerSafety {
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
     /// The range Virtual Gears will operate in. Staged on a physical KICKR V5
-    /// across four runs — 647 mm to 4800 mm, 517.5 mm to 647 mm, 500 mm to
-    /// 517.5 mm, and 4800 mm to 5000 mm in 25 mm steps — with every value
-    /// acknowledged and the reference reset between each probe, so both ends of
-    /// this range and the whole gear ladder between them are covered. The third
-    /// run exists because the first two stopped at 517.5 mm while this range
-    /// claimed 500 mm; the bottom is now measured rather than assumed.
+    /// across five runs — 647 mm to 4800 mm, 517.5 mm to 647 mm, 500 mm to
+    /// 517.5 mm, 4800 mm to 5000 mm, and 5000 mm to 5350 mm in 25 mm steps —
+    /// with every value acknowledged and the reference reset between each
+    /// probe, so both ends of this range and the whole gear ladder between them
+    /// are covered. The third run exists because the first two stopped at
+    /// 517.5 mm while this range claimed 500 mm; the bottom is now measured
+    /// rather than assumed.
     ///
-    /// The fourth run raised the top from 4800 mm, and the reason is not more
-    /// gear: the virtual ladder is centred inside this range, so the range's
-    /// width is also the room a riding app has to set its own wheel size. At
-    /// 4800 mm the ladder left a baseline window of 2000-2098 mm, which refused
-    /// a 700x25c wheel at 2105 mm — an ordinary road wheel, and one the
-    /// reference riding app really does send. The window is now 2000-2186 mm.
+    /// The fourth and fifth runs raised the top from 4800 mm, and the reason is
+    /// not more gear: the virtual ladder is centred inside this range, so the
+    /// range's width is also the room a riding app has to set its own wheel
+    /// size. At 4800 mm the ladder left a baseline window of 2000-2098 mm,
+    /// which refused a 700x25c wheel at 2105 mm. The fifth run was prompted by
+    /// watching a real riding app: FulGaz asks for 2200 mm, which a 5000 mm
+    /// ceiling also refused, so Virtual Gears and FulGaz could not have worked
+    /// together. The window is now 1999.9-2338.8 mm, which additionally covers
+    /// a 29er at 2326 mm. See docs/fulgaz-app-tap-run.log for the capture and
+    /// docs/kickr-wheel-size-sweep-fulgaz.log for the hardware run.
     ///
     /// Be aware that this one number does three jobs, so widening it for the
     /// third changed the other two. It gates what may be sent to the trainer,
     /// it is the budget the virtual ladder is centred in, and it is the room a
-    /// riding app has. The virtual ladder itself did not move — its ratios are
-    /// a fixed list, so the reference gear and all 24 wheel sizes are identical
-    /// before and after — but three more custom drivetrain combinations now
-    /// pass the safety check, 613 of 616 rather than 610. That is a real
-    /// consequence of widening the range, not a separate decision.
+    /// riding app has. The virtual ladder itself does not move — its ratios are
+    /// a fixed list, and the reference gear stays at index 11 and ratio 2.40
+    /// with a top of 5.49 at every ceiling from 5000 mm to 5400 mm — but a
+    /// wider range does let more custom drivetrain combinations past the safety
+    /// check. That is a real consequence of widening the range, not a separate
+    /// decision.
+    ///
+    /// The bottom is untouched, so a 650b wheel at 1900 mm is still refused: it
+    /// would need 475 mm at the easiest gear and only 500 mm has been measured.
+    /// Raising the ceiling cannot help that one.
     ///
     /// This intentionally remains much narrower than the command's encodable
     /// limits. Nothing here is a limit of the gears or the trainer; both would
     /// go further. It is a limit of what has been measured.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
-        500...5_000
+        500...5_350
 
     /// The trainer is told a wheel size in tenths of a millimetre, so what it
     /// receives is always rounded to the nearest tenth.
