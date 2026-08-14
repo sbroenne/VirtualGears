@@ -29,6 +29,10 @@ let package = Package(
             name: "ride-sim",
             targets: ["RideSim"]
         ),
+        .executable(
+            name: "app-tap",
+            targets: ["AppTap"]
+        ),
     ],
     targets: [
         .target(
@@ -109,6 +113,24 @@ let package = Package(
                     "-Xlinker", "__TEXT",
                     "-Xlinker", "__info_plist",
                     "-Xlinker", "Tools/RideSim/Info.plist",
+                ])
+            ]
+        ),
+        // A macOS command-line tool that pretends to be a trainer, so a real
+        // riding app can be watched directly from this Mac. It exists to settle
+        // whether riding apps set the wheel size at all, and if so whether they
+        // do it once at the start or repeatedly during a ride.
+        .executableTarget(
+            name: "AppTap",
+            dependencies: ["VirtualGearsCore", "ToolSupport"],
+            path: "Tools/AppTap",
+            exclude: ["Info.plist", "run.sh"],
+            linkerSettings: [
+                .unsafeFlags([
+                    "-Xlinker", "-sectcreate",
+                    "-Xlinker", "__TEXT",
+                    "-Xlinker", "__info_plist",
+                    "-Xlinker", "Tools/AppTap/Info.plist",
                 ])
             ]
         ),

@@ -112,8 +112,35 @@ A third run closed a gap the first two left: `TrainerSafety` declared an
 operating range starting at 500 mm, but nothing below 517.5 mm had ever been
 sent to a trainer. Eight values from 500 mm to 517.5 mm in 2.5 mm steps were all
 confirmed, in 58 to 181 ms, with the reference reset between each and again at
-the end. The output is in `docs/kickr-wheel-size-sweep-low-end.log`. The bottom
-of the declared range is now measured rather than assumed.
+the end. The output is in `docs/kickr-wheel-size-sweep-low-end.log`.
+
+Two further runs pushed the top to 5350 mm and then covered both ends at once,
+425 to 500 mm and 5350 to 5525 mm. Every value was confirmed. They are in
+`docs/kickr-wheel-size-sweep-fulgaz.log` and
+`docs/kickr-wheel-size-sweep-full-window.log`.
+
+### The range these runs were measuring did not exist
+
+All of this was chasing a limit the trainer does not have.
+
+An earlier boundary probe had already shown the KICKR V5 acknowledging values
+from **0.1 mm to 6553.5 mm** — the entire span the command can express. That
+result was never written into the code or the docs, so the app went on carrying
+a narrow range described as what the trainer had been "proven to accept", and
+went on being widened one refused wheel at a time.
+
+Worse, that number was doing a second job nobody had noticed. The 24 gears are
+positioned inside it, so its width silently decided which wheel sizes a riding
+app was allowed to set. That is why every widening was triggered by a real rider
+or a real app hitting a refusal.
+
+Both jobs are now separated and stated outright. `TrainerSafety` declares the
+wheel sizes Virtual Gears supports — 1800 mm to 2400 mm — and a test walks every
+tenth of a millimetre of that window checking all 24 gears build. The only limit
+left on the trainer side is the one that is real: 6553.5 mm is the largest wheel
+size the command can carry. The starting gear was pinned at the same time, after
+changing the range was found to move the shipped gears and make the easiest one
+13% harder.
 
 The same ground can be covered today from a Mac with `Tools/KickrProbe`, which
 also restores 2070 mm before it exits, including after a failure. Whatever is
@@ -301,21 +328,69 @@ This mode changes nothing and leaves the trainer on 2070 mm.
 
 Before the proxy was built, the diagnostic app was made to pretend to be a
 simple indoor bike, with nothing connected to the KICKR at the time. It was run
-against RealVelo, which is the reference app here. Zwift, FulGaz, and MyWhoosh
-speak the same standard FTMS interface, but the probe was not run against them
-and they are not covered by what follows.
+against RealVelo. Zwift and MyWhoosh speak the same standard FTMS interface, but
+the probe was not run against them and they are not covered by what follows.
+FulGaz is covered separately in the next section.
 
 RealVelo found the foreground iPhone as a Bluetooth FTMS trainer, showed the
 fixed speed, cadence, and power it published, and followed those values as they
-were moved. It drove its normal start, pause, stop, ERG, resistance, simulation,
-and wheel-circumference controls through it. It subscribed to the Control Point
-before requesting control, and after a disconnect and reconnect it found the
-probe again and repeated the same subscriptions and control request.
+were moved. It drove its normal start, pause, stop, ERG, resistance, and
+simulation controls through it. It subscribed to the Control Point before
+requesting control, and after a disconnect and reconnect it found the probe
+again and repeated the same subscriptions and control request.
+
+This section used to claim RealVelo drove wheel-circumference controls too.
+That was wrong: RealVelo does not support setting the wheel size at all. The
+claim mattered more than a stray sentence should, because it was the only
+evidence behind the app's assumption that a riding app can change the wheel size
+at any moment, and a good deal of state exists to cope with that. Nothing else
+supported it. It has been replaced by the measurement below.
 
 That is the shape the shipping app presents today, and it is why the proxy works
 at all. If a riding app stops seeing Virtual Gears, the app's own diagnostic log
 records the same writes in the same order, so read that before changing the FTMS
 service shape on a hunch.
+
+## When a riding app sets the wheel size
+
+Rather than reason about this, a riding app was watched. `Tools/AppTap` makes a
+Mac pretend to be an indoor trainer, so a riding app pairs with it directly and
+every command it sends is written down and timed. No phone, trainer or bike is
+involved. Run it with `./Tools/AppTap/run.sh --name "Virtual Gears"`.
+
+FulGaz was observed for five minutes across two rides. The full capture is in
+`docs/fulgaz-app-tap-run.log`. It starts a ride with the same four commands in
+the same order:
+
+```
+147.7s  0x00 request control
+147.9s  0x07 start or resume
+148.1s  0x12 SET WHEEL SIZE 2200.0 mm
+148.2s  0x04 set resistance 0
+```
+
+Two things follow from this, and both matter.
+
+**The wheel size is sent when a ride starts, and never again.** It was sent at
+17.9 s and again at 148.1 s, each time within a fifth of a second of a start
+command, and not once in between despite hundreds of terrain updates. So no
+riding app has yet been seen changing the wheel size part-way through its own
+ride.
+
+That is *not* the same as saying it never arrives while Virtual Gears is already
+running. FulGaz sends it when *its* ride starts, which need not line up with
+ours: a rider who starts Virtual Gears first and then starts a course gets the
+wheel size mid-ride from our point of view. The rebuilding machinery is
+therefore still needed. What is wrong is the explanation attached to it, not the
+code.
+
+**FulGaz asks for 2200 mm**, which the app refused. Virtual Gears and FulGaz
+could not have worked together at all, and no amount of reading the code would
+have found it. See `docs/safety.md`.
+
+Beyond the wheel size, FulGaz re-requests control every ten seconds for the
+whole ride, and drives resistance through simulation parameters rather than
+resistance commands — it sent exactly one of those, at startup.
 
 ## What name a riding app shows for Virtual Gears
 

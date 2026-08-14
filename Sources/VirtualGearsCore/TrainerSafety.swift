@@ -1,22 +1,47 @@
 import Foundation
 
-/// The limits confirmed on real hardware, kept in one place so the setup screen,
-/// the gear engine and the safety tests can never disagree about them.
+/// The limits that decide what Virtual Gears may ask a trainer to do, kept in
+/// one place so the setup screen, the gear engine and the safety tests can
+/// never disagree about them.
+///
+/// There is only one hard limit here, and it is not the trainer. A physical
+/// KICKR V5 was probed across its whole encodable span and acknowledged every
+/// value it was given, from 0.1 mm to 6553.5 mm, plus sixty-four staged values
+/// in between across six later runs without a single refusal. 6553.5 mm is
+/// simply the largest number the command can express. So the trainer accepted
+/// everything the protocol can say to it, and no upper or lower wheel-size
+/// limit of the trainer has ever been found.
+///
+/// Virtual Gears used to carry a narrower "proven range" and treat it as a
+/// trainer limit. It was not one. It was a record of which values had been
+/// probed, and because the gear ladder is centred inside it, it silently
+/// doubled as the room a riding app had to set its own wheel size. That is why
+/// the app kept discovering it was too narrow one riding app at a time — most
+/// recently refusing the 2200 mm FulGaz asks for, which meant the two could not
+/// work together at all. The window is now declared outright below and tested,
+/// instead of emerging by accident from an unrelated number.
 public enum TrainerSafety {
     /// The wheel size the trainer is left sitting at, and the size every gear is
     /// scaled away from.
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
-    /// The range Virtual Gears will operate in. Staged on a physical KICKR V5
-    /// across three runs — 647 mm to 4800 mm, 517.5 mm to 647 mm, and 500 mm to
-    /// 517.5 mm — with every value acknowledged and the reference reset between
-    /// each probe, so both ends of this range and the whole gear ladder between
-    /// them are covered. The third run exists because the first two stopped at
-    /// 517.5 mm while this range claimed 500 mm; the bottom is now measured
-    /// rather than assumed. This intentionally remains much narrower than the
-    /// command's encodable limits.
-    public static let provenCircumferenceMillimeters: ClosedRange<Double> =
-        500...4_800
+    /// The wheel sizes a riding app may set, and the promise the tests enforce:
+    /// every gear must build at every size in here.
+    ///
+    /// This covers every wheel a trainer is realistically asked about — a 650b
+    /// at 1900 mm, a 700x25c at 2105 mm, the 2200 mm FulGaz sends, a 29er at
+    /// 2326 mm — with room either side. It is a product decision about real
+    /// bicycle wheels, not a measurement, because there is nothing left to
+    /// measure: the trainer takes anything.
+    ///
+    /// The width is bounded by one real thing. At the largest size here the
+    /// hardest gear must still fit in the command, and 2400 mm reaches 5490 mm
+    /// against a ceiling of 6553.5 mm. Widening this range past roughly
+    /// 2865 mm would put the top gear beyond what the command can encode, so
+    /// `testEveryGearEncodesAtEverySupportedWheelSize` is what stops that going
+    /// unnoticed.
+    public static let supportedRidingAppCircumferenceMillimeters:
+        ClosedRange<Double> = 1_800...2_400
 
     /// The trainer is told a wheel size in tenths of a millimetre, so what it
     /// receives is always rounded to the nearest tenth.
@@ -27,23 +52,25 @@ public enum TrainerSafety {
         (millimeters / commandStepMillimeters).rounded() * commandStepMillimeters
     }
 
-    /// The proven range expressed as a multiple of the reference: how much
-    /// easier or harder than the starting gear the trainer can be asked to feel.
+    /// How far either side of its starting gear a drivetrain may reach.
     ///
-    /// The bounds are widened by half a step because a request half a tenth of a
-    /// millimetre outside them is sent as a value squarely inside them. Judging
-    /// anything else would reject gears the trainer never actually sees.
-    public static var provenScaleRange: ClosedRange<Double> {
-        let margin = commandStepMillimeters / 2
-        return (provenCircumferenceMillimeters.lowerBound - margin)
-            / referenceCircumferenceMillimeters
-            ... (provenCircumferenceMillimeters.upperBound + margin)
-            / referenceCircumferenceMillimeters
+    /// The top is a genuine limit, and the only one in this file: at the largest
+    /// wheel size supported above, the hardest gear still has to fit in the
+    /// command.
+    ///
+    /// The bottom is a choice rather than a limit. The trainer acknowledged
+    /// 0.1 mm quite happily, but a gear that small makes it report almost no
+    /// speed, which a riding app would draw as a rider who has stopped. This
+    /// keeps the easiest gear near the easiest one shipped and actually ridden.
+    public static var supportedScaleRange: ClosedRange<Double> {
+        let hardest = WahooKickrCommand.maximumCircumferenceMillimeters
+            / supportedRidingAppCircumferenceMillimeters.upperBound
+        return 0.24...hardest
     }
 
     /// The widest easiest-to-hardest span any drivetrain can have and still fit,
     /// even when its starting gear is placed perfectly.
     public static var widestSupportedSpan: Double {
-        provenScaleRange.upperBound / provenScaleRange.lowerBound
+        supportedScaleRange.upperBound / supportedScaleRange.lowerBound
     }
 }

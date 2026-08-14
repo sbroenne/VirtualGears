@@ -1,0 +1,31 @@
+Looking for a KICKR. Wake it, and close the phone app first.
+Ignoring iPhone sbroenne 17.
+Found Wahoo KICKR 2A93 at -58 dBm. Connecting.
+Found the standard control channel.
+Found the status channel.
+Found the speed channel.
+Found the Wahoo gear channel.
+Connected and listening.
+Trainer handed over control.
+
+== Wheel size range probe ==
+Reference reset to 2070 mm between every probe.
+  4800.0 mm confirmed in 59 ms
+  4825.0 mm confirmed in 90 ms
+  4850.0 mm confirmed in 60 ms
+  4875.0 mm confirmed in 90 ms
+  4900.0 mm confirmed in 152 ms
+  4925.0 mm confirmed in 90 ms
+  4950.0 mm confirmed in 60 ms
+  4975.0 mm confirmed in 92 ms
+  5000.0 mm confirmed in 60 ms
+
+== Result ==
+Confirmed: 4800.0, 4825.0, 4850.0, 4875.0, 4900.0, 4925.0, 4950.0, 4975.0, 5000.0
+Refused: none
+
+== Putting the wheel size back ==
+Wheel size back to 2070 mm. The trainer is as it was.
+
+Done. Full log in /tmp/kickr-probe.log
+kickr-probe finished.

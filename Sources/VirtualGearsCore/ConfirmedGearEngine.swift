@@ -21,6 +21,14 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
         drivetrain: Drivetrain,
         baselineCircumferenceMillimeters: Double
     ) throws {
+        // Where a riding app's wheel size is accepted or turned away. This is
+        // the only place that decides it, so the answer cannot differ between
+        // setup, a ride, and a riding app changing its mind mid-ride.
+        guard TrainerSafety.supportedRidingAppCircumferenceMillimeters
+            .contains(baselineCircumferenceMillimeters)
+        else {
+            throw VirtualGearError.outsideSupportedRange
+        }
         let referenceRatio = drivetrain.referenceGear.ratio
         var changes: [PendingGearChange] = []
         for (index, gear) in drivetrain.gears.enumerated() {

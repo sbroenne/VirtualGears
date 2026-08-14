@@ -16,7 +16,16 @@ public final class ProxyCoordinator {
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
     /// The wheel size the gears are currently built around. A riding app can
-    /// move it mid-ride, so it is not the size the trainer gets back on Stop.
+    /// supply a new one while a ride is under way, so it is not the size the
+    /// trainer gets back on Stop.
+    ///
+    /// That is not because riding apps change the wheel size part-way through a
+    /// ride. FulGaz was watched for five minutes and sent it only as part of
+    /// starting a ride, twice, never in between; the capture is
+    /// docs/fulgaz-app-tap-run.log. It is because a riding app sends it when
+    /// *its* ride starts, and that need not line up with ours: a rider who
+    /// starts Virtual Gears first and then starts a course gets a new wheel
+    /// size with the gears already engaged.
     public private(set) var sessionBaselineMillimeters: Double?
     /// The baseline selected before the first virtual gear is applied. This is
     /// either 2070 mm or the latest size supplied by the riding app; FTMS does
@@ -70,6 +79,13 @@ public final class ProxyCoordinator {
     /// because the rider stopped and restarted virtual shifting.
     private var parkedBaselineMillimeters: Double?
     private var parkedBaselineCameFromRidingApp = false
+
+    /// How many terrain updates have arrived this ride. Only used to give the
+    /// log a sense of scale: a wheel-size command arriving after thousands of
+    /// terrain updates is plainly mid-ride, one arriving after a handful is
+    /// plainly part of starting up.
+    private var terrainUpdateCount = 0
+
 
     /// The baseline used to build a ride's gears, written down before the ride
     /// starts. A ride normally sends it again on Stop and clears this, so a value
@@ -259,8 +275,9 @@ public final class ProxyCoordinator {
             if !canBuildGears(around: baseline, drivetrain: drivetrain) {
                 log(
                     "Your riding app left a \(Int(baseline.rounded())) mm wheel "
-                        + "size, which these gears cannot be built around. "
-                        + "Starting from \(Int(reference.rounded())) mm instead.",
+                        + "size. Gears built around it would reach outside the "
+                        + "range proven safe on this trainer, so this ride "
+                        + "starts from \(Int(reference.rounded())) mm instead.",
                     .warning
                 )
                 baseline = reference
@@ -585,8 +602,10 @@ public final class ProxyCoordinator {
     /// step that suspends has to ask again afterwards: a stop can be claimed
     /// while the trainer is mid-answer, and it owns putting the trainer back.
     /// Whether a full gear ladder still encodes inside the trainer's range
-    /// around this wheel size. A riding app is free to set any size it likes,
-    /// but a size the gears cannot be built around must not carry into a ride.
+    /// around this wheel size. A riding app is free to set any size it likes.
+    /// This is not a limit of the gears or the trainer — either could be built
+    /// around far more — but of what has been proven safe, so a size that would
+    /// push a gear outside that must not carry into a ride.
     private func canBuildGears(
         around millimeters: Double,
         drivetrain: Drivetrain
@@ -665,6 +684,7 @@ public final class ProxyCoordinator {
         _ request: FitnessMachineControlPointRequest,
         from source: RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult {
+        logRidingAppCommand(request)
         await waitForPCCommandGate()
         guard peripheral.isControlSubscriber(source) else {
             return .init(result: .controlNotPermitted, status: nil)
@@ -767,11 +787,16 @@ public final class ProxyCoordinator {
                 baselineCircumferenceMillimeters: millimeters
             )
         } catch let error as VirtualGearError {
+            let window = TrainerSafety
+                .supportedRidingAppCircumferenceMillimeters
+            let lowest = Int(window.lowerBound)
+            let highest = Int(window.upperBound)
+            let asked = Int(millimeters.rounded())
+            let kept = Int((sessionBaselineMillimeters ?? 0).rounded())
             log(
-                "Riding app asked for a \(Int(millimeters.rounded())) mm wheel, "
-                    + "which your gears cannot be built around safely "
-                    + "(\(error)). Keeping "
-                    + "\(Int((sessionBaselineMillimeters ?? 0).rounded())) mm.",
+                "Riding app asked for a \(asked) mm wheel, which is outside "
+                    + "the \(lowest)-\(highest) mm Virtual Gears supports "
+                    + "(\(error)). Keeping \(kept) mm.",
                 .warning
             )
             return .init(result: .invalidParameter, status: nil)
@@ -1073,6 +1098,49 @@ public final class ProxyCoordinator {
         _ level: ProductLogLevel = .info
     ) {
         ProductLogger.record(message, source: "Proxy", level: level)
+    }
+
+    /// Every command a riding app sends, written down as it arrives.
+
+    ///
+    /// The app's design assumes a riding app may change the wheel size at any
+    /// moment, including mid-ride, and a good deal of machinery exists to cope
+    /// with that. Nobody has ever checked whether it happens. This is the one
+    /// place every riding-app command passes through, so recording them here
+    /// turns that assumption into something a single ride can settle.
+    ///
+    /// Simulation parameters arrive several times a second on a hilly course
+    /// and would bury everything else, so they are counted rather than listed.
+    private func logRidingAppCommand(
+        _ request: FitnessMachineControlPointRequest
+    ) {
+        if case .setIndoorBikeSimulationParameters = request {
+            terrainUpdateCount &+= 1
+            return
+        }
+        let opcode = "0x" + String(format: "%02X", request.opcode)
+        switch request {
+        case let .setWheelCircumference(tenths):
+            log(
+                "Riding app sent \(opcode) set wheel circumference "
+                    + "\(Double(tenths) / 10) mm"
+                    + " (terrain updates so far: \(terrainUpdateCount))"
+            )
+        case .requestControl:
+            log("Riding app sent \(opcode) request control")
+        case .reset:
+            log("Riding app sent \(opcode) reset")
+        case let .setTargetResistanceLevel(value):
+            log("Riding app sent \(opcode) set resistance \(value)")
+        case let .setTargetPower(watts):
+            log("Riding app sent \(opcode) set target power \(watts) W")
+        case .startOrResume:
+            log("Riding app sent \(opcode) start or resume")
+        case let .stopOrPause(value):
+            log("Riding app sent \(opcode) stop or pause \(value)")
+        case .setIndoorBikeSimulationParameters:
+            break
+        }
     }
 }
 

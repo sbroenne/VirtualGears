@@ -24,9 +24,9 @@ mid-ride.
 Wheel size is part of the standard interface available to every riding app.
 Whenever one sets it, Virtual Gears honours it: that size becomes the new
 reference and every gear is rebuilt around it, so the gear you are in keeps
-feeling the way it did. If the gears would no longer fit inside the proven range
-around that size, the request is declined and the ride carries on at the size it
-already had.
+feeling the way it did. Virtual Gears supports wheel sizes from 1800 mm to
+2400 mm, which covers every real bicycle wheel; anything outside that is
+declined and the ride carries on at the size it already had.
 
 ## Shifting waits for the trainer
 

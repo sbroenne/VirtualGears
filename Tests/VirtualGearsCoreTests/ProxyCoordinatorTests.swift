@@ -169,12 +169,13 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     /// A riding app is free to park any wheel size it likes between rides, and
-    /// 700x25c (2105 mm) is an ordinary one. The 24 virtual gears cannot be
-    /// built around anything above ~2098 mm, so carrying that value into the
-    /// next ride used to make Start fail for the rest of the launch.
-    func testAParkedWheelSizeTooLargeForTheGearsStillLetsTheNextRideStart()
-        async throws
-    {
+    /// 700x25c (2105 mm) is an ordinary one. Gears built around anything above
+    /// ~2098 mm used to reach outside the range proven safe on the trainer, so
+    /// this size was carried into the next ride only by falling back to the
+    /// neutral 2070 mm. The proven range now reaches 5000 mm, which leaves room
+    /// to build the gears around the wheel the rider actually asked for, so it
+    /// is kept.
+    func testAParkedOrdinaryWheelSizeIsKeptForTheNextRide() async throws {
         try await startRide()
         await coordinator.stopRide()
 
@@ -183,6 +184,32 @@ final class ProxyCoordinatorTests: XCTestCase {
         )
         try await settle {
             self.trainer.currentWheelSizeMillimeters == 2_105
+        }
+
+        try await startRide()
+
+        XCTAssertEqual(coordinator.state, .active)
+        XCTAssertEqual(coordinator.sessionBaselineMillimeters, 2_105)
+    }
+
+    /// Virtual Gears supports the wheel sizes real bicycles have, so a wheel
+    /// size well outside that must still leave the rider able to start. The
+    /// ride falls back to the neutral size rather than refusing to begin.
+    ///
+    /// 3000 mm is not a wheel anyone rides; it is here because a riding app can
+    /// send any number the command can carry, and the rider should not be
+    /// stranded by one.
+    func testAParkedWheelSizeNoBicycleHasStillLetsTheNextRideStart()
+        async throws
+    {
+        try await startRide()
+        await coordinator.stopRide()
+
+        _ = await ridingApp.send(
+            .setWheelCircumference(tenthsOfMillimeter: 30_000)
+        )
+        try await settle {
+            self.trainer.currentWheelSizeMillimeters == 3_000
         }
 
         try await startRide()

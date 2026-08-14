@@ -125,11 +125,11 @@ final class DrivetrainTests: XCTestCase {
         let easiest = drivetrain.gears.first!.ratio
         XCTAssertLessThanOrEqual(
             hardest / reference,
-            TrainerSafety.provenScaleRange.upperBound
+            TrainerSafety.supportedScaleRange.upperBound
         )
         XCTAssertGreaterThanOrEqual(
             easiest / reference,
-            TrainerSafety.provenScaleRange.lowerBound
+            TrainerSafety.supportedScaleRange.lowerBound
         )
         XCTAssertGreaterThan(
             drivetrain.referenceIndex,
@@ -322,7 +322,7 @@ final class DrivetrainTests: XCTestCase {
         )
     }
     /// The gears a rider gets before describing any bike at all.
-    func testVirtualLadderIsTwentyFourGearsInsideTheProvenRange() throws {
+    func testVirtualLadderIsTwentyFourGearsEveryOneEncodable() throws {
         let drivetrain = try Drivetrain.virtualLadder()
 
         XCTAssertEqual(drivetrain.gears.count, 24)
@@ -358,16 +358,115 @@ final class DrivetrainTests: XCTestCase {
                     referenceRatio: reference,
                     selectedRatio: gear.ratio
                 )
-            XCTAssertTrue(
-                TrainerSafety.provenCircumferenceMillimeters.contains(
-                    TrainerSafety.circumferenceAsSent(circumference)
-                ),
+            XCTAssertLessThanOrEqual(
+                circumference,
+                WahooKickrCommand.maximumCircumferenceMillimeters,
                 "Virtual gear \(gear.chainring)/\(gear.cog) would ask for "
-                    + "\(circumference) mm, outside the proven range"
+                    + "\(circumference) mm, which the command cannot express"
             )
         }
         let ratios = drivetrain.gears.map(\.ratio)
         XCTAssertEqual(ratios, ratios.sorted())
+    }
+
+    /// A riding app may set its own wheel size, and the reference app does. The
+    /// ladder is rebuilt around whatever it asks for, so the proven range has to
+    /// hold the ladder shifted as well as the ladder itself. This once left a
+    /// window of 2000-2098 mm, which refused a 700x25c wheel at 2105 mm.
+    func testVirtualLadderRebuildsForOrdinaryRoadWheelSizes() throws {
+        // 700x23c, 700x25c and 700x28c, the sizes a riding app really sends.
+        for millimeters in [2096.0, 2105.0, 2136.0] {
+            let drivetrain = try Drivetrain.virtualLadder()
+            XCTAssertNoThrow(
+                try ConfirmedGearEngine(
+                    drivetrain: drivetrain,
+                    baselineCircumferenceMillimeters: millimeters
+                ),
+                "A riding app asking for a \(Int(millimeters)) mm wheel must not "
+                    + "be refused: the ladder has to leave room for it"
+            )
+        }
+    }
+
+    /// 2200 mm is not a guess. FulGaz was watched sending exactly this, twice,
+    /// as part of starting a ride; the capture is docs/fulgaz-app-tap-run.log.
+    /// It was refused until the proven range reached 5350 mm, which meant
+    /// Virtual Gears and FulGaz could not work together at all.
+    func testTheWheelSizeFulGazAsksForIsAccepted() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        XCTAssertNoThrow(
+            try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: 2_200
+            ),
+            "FulGaz sends 2200 mm when a ride starts. Refusing it leaves the "
+                + "rider with no gears at all"
+        )
+    }
+
+    /// A 650b wheel at 1900 mm used to be refused, because the old range
+    /// stopped at 500 mm and the easiest gear needs 475 mm. Nothing about the
+    /// trainer required that: it acknowledged 425 mm and, in an earlier probe,
+    /// 0.1 mm. The limit was our own record-keeping, and this is the wheel it
+    /// cost.
+    func testA650bWheelIsAccepted() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        XCTAssertNoThrow(
+            try ConfirmedGearEngine(
+                drivetrain: drivetrain,
+                baselineCircumferenceMillimeters: 1_900
+            )
+        )
+    }
+
+    /// The guard that stops this whole class of bug coming back.
+    ///
+    /// Virtual Gears kept discovering it was too narrow one riding app at a
+    /// time — a 700x25c wheel, then the 2200 mm FulGaz sends — because the
+    /// wheel sizes it accepted were never declared anywhere. They fell out of
+    /// where the gear ladder happened to sit inside an unrelated range, so
+    /// nothing failed until a real app asked.
+    ///
+    /// This walks every wheel size Virtual Gears claims to support, in tenths
+    /// of a millimetre, and insists all twenty-four gears build and encode at
+    /// each one. Widening the gears or narrowing the window now breaks the
+    /// build instead of a ride.
+    func testEveryGearEncodesAtEverySupportedWheelSize() throws {
+        let drivetrain = try Drivetrain.virtualLadder()
+        let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
+        let steps = Int(
+            ((window.upperBound - window.lowerBound)
+                / TrainerSafety.commandStepMillimeters).rounded()
+        )
+        for step in 0...steps {
+            let wheelSize = window.lowerBound
+                + Double(step) * TrainerSafety.commandStepMillimeters
+            XCTAssertNoThrow(
+                try ConfirmedGearEngine(
+                    drivetrain: drivetrain,
+                    baselineCircumferenceMillimeters: wheelSize
+                ),
+                "Virtual Gears says it supports a \(wheelSize) mm wheel, but "
+                    + "cannot build its gears around one"
+            )
+        }
+    }
+
+    /// The window is a decision, so it has to stay a decision someone can
+    /// defend. These are the wheels it exists for.
+    func testTheSupportedWindowCoversEveryRealBicycleWheel() {
+        let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
+        for (wheel, millimeters) in [
+            ("650b", 1_900.0),
+            ("700x25c", 2_105.0),
+            ("the size FulGaz asks for", 2_200.0),
+            ("29er", 2_326.0)
+        ] {
+            XCTAssertTrue(
+                window.contains(millimeters),
+                "A rider on \(wheel) at \(millimeters) mm would be refused"
+            )
+        }
     }
 
 }

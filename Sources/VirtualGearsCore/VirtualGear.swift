@@ -4,7 +4,7 @@ public enum VirtualGearError: Error, Equatable {
     /// The gear would ask the trainer for a wheel size never confirmed on real
     /// hardware. Usually because a riding app moved the starting wheel size far
     /// enough that the gears no longer fit around it.
-    case outsideProvenRange
+    case outsideSupportedRange
 }
 
 public struct VirtualGear: Equatable, Hashable, Sendable {
@@ -43,20 +43,18 @@ public enum WheelCircumferenceScaler {
 
         let circumference =
             neutralCircumference / referenceRatio * selectedRatio
+        // The one gate every gear passes through, and the only real limit
+        // involved: what the command can express. No trainer limit has ever
+        // been found — a physical KICKR V5 acknowledged every value from
+        // 0.1 mm to 6553.5 mm, which is the whole encodable span. The wheel
+        // sizes a riding app may ask for are bounded separately, and on
+        // purpose, by TrainerSafety.supportedRidingAppCircumferenceMillimeters.
         guard circumference.isFinite,
               circumference > 0,
               circumference
                 <= WahooKickrCommand.maximumCircumferenceMillimeters
         else {
-            throw VirtualGearError.invalidCircumferenceInputs
-        }
-        // The one gate every gear passes through, wherever the starting wheel
-        // size came from. A riding app is free to set its own, but not to push
-        // the gears built around it past what the trainer was proven to accept.
-        guard TrainerSafety.provenCircumferenceMillimeters.contains(
-            TrainerSafety.circumferenceAsSent(circumference)
-        ) else {
-            throw VirtualGearError.outsideProvenRange
+            throw VirtualGearError.outsideSupportedRange
         }
 
         return circumference
