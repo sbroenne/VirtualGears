@@ -17,8 +17,10 @@ import Foundation
 /// probed, and because the gear ladder is centred inside it, it silently
 /// doubled as the room a riding app had to set its own wheel size. That is why
 /// the app kept discovering it was too narrow one riding app at a time — most
-/// recently refusing the 2200 mm FulGaz asks for, which meant the two could not
-/// work together at all. The window is now declared outright below and tested,
+/// recently refusing a wheel size a rider had set in FulGaz, which meant the
+/// two could not work together at all. A riding app sends whatever wheel size
+/// its rider configured, so there is no single value to design around and a
+/// declared window is the only honest answer. It is declared below and tested,
 /// instead of emerging by accident from an unrelated number.
 public enum TrainerSafety {
     /// The wheel size the trainer is left sitting at, and the size every gear is
@@ -29,8 +31,8 @@ public enum TrainerSafety {
     /// every gear must build at every size in here.
     ///
     /// This covers every wheel a trainer is realistically asked about — a 650b
-    /// at 1900 mm, a 700x25c at 2105 mm, the 2200 mm FulGaz sends, a 29er at
-    /// 2326 mm — with room either side. It is a product decision about real
+    /// at 1900 mm, a 700x25c at 2105 mm, a 29er at 2326 mm — with room either
+    /// side, because riders type these numbers into their riding app by hand. It is a product decision about real
     /// bicycle wheels, not a measurement, because there is nothing left to
     /// measure: the trainer takes anything.
     ///

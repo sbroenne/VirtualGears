@@ -384,9 +384,13 @@ wheel size mid-ride from our point of view. The rebuilding machinery is
 therefore still needed. What is wrong is the explanation attached to it, not the
 code.
 
-**FulGaz asks for 2200 mm**, which the app refused. Virtual Gears and FulGaz
-could not have worked together at all, and no amount of reading the code would
-have found it. See `docs/safety.md`.
+**The wheel size was refused**, so Virtual Gears and FulGaz could not have
+worked together at all, and no amount of reading the code would have found it.
+
+The 2200 mm in the capture is not a FulGaz constant: it is a rider setting, and
+this rider had changed it from the 2098 mm default. That is the important part.
+A riding app sends whatever its rider typed, so the app has to accept a range of
+wheel sizes rather than a list of known values. See `docs/safety.md`.
 
 Beyond the wheel size, FulGaz re-requests control every ten seconds for the
 whole ride, and drives resistance through simulation parameters rather than

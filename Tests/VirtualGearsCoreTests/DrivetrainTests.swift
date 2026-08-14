@@ -390,17 +390,21 @@ final class DrivetrainTests: XCTestCase {
 
     /// 2200 mm is not a guess. FulGaz was watched sending exactly this, twice,
     /// as part of starting a ride; the capture is docs/fulgaz-app-tap-run.log.
-    /// It was refused until the proven range reached 5350 mm, which meant
-    /// Virtual Gears and FulGaz could not work together at all.
-    func testTheWheelSizeFulGazAsksForIsAccepted() throws {
+    /// It was refused at the time, which meant Virtual Gears and FulGaz could
+    /// not work together at all.
+    ///
+    /// It is a rider's setting rather than anything FulGaz chose — the default
+    /// is 2098 mm — which is the whole reason a range is needed here instead of
+    /// a list of values seen in the wild.
+    func testAWheelSizeARiderTypedIntoTheirRidingAppIsAccepted() throws {
         let drivetrain = try Drivetrain.virtualLadder()
         XCTAssertNoThrow(
             try ConfirmedGearEngine(
                 drivetrain: drivetrain,
                 baselineCircumferenceMillimeters: 2_200
             ),
-            "FulGaz sends 2200 mm when a ride starts. Refusing it leaves the "
-                + "rider with no gears at all"
+            "A rider set this in FulGaz and it was sent at ride start. "
+                + "Refusing it leaves them with no gears at all"
         )
     }
 
@@ -422,7 +426,7 @@ final class DrivetrainTests: XCTestCase {
     /// The guard that stops this whole class of bug coming back.
     ///
     /// Virtual Gears kept discovering it was too narrow one riding app at a
-    /// time — a 700x25c wheel, then the 2200 mm FulGaz sends — because the
+    /// time — a 700x25c wheel, then one a rider set in FulGaz — because the
     /// wheel sizes it accepted were never declared anywhere. They fell out of
     /// where the gear ladder happened to sit inside an unrelated range, so
     /// nothing failed until a real app asked.
@@ -459,7 +463,7 @@ final class DrivetrainTests: XCTestCase {
         for (wheel, millimeters) in [
             ("650b", 1_900.0),
             ("700x25c", 2_105.0),
-            ("the size FulGaz asks for", 2_200.0),
+            ("a size seen set by hand in a riding app", 2_200.0),
             ("29er", 2_326.0)
         ] {
             XCTAssertTrue(
