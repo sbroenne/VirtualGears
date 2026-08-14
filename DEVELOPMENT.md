@@ -378,7 +378,9 @@ That was wrong: RealVelo does not support setting the wheel size at all. The
 claim mattered more than a stray sentence should, because it was the only
 evidence behind the app's assumption that a riding app can change the wheel size
 at any moment, and a good deal of state exists to cope with that. Nothing else
-supported it. It has been replaced by the measurement below.
+supported it. It has been replaced by the measurement below, and independently
+confirmed by the wire capture in "What RealVelo sends": across a five-minute
+ride it sent no wheel size at all.
 
 That is the shape the shipping app presents today, and it is why the proxy works
 at all. If a riding app stops seeing Virtual Gears, the app's own diagnostic log
@@ -391,6 +393,14 @@ Rather than reason about this, a riding app was watched. `Tools/AppTap` makes a
 Mac pretend to be an indoor trainer, so a riding app pairs with it directly and
 every command it sends is written down and timed. No phone, trainer or bike is
 involved. Run it with `./Tools/AppTap/run.sh --name "Virtual Gears"`.
+
+It also calls out anything unusual as it happens, so a surprise is not left
+buried in a list of opcodes: a reset, repeated control requests, commands sent
+without asking for control first, commands after a stop or pause, a wheel size
+that is implausible or that changes mid-ride, command bytes it does not
+recognise, and writes to characteristics that are not the control point. Keep
+the default name unless there is a reason not to — a riding app may behave
+differently towards a trainer it does not recognise.
 
 FulGaz was observed for five minutes across two rides. The full capture is in
 `docs/fulgaz-app-tap-run.log`. It starts a ride with the same four commands in
@@ -429,6 +439,86 @@ wheel sizes rather than a list of known values. See `docs/safety.md`.
 Beyond the wheel size, FulGaz re-requests control every ten seconds for the
 whole ride, and drives resistance through simulation parameters rather than
 resistance commands — it sent exactly one of those, at startup.
+
+## What RealVelo sends
+
+RealVelo was watched the same way on 2026-08-14, over a five-minute ride the
+rider stopped and restarted part-way through. The capture is in
+`docs/realvelo-app-tap-run.log`. It behaves nothing like FulGaz:
+
+```
+    1.7s  0x00 request control
+    1.8s  0x01 reset
+    1.9s  0x00 request control
+    2.0s  0x07 start or resume
+```
+
+**RealVelo never sets a wheel size at all**, in 281 seconds and 147 terrain
+updates. So one riding app sends the wheel size at every ride start and another
+never sends it; the app cannot assume either.
+
+**It sends a reset while connecting.** By the FTMS rules a reset returns a
+machine to its defaults, which would include the wheel size the gears ride on,
+and it arrives a second and a half after the riding app appears — which for a
+rider who starts Virtual Gears first lands while gears are already set up. That
+looked like a silent way to break every gear, so it was measured rather than
+argued about. See the next section: it does not.
+
+**It asks for control twice**, either side of the reset. That is correct of it,
+because a reset drops the claim. A trainer that refused the second request would
+lock the riding app out for the whole ride; `FTMSControlOwnership` grants a
+repeat request from the app that already holds the claim, so it does not.
+
+The rider stopped and restarted their ride during the capture and no stop, pause
+or second start reached the trainer. A riding app's own ride controls are not
+reliably visible from down here, so nothing may depend on seeing them.
+
+## Does a riding app's reset wipe the wheel size?
+
+Measured on a real KICKR V5 on 2026-08-14, because the answer decides whether
+Virtual Gears may keep passing resets through to the trainer while it is
+shifting. `docs/kickr-reset-test.log`:
+
+```
+./Tools/KickrProbe/run.sh reset-test
+```
+
+It sets 4000 mm, a size no trainer defaults to, sends the same reset RealVelo
+sends, and then works out what the trainer is really riding on. The trainer
+accepted the reset and handed control straight back. Afterwards the speed fell
+by a third the moment the wheel size was set to a known 2070 mm, so the trainer
+was still on a large, non-default size.
+
+**A reset does not touch the wheel size**, so passing one through does not break
+the gears. The estimate the probe printed was 3230 mm against the 4000 mm set,
+and that gap is the method rather than the trainer: a hand spin is slowing down
+throughout, which biases the figure low. It is not precise enough to quote as a
+measurement, but it is far too large to be a default, which is all this asked.
+
+## Does the trainer keep the wheel size across a power cut?
+
+Yes. The trainer cannot be asked what wheel size it is using, so this takes two
+runs with the plug pulled in between:
+
+```
+./Tools/KickrProbe/run.sh set 3105     # leave a size nothing defaults to
+# unplug the trainer, wait ten seconds, plug it back in
+./Tools/KickrProbe/run.sh read         # work out what it is using now
+```
+
+Measured on 2026-08-14 in `docs/kickr-power-cut-read.log`: roughly 2967 mm
+against the 3105 mm left behind, within a few percent and nowhere near the
+2096 mm default. **The odd wheel size survived the power cut.** So putting the
+wheel size back after a crash genuinely matters — nothing else will do it, and a
+trainer left on a gear's wheel size reports the wrong speed and distance to
+every app that connects to it afterwards.
+
+An earlier run of this measurement was made with a probe that could not wait:
+`run()` executes inside `settleTask`, and subscribing to the speed channel
+part-way through fired the callback that cancels it. A cancelled task's sleeps
+return immediately, so every timed wait collapsed. The figures above are from
+after that was fixed. Treat any hardware evidence recorded before it with
+suspicion.
 
 ## What name a riding app shows for Virtual Gears
 
