@@ -209,52 +209,54 @@ to the version, then **Add for Review** → **Submit**.
 
 ## Stage 6 — The review notes (do not skip this)
 
-The reviewer does not need a smart trainer to inspect the app. Paste this into
-**App Review Information → Notes**:
+The reviewer does not need a smart trainer to inspect the app, but App Review
+still asked for a screen recording. Both matter.
 
-    This app controls a compatible Wahoo KICKR indoor bicycle trainer over Bluetooth.
-    It was built and physically tested with a KICKR V5.
+This is what is live in **App Review Information → Notes**. It answers, in
+order, the seven questions App Review asked when they rejected 1.0 (5) under
+Guideline 2.1:
 
-    No hardware is required for review. On the first screen, tap "Try Demo". A blue
-    "Demo Mode · Simulated" notice confirms that no trainer is connected and Bluetooth
-    is not being used. The demo provides the production gear picker, visible gear
-    ladder, large Easier and Harder controls, virtual and real-bike gearing choices,
-    Settings, simulated trainer/Click/Headwind/riding-app status, and simulated
-    Headwind controls. Tap "Exit Demo" to return to real trainer discovery.
+    VIRTUAL GEARS - APP REVIEW NOTES
 
-    Demo Mode uses local in-memory state only. It does not scan, advertise, connect or
-    send Bluetooth commands, and its choices do not replace saved equipment. The demo
-    shows the app's interface and local gearing behavior; it is not a claim that
-    simulated accessories prove physical compatibility.
+    WHAT THE APP DOES, AND FOR WHOM (point 3)
+    A Wahoo KICKR indoor bicycle trainer has no gears. Virtual Gears adds them. The iPhone connects to the trainer as a Bluetooth client and at the same time presents itself to a riding app on a computer as a standard FTMS indoor bike. It passes the riding app's resistance instructions through to the trainer and relays the trainer's data back, and applies the rider's chosen gear by rescaling the trainer's wheel-circumference setting. That is what produces the gears. Audience: indoor cyclists whose trainer or riding app offers no gear shifting. It solves that without buying a new trainer.
 
-    How it works: the iPhone connects to the trainer as a Bluetooth client, and at the
-    same time presents itself as a standard FTMS indoor trainer to a riding app on a
-    computer. It passes the riding app's resistance instructions through to the
-    trainer and relays the trainer's data back, while applying the rider's chosen gear
-    by rescaling the trainer's wheel-circumference setting. This is what produces the
-    virtual gears.
+    HOW TO SET UP AND REACH THE MAIN FEATURES (point 4)
+    No account, login, credentials or sample files are needed. No hardware is needed either.
+    On the first screen, tap "Try Demo". A blue "Demo Mode - Simulated" notice confirms no trainer is connected and Bluetooth is not in use. Demo Mode gives you the production gear picker, the gear ladder, the large Easier and Harder controls, virtual and real-bike gearing, Settings, and simulated trainer, Click, Headwind and riding-app status. Tap "Exit Demo" to return to real trainer discovery. Demo Mode is in-memory only: it does not scan, advertise, connect or send Bluetooth commands, and it does not replace saved equipment.
+    With hardware: switch the KICKR on and open the app. It finds and connects on its own. Then point any FTMS riding app on a computer at "Virtual Gears" and shift with the on-screen buttons or an original Zwift Click.
 
-    Virtual Gears supplies and displays these gears itself over ordinary FTMS. It does
-    not support Zwift-native virtual shifting.
+    DEVICES AND SYSTEMS TESTED ON (point 2)
+    iPhone 17 Pro, iOS 26.6.
+    Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz and RealVelo.
 
-    A Wahoo KICKR HEADWIND fan can optionally be paired for sensor or manual speed
-    control. It is not required to review the trainer and virtual-shifting features.
+    EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)
+    None. The app contains no networking code at all. There are no servers, accounts, analytics, adverts, tracking, payment processors, data providers or AI services. Everything happens on the device and over local Bluetooth. Nothing leaves the phone.
 
-    No account, no login, no server. The app contains no networking code.
+    REGIONAL DIFFERENCES (point 6)
+    None. The app behaves identically in every region. It has no region-specific features, content or pricing behaviour.
 
-    Bluetooth background mode is used because a ride is a continuous Bluetooth session
-    that must survive an incoming call or a notification. Losing it mid-ride would
-    disconnect the rider's trainer.
+    REGULATION AND THIRD-PARTY MATERIAL (point 7)
+    Not a regulated industry. This is exercise-equipment control, not a medical device, and the app makes no health or medical claims. It speaks the public Bluetooth SIG Fitness Machine Service (FTMS) standard, which requires no licence or credential. Wahoo, KICKR, HEADWIND, Zwift and the riding apps are named only to say which hardware and software the app works with. The app is not affiliated with, authorised by or endorsed by those companies, and contains none of their material.
 
-`DEMO_VIDEO.md` remains an optional script for recording additional physical
-hardware evidence. A video link is not required for the reviewer to navigate the
-app because Demo Mode covers the reviewable interface without equipment.
+    TWO LIMITS WE STATE PLAINLY
+    Virtual Gears supplies and displays its gears itself over ordinary FTMS. It does not support Zwift-native virtual shifting; an original Zwift Click is read as ordinary buttons.
+    Demo Mode shows the app's interface and local gearing behaviour. It is not a claim that simulated accessories prove physical compatibility.
+
+    WHY BLUETOOTH BACKGROUND MODE
+    A ride is a continuous Bluetooth session that has to survive an incoming call or a notification. Losing it mid-ride would disconnect the rider's trainer.
+
+A screen recording is **required**, not optional. App Review asked for one
+explicitly. `DEMO_VIDEO.md` has the shot list, what Apple demands of the
+recording, and the reply to send with it.
+
 
 ## Likely rejection reasons, and what to say
 
 | Reason | Response |
 |---|---|
-| "We were unable to review because we don't have the hardware" | Point to **Try Demo** on the first screen and repeat the review steps above. A physical-hardware video can be supplied later as supporting evidence, but is not required to navigate the app. |
+| "We were unable to review because we don't have the hardware" | Point to **Try Demo** on the first screen and repeat the review steps above. This did not prevent the 1.0 (5) rejection: App Review still required a screen recording made on a physical device. Send both. |
+| Guideline 2.1, information needed | What happened to 1.0 (5). They wanted a screen recording plus six written answers. The answers are now in the Notes field; the recording is covered by `DEMO_VIDEO.md`. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
 | Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware, and shows a gear only after the trainer confirms it. |
