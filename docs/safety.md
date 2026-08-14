@@ -24,11 +24,33 @@ down to 500 mm. A third run closed that gap: 500, 502.5, 505, 507.5, 510, 512.5,
 `docs/kickr-wheel-size-sweep-low-end.log`. The bottom of the range is now
 measured rather than assumed.
 
+A fourth run raised the top. It stepped from 4800 mm to 5000 mm in 25 mm steps
+— nine values, every one acknowledged in 59 to 152 ms, none refused — and is
+recorded in `docs/kickr-wheel-size-sweep-high-end.log`.
+
 The 24 virtual gears span 517.5 mm to 4735.1 mm at a 2070 mm reference, so both
 ends of the ladder have been confirmed on real hardware. These are the edges we
 chose to test, not a claim that the KICKR rejects values outside them. Virtual
-Gears keeps its own operating range at 500–4800 mm and never asks for anything
+Gears keeps its own operating range at 500–5000 mm and never asks for anything
 outside it. Every value at both edges of that range has been confirmed.
+
+## Why the range is wider than the gears need
+
+The gears themselves only reach 517.5 mm to 4735.1 mm, so the range looks
+generous at both ends. That spare room is not for gears; it is for the riding
+app.
+
+A riding app may set its own wheel size, and the reference app really does.
+Virtual Gears rebuilds the whole ladder around whatever size it is given, so the
+range has to hold not just the ladder but the ladder shifted up or down by that
+request. At a 4800 mm ceiling the ladder could only be rebuilt for wheels
+between 2000 mm and 2098 mm, which turned a 700x25c wheel at 2105 mm — an
+ordinary road wheel — into a refusal. Raising the ceiling to 5000 mm widens that
+window to 2000–2185 mm, which covers the usual road sizes including 700x28c.
+
+A request that still falls outside the window is refused rather than clamped,
+and the trainer keeps the wheel size it already had. Nothing unproven is ever
+sent.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

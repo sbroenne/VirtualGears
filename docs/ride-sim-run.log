@@ -1,0 +1,29 @@
+ride-sim: pretending to be a riding app.
+Looking for a fitness machine called "Virtual Gears".
+
+Found "Virtual Gears" at -55 dBm. Connecting.
+PASS  The phone advertises as a fitness machine - Virtual Gears
+PASS  The control point takes writes and answers back - write, indicate
+PASS  Ride data is a notify stream - notify
+PASS  Machine status is a notify stream - notify
+PASS  The machine says what it can do - FTMSMachineFeatures(rawValue: 20610)
+PASS  A riding app can subscribe to all three - control point true, ride data true, status true
+PASS  Asking for control is granted - answered success in 615 ms
+PASS  A hill can be sent to the trainer - answered success in 478 ms
+PASS  A wheel size can be set - answered success in 329 ms
+
+Listening to the ride data for 20 seconds.
+PASS  Ride data arrives steadily - 1.1 per second, worst gap 1230 ms
+
+Dropping the link without unsubscribing, the way a crash would.
+Coming back, as a riding app would after being restarted.
+PASS  A riding app can subscribe to all three - control point true, ride data true, status true
+PASS  A riding app that vanished can take control again - granted in 248 ms
+
+------------------------------------------------------------
+Slowest answer from the phone: 615 ms.
+Status message: opcode 0x12
+Status message: opcode 0x13
+All 12 checks passed.
+Full output is also in /tmp/ride-sim.log.
+ride-sim finished.

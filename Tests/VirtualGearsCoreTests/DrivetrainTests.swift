@@ -370,4 +370,23 @@ final class DrivetrainTests: XCTestCase {
         XCTAssertEqual(ratios, ratios.sorted())
     }
 
+    /// A riding app may set its own wheel size, and the reference app does. The
+    /// ladder is rebuilt around whatever it asks for, so the proven range has to
+    /// hold the ladder shifted as well as the ladder itself. This once left a
+    /// window of 2000-2098 mm, which refused a 700x25c wheel at 2105 mm.
+    func testVirtualLadderRebuildsForOrdinaryRoadWheelSizes() throws {
+        // 700x23c, 700x25c and 700x28c, the sizes a riding app really sends.
+        for millimeters in [2096.0, 2105.0, 2136.0] {
+            let drivetrain = try Drivetrain.virtualLadder()
+            XCTAssertNoThrow(
+                try ConfirmedGearEngine(
+                    drivetrain: drivetrain,
+                    baselineCircumferenceMillimeters: millimeters
+                ),
+                "A riding app asking for a \(Int(millimeters)) mm wheel must not "
+                    + "be refused: the ladder has to leave room for it"
+            )
+        }
+    }
+
 }

@@ -8,15 +8,23 @@ public enum TrainerSafety {
     public static let referenceCircumferenceMillimeters: Double = 2_070
 
     /// The range Virtual Gears will operate in. Staged on a physical KICKR V5
-    /// across three runs — 647 mm to 4800 mm, 517.5 mm to 647 mm, and 500 mm to
-    /// 517.5 mm — with every value acknowledged and the reference reset between
-    /// each probe, so both ends of this range and the whole gear ladder between
-    /// them are covered. The third run exists because the first two stopped at
-    /// 517.5 mm while this range claimed 500 mm; the bottom is now measured
-    /// rather than assumed. This intentionally remains much narrower than the
-    /// command's encodable limits.
+    /// across four runs — 647 mm to 4800 mm, 517.5 mm to 647 mm, 500 mm to
+    /// 517.5 mm, and 4800 mm to 5000 mm in 25 mm steps — with every value
+    /// acknowledged and the reference reset between each probe, so both ends of
+    /// this range and the whole gear ladder between them are covered. The third
+    /// run exists because the first two stopped at 517.5 mm while this range
+    /// claimed 500 mm; the bottom is now measured rather than assumed.
+    ///
+    /// The fourth run raised the top from 4800 mm, and the reason is not more
+    /// gear: the virtual ladder is centred inside this range, so the range's
+    /// width is also the room a riding app has to set its own wheel size. At
+    /// 4800 mm the ladder left a baseline window of 2000-2098 mm, which refused
+    /// a 700x25c wheel at 2105 mm — an ordinary road wheel, and one the
+    /// reference riding app really does send. The extra 200 mm is headroom for
+    /// that, not a wider spread of gears. This intentionally remains much
+    /// narrower than the command's encodable limits.
     public static let provenCircumferenceMillimeters: ClosedRange<Double> =
-        500...4_800
+        500...5_000
 
     /// The trainer is told a wheel size in tenths of a millimetre, so what it
     /// receives is always rounded to the nearest tenth.
