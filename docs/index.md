@@ -97,8 +97,8 @@ switching to another fan.
 
 ### Nothing to set up
 
-Open the app. It looks for your trainer, connects to it, starts the session and
-appears to your riding app, all on its own. There is no setup to complete and no
+Open the app. It looks for your trainer, connects to it, puts your gears on
+and appears to your riding app, all on its own. There is no setup to complete and no
 button to press.
 
 The only question it asks is which device, and only when it finds more than one

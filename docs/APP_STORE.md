@@ -80,8 +80,8 @@ the iPhone and when advertising itself as a trainer.
     virtual gears or an exact copy of the gears on your real bike.
 
     NOTHING TO SET UP
-    Open the app and it starts. It finds your trainer, connects to it, starts the
-    session and appears to your riding app on its own. Optional original Zwift Click and
+    Open the app and it starts. It finds your trainer, connects to it, puts your
+    gears on and appears to your riding app on its own. Optional original Zwift Click and
     Wahoo Headwind accessories are found and remembered automatically too. If more than
     one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
     identical names, pressing a button identifies the one you want.
