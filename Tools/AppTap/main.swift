@@ -91,6 +91,33 @@ final class TrainerTap: NSObject {
     private var simulationCount = 0
     private var lastSimulationReport = 0
 
+    /// Anything the riding app did that is worth knowing about afterwards.
+    ///
+    /// The tap can run for half an hour, and a single odd line in the middle of
+    /// that is easy to miss. Notable things are collected here and repeated at
+    /// the end, so the summary is the only thing anyone has to read.
+    private var oddities: [(seconds: TimeInterval, note: String)] = []
+    /// Whether the riding app has asked for control. The spec says it must
+    /// before it sends anything else.
+    private var hasControl = false
+    private var controlRequests = 0
+    /// True between a stop or pause and the next start or resume.
+    private var isPaused = false
+    private var lastWheelSizeMillimetres: Double?
+    /// Writes to anything other than the control point, which a riding app has
+    /// no reason to send.
+    private var strayWrites: [CBUUID: Int] = [:]
+
+    /// The range a wheel size has to fall in to be a real bicycle wheel. A
+    /// riding app sending something outside this is either using different
+    /// units or has a bug, and either way Virtual Gears needs to know.
+    private static let plausibleWheelSizeMillimetres = 1_000.0...3_000.0
+
+    private func noteOddity(_ note: String) {
+        oddities.append((secondsIntoRide(), note))
+        say("\(stamp())  ! \(note)")
+    }
+
     func start() {
         manager = CBPeripheralManager(delegate: self, queue: .main)
     }
@@ -211,6 +238,21 @@ final class TrainerTap: NSObject {
         commandCount[request.opcode, default: 0] += 1
         let opcode = "0x" + String(format: "%02X", request.opcode)
 
+        // The spec says a riding app asks for control before it sends
+        // anything else. Plenty of them do not, and Virtual Gears has to cope
+        // either way, so it is worth knowing which ones skip it.
+        if case .requestControl = request {} else if !hasControl {
+            noteOddity(
+                "sent \(opcode) without asking for control first."
+            )
+        }
+        if isPaused, case .startOrResume = request {} else if isPaused {
+            noteOddity(
+                "sent \(opcode) after saying stop or pause, without starting "
+                    + "again first."
+            )
+        }
+
         switch request {
         case let .setWheelCircumference(tenths):
             let millimetres = Double(tenths) / 10
@@ -222,18 +264,48 @@ final class TrainerTap: NSObject {
                 "\(stamp())  \(opcode) SET WHEEL SIZE \(millimetres) mm"
                     + "   <- this is the one that matters"
             )
+            if !Self.plausibleWheelSizeMillimetres.contains(millimetres) {
+                noteOddity(
+                    "that wheel size, \(millimetres) mm, is not a bicycle "
+                        + "wheel. The app may be using different units."
+                )
+            }
+            if let previous = lastWheelSizeMillimetres, previous != millimetres {
+                noteOddity(
+                    "it changed the wheel size from \(previous) mm to "
+                        + "\(millimetres) mm. Virtual Gears has to rebuild its "
+                        + "gears around the new size."
+                )
+            }
+            lastWheelSizeMillimetres = millimetres
         case .requestControl:
+            controlRequests += 1
+            hasControl = true
             say("\(stamp())  \(opcode) request control")
+            if controlRequests > 1 {
+                noteOddity(
+                    "asked for control again, \(controlRequests) times in all. "
+                        + "A trainer that refuses a repeat request can lock the "
+                        + "riding app out for the rest of the ride."
+                )
+            }
         case .reset:
             say("\(stamp())  \(opcode) reset")
+            hasControl = false
+            noteOddity(
+                "sent a reset, which puts a trainer back to its defaults - "
+                    + "including the wheel size Virtual Gears shifts with."
+            )
         case let .setTargetResistanceLevel(value):
             say("\(stamp())  \(opcode) set resistance \(value)")
         case let .setTargetPower(watts):
             say("\(stamp())  \(opcode) set target power \(watts) W")
         case .startOrResume:
             lastStartSeconds = secondsIntoRide()
+            isPaused = false
             say("\(stamp())  \(opcode) start or resume")
         case let .stopOrPause(value):
+            isPaused = true
             say("\(stamp())  \(opcode) stop or pause \(value)")
         case .setIndoorBikeSimulationParameters:
             // These arrive several times a second on a hilly course and would
@@ -261,6 +333,7 @@ final class TrainerTap: NSObject {
         guard rideStart != nil else {
             say("No riding app ever subscribed, so nothing was learned.")
             say("Check the app was searching for a trainer while this ran.")
+            reportOddities()
             return
         }
         say(String(format: "Watched for %.0f seconds.", secondsIntoRide()))
@@ -276,6 +349,7 @@ final class TrainerTap: NSObject {
                 "So the machinery for a wheel size changing mid-ride was not "
                     + "needed here."
             )
+            reportOddities()
             return
         }
         say("Wheel size was set \(wheelSizeMoments.count) time(s):")
@@ -323,6 +397,32 @@ final class TrainerTap: NSObject {
                 "\(midRide.count) arrived well after a ride start, so this app "
                     + "really does change the wheel size during a ride."
             )
+        }
+        reportOddities()
+    }
+
+    /// Everything odd, repeated at the end so nobody has to read the whole log.
+    private func reportOddities() {
+        say("")
+        say("=== Anything unusual ===")
+        guard !oddities.isEmpty else {
+            say("Nothing unusual. It behaved the way the spec describes.")
+            return
+        }
+        for oddity in oddities {
+            say(String(format: "  at %.1fs: ", oddity.seconds) + oddity.note)
+        }
+        if !strayWrites.isEmpty {
+            say("")
+            for (uuid, count) in strayWrites.sorted(by: {
+                $0.key.uuidString < $1.key.uuidString
+            }) {
+                say("  wrote to \(uuid) \(count) time(s)")
+            }
+        }
+        if !hasControl {
+            say("")
+            say("It never successfully asked for control.")
         }
     }
 }
@@ -402,6 +502,16 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
                 let value = request.value
             else {
                 peripheral.respond(to: request, withResult: .success)
+                // A riding app has no reason to write anywhere but the control
+                // point. Counted rather than listed, in case one of them does
+                // it constantly.
+                let uuid = request.characteristic.uuid
+                strayWrites[uuid, default: 0] += 1
+                if strayWrites[uuid] == 1 {
+                    noteOddity(
+                        "wrote to \(uuid), which is not the control point."
+                    )
+                }
                 continue
             }
             peripheral.respond(to: request, withResult: .success)
@@ -410,7 +520,7 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
             else {
                 let bytes = value.map { String(format: "%02X", $0) }
                     .joined(separator: " ")
-                say("        an unrecognised command arrived: \(bytes)")
+                noteOddity("sent a command nobody recognises: \(bytes)")
                 continue
             }
             record(decoded)

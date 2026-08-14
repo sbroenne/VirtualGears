@@ -74,6 +74,22 @@ LOG_VARIABLE="$(echo "$PRODUCT" | tr 'a-z-' 'A-Z_')_LOG"
 LOG="${!LOG_VARIABLE:-/tmp/$PRODUCT.log}"
 : > "$LOG"
 
+# Stop any copy left running from a previous go. Because the tool is launched
+# with `open -n` it outlives the script that started it, so interrupting the
+# script leaves the tool advertising. Two taps answering at once put two
+# trainers in the riding app's list and interleave their writes into one log,
+# which is worse than useless.
+OLD_PIDS="$(ps -eo pid,command \
+	| grep "$BUNDLE.app/Contents/MacOS/$PRODUCT" \
+	| grep -v grep \
+	| awk '{print $1}' || true)"
+if [ -n "$OLD_PIDS" ]; then
+	echo "Stopping a previous $BUNDLE that was still running." >&2
+	# shellcheck disable=SC2086
+	kill $OLD_PIDS 2>/dev/null || true
+	sleep 1
+fi
+
 # Launched with `open` so the tool answers to macOS for itself. Started from a
 # terminal instead, macOS judges the terminal, which never declared that it
 # wants Bluetooth, and kills the tool the moment it asks for it.
