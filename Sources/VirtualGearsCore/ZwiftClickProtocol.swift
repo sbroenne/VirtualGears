@@ -124,9 +124,18 @@ public enum ZwiftClickMessageDecoder {
     }
 }
 
+/// Turns the Click's reports of which buttons are *currently* down into presses
+/// and releases.
+///
+/// The first report after connecting is only ever a baseline. A Click has to be
+/// woken with a button press before it will advertise, so the press that got it
+/// noticed is often still down when it connects — and treating that as a fresh
+/// press shifts a gear nobody asked for, then starts a hold that keeps shifting
+/// until the rider lets go. Waking a device must not move the gears.
 public struct ZwiftClickEdgeTracker: Sendable {
     private var plusPressed = false
     private var minusPressed = false
+    private var hasBaseline = false
 
     public init() {}
 
@@ -134,6 +143,13 @@ public struct ZwiftClickEdgeTracker: Sendable {
         plus newPlusPressed: Bool,
         minus newMinusPressed: Bool
     ) -> [ZwiftClickButtonEvent] {
+        defer {
+            plusPressed = newPlusPressed
+            minusPressed = newMinusPressed
+            hasBaseline = true
+        }
+        guard hasBaseline else { return [] }
+
         var events: [ZwiftClickButtonEvent] = []
 
         if plusPressed != newPlusPressed {
@@ -147,8 +163,6 @@ public struct ZwiftClickEdgeTracker: Sendable {
             )
         }
 
-        plusPressed = newPlusPressed
-        minusPressed = newMinusPressed
         return events
     }
 }
