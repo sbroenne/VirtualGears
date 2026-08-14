@@ -261,10 +261,19 @@ app because Demo Mode covers the reviewable interface without equipment.
 
 For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 `CURRENT_PROJECT_VERSION` in the Xcode target's Build Settings, then archive and
-upload again. The current review build uses `CURRENT_PROJECT_VERSION = 5`, which
-adds the Demo Mode that shows the wheel size and command bytes changing.
-`CURRENT_PROJECT_VERSION` must increase on every single upload, even a re-upload of
-the same version.
+upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
+a re-upload of the same version.
+
+The current review build is 1.0 (6). Build 5 added the Demo Mode that shows the
+wheel size and command bytes changing. Build 6 removes a wheel-size limit that
+was never real: a physical KICKR V5 accepts every value the command can express,
+so the app now states the range of riding-app wheel sizes it supports instead of
+guessing at a trainer limit. It also stops describing itself to riders as
+starting a session, because it does not — it puts their gears on.
+
+The live App Store description still carries the old "starts the session"
+sentence. It is corrected in this file and needs the same edit in App Store
+Connect on the next metadata change.
 
 Uploading without opening Xcode:
 
