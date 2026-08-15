@@ -44,3 +44,17 @@ jobs:
             -scheme "${{ matrix.scheme }}" \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
+
+  ui-tests:
+    name: UI tests
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run UI regression tests
+        run: |
+          xcodebuild test \
+            -project VirtualGears.xcodeproj \
+            -scheme VirtualGears \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -parallel-testing-enabled NO

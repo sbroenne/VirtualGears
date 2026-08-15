@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B00000000000000000000001 /* VirtualGearsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000001 /* VirtualGearsUITests.swift */; };
 		100000000000000000000008 /* VirtualGearsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* VirtualGearsApp.swift */; };
 		100000000000000000000009 /* VirtualGearsHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000A /* VirtualGearsHomeView.swift */; };
 		A00000000000000000000001 /* AppConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* AppConfiguration.swift */; };
@@ -22,6 +23,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B10000000000000000000001 /* VirtualGearsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualGearsUITests.swift; sourceTree = "<group>"; };
+		B10000000000000000000002 /* VirtualGearsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VirtualGearsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000005 /* VirtualGears.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VirtualGears.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		200000000000000000000009 /* VirtualGearsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualGearsApp.swift; sourceTree = "<group>"; };
 		20000000000000000000000A /* VirtualGearsHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VirtualGearsHomeView.swift; sourceTree = "<group>"; };
@@ -38,6 +41,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		300000000000000000000004 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -53,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				400000000000000000000004 /* VirtualGears */,
+				B40000000000000000000001 /* VirtualGearsUITests */,
 				400000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -80,13 +91,52 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000005 /* VirtualGears.app */,
+				B10000000000000000000002 /* VirtualGearsUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		B40000000000000000000001 /* VirtualGearsUITests */ = {
+			isa = PBXGroup;
+			children = (
+				B10000000000000000000001 /* VirtualGearsUITests.swift */,
+			);
+			path = VirtualGearsUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
+/* Begin PBXContainerItemProxy section */
+		B20000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 600000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 500000000000000000000001;
+			remoteInfo = VirtualGears;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXNativeTarget section */
+		B50000000000000000000001 /* VirtualGearsUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B80000000000000000000001 /* Build configuration list for PBXNativeTarget "VirtualGearsUITests" */;
+			buildPhases = (
+				B30000000000000000000002 /* Sources */,
+				B30000000000000000000001 /* Frameworks */,
+				B30000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B20000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = VirtualGearsUITests;
+			packageProductDependencies = (
+			);
+			productName = VirtualGearsUITests;
+			productReference = B10000000000000000000002 /* VirtualGearsUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		500000000000000000000001 /* VirtualGears */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 800000000000000000000002 /* Build configuration list for PBXNativeTarget "VirtualGears" */;
@@ -120,6 +170,10 @@
 					500000000000000000000001 = {
 						CreatedOnToolsVersion = 26.4;
 					};
+					B50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.4;
+						TestTargetID = 500000000000000000000001;
+					};
 				};
 			};
 			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "VirtualGears" */;
@@ -139,11 +193,19 @@
 			projectRoot = "";
 			targets = (
 				500000000000000000000001 /* VirtualGears */,
+				B50000000000000000000001 /* VirtualGearsUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B30000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		300000000000000000000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -156,6 +218,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B30000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000001 /* VirtualGearsUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		300000000000000000000005 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -175,6 +245,38 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		B70000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MNW6SJT4V7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualGearsUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = VirtualGears;
+			};
+			name = Debug;
+		};
+		B70000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = MNW6SJT4V7;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sbroenne.VirtualGearsUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = VirtualGears;
+			};
+			name = Release;
+		};
 		700000000000000000000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -262,6 +364,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B80000000000000000000001 /* Build configuration list for PBXNativeTarget "VirtualGearsUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B70000000000000000000001 /* Debug */,
+				B70000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		800000000000000000000001 /* Build configuration list for PBXProject "VirtualGears" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -281,6 +392,14 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin PBXTargetDependency section */
+		B20000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 500000000000000000000001 /* VirtualGears */;
+			targetProxy = B20000000000000000000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCLocalSwiftPackageReference section */
 		900000000000000000000002 /* XCLocalSwiftPackageReference "." */ = {

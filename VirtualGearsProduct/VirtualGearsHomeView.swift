@@ -206,6 +206,7 @@ struct StartupView: View {
                 kickr.stopScanning(reconnectSavedDevice: false)
             }
         }
+        .accessibilityIdentifier("screen.startup")
     }
 
     // MARK: - Finding a trainer
@@ -259,8 +260,8 @@ struct StartupView: View {
                 .font(.title3.weight(.semibold))
                 .multilineTextAlignment(.center)
             Text(
-                "Turn the pedals if your trainer is asleep. Virtual shifting starts "
-                    + "by itself, and your riding app will find Virtual Gears."
+                "Turn the pedals if your trainer is asleep. Your riding app can "
+                    + "find Virtual Gears as soon as the trainer is connected."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
@@ -605,6 +606,7 @@ struct DemoModeView: View {
         .task { await runSimulatedTrainer() }
         .task { await runSimulatedRidingApp() }
         .onDisappear(perform: stopSweep)
+        .accessibilityIdentifier("screen.demo")
     }
 
     private var simulationNotice: some View {
@@ -951,6 +953,7 @@ private struct DemoSettingsView: View {
                     .fontWeight(.semibold)
             }
         }
+        .accessibilityIdentifier("screen.demo-settings")
     }
 }
 
@@ -1015,6 +1018,7 @@ private struct DemoHeadwindControlView: View {
                     .fontWeight(.semibold)
             }
         }
+        .accessibilityIdentifier("screen.demo-headwind")
     }
 }
 
@@ -1230,6 +1234,7 @@ struct ShiftingView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .accessibilityIdentifier("screen.ride")
     }
 
     /// The gear is the one thing the rider looks at, so it owns the screen and
@@ -1357,6 +1362,7 @@ struct ShiftingView: View {
                 .foregroundStyle(problem.state.tint)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(equipmentProblem ?? "")
+                .accessibilityIdentifier("status.\(problem.id)")
             } else {
                 // The KICKR and the Click are grouped because Virtual Gears is
                 // the one connecting to them. The riding app is set apart
@@ -1410,10 +1416,13 @@ struct ShiftingView: View {
                 HStack(spacing: 4) {
                     Image(systemName: item.state.symbol)
                         .foregroundStyle(item.state.tint)
+                        .accessibilityIdentifier("status.\(item.id).icon")
                     Text(item.title)
+                        .accessibilityIdentifier("status.\(item.id).label")
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(item.title), \(item.detail)")
+                .accessibilityIdentifier("status.\(item.id)")
             }
         }
     }
@@ -1721,6 +1730,7 @@ private struct ConnectionStatusList: View {
                         .foregroundStyle(item.state.tint)
                         .font(.title3)
                         .frame(width: 28)
+                        .accessibilityIdentifier("status.\(item.id).icon")
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name)
                             .font(.headline)
@@ -1736,6 +1746,7 @@ private struct ConnectionStatusList: View {
                 .padding(.vertical, 11)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(item.name), \(item.role), \(item.detail)")
+                .accessibilityIdentifier("status.\(item.id)")
             }
         }
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))

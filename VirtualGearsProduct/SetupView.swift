@@ -21,6 +21,7 @@ struct SetupView: View {
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.settings")
         .task {
             if autoConnectsOnAppear {
                 autoConnectSavedEquipment()
@@ -458,6 +459,7 @@ struct HeadwindControlView: View {
         }
         .navigationTitle("Headwind")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.headwind")
         .toolbar {
             if let onDone {
                 ToolbarItem(placement: .confirmationAction) {
@@ -710,6 +712,7 @@ struct GearChoiceView: View {
         }
         .navigationTitle("Gears")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.gears")
     }
 }
 

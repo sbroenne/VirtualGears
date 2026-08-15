@@ -30,6 +30,23 @@ Run the hardware-independent test suite:
 swift test
 ```
 
+Run the simulator UI regression suite:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO
+```
+
+`VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
+the simulator has Bluetooth hardware. It covers every primary screen, status
+icon visibility in portrait and landscape, shifting controls, settings
+destinations, gear configuration, Headwind controls and Demo Mode interactions.
+Screenshots are attached to every test result. Protocol behavior and equipment
+lifecycle remain covered by the package tests and physical-hardware evidence.
+
 Open the iPhone project:
 
 ```bash
@@ -54,6 +71,7 @@ without code signing.
 | `Sources/VirtualGearsCore` | Gear calculations, trainer commands, ride coordination and other hardware-independent logic |
 | `VirtualGearsProduct` | SwiftUI screens and the real Bluetooth services |
 | `Tests/VirtualGearsCoreTests` | Hardware-independent unit and ride-lifecycle tests |
+| `VirtualGearsUITests` | Simulator UI, navigation, accessibility and layout regression tests |
 | `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
 | `docs` | MkDocs website, screenshots and hardware findings |
 | `VirtualGears.xcodeproj` | iPhone app project |

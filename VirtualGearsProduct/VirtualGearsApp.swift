@@ -94,6 +94,7 @@ struct VirtualGearsApp: App {
 #if DEBUG
 enum ScreenshotFixture: String {
     case starting = "-shotStarting"
+    case ready = "-shotReady"
     case ride = "-shotRide"
     case settings = "-shotSettings"
     case gears = "-shotGears"
@@ -129,7 +130,7 @@ private struct ScreenshotFixtureView: View {
     var body: some View {
         Group {
             switch scenario {
-            case .starting:
+            case .starting, .ready:
                 StartupView(
                     store: store,
                     kickr: kickr,
@@ -205,7 +206,10 @@ private struct ScreenshotFixtureView: View {
             speed: 50
         )
 
-        if scenario == .ride {
+        if scenario == .ready {
+            (coordinator.peripheral as? FTMSPeripheral)?
+                .stageScreenshotAdvertising()
+        } else if scenario == .ride {
             (coordinator.peripheral as? FTMSPeripheral)?
                 .stageScreenshotConnection()
             coordinator.stageScreenshotRide(configuration: configuration)
