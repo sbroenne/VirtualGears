@@ -470,14 +470,19 @@ struct StartupView: View {
         }
     }
 
+    /// The same control starts shifting and tries again after a failure. After a
+    /// failure "Start Shifting" reads as though nothing had been attempted,
+    /// which is exactly the doubt the card above it has just resolved.
     private var retryButton: some View {
         Button {
             headwind.applySavedControlPreference()
             coordinator.startShifting(configuration: store.configuration)
         } label: {
             Label(
-                canStart ? "Start Shifting" : "Waiting for trainer",
-                systemImage: canStart ? "bicycle" : "hourglass"
+                retryTitle,
+                systemImage: canStart
+                    ? (failureMessage == nil ? "bicycle" : "arrow.clockwise")
+                    : "hourglass"
             )
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, minHeight: 64)
@@ -488,6 +493,11 @@ struct StartupView: View {
         .accessibilityHint(
             canStart ? "Starts virtual shifting" : "Your trainer is not connected yet"
         )
+    }
+
+    private var retryTitle: String {
+        guard canStart else { return "Waiting for trainer" }
+        return failureMessage == nil ? "Start Shifting" : "Try Again"
     }
 
     // MARK: - Starting
@@ -1427,17 +1437,15 @@ struct ShiftingView: View {
                             }
                         }
                     } else {
-                        VStack(spacing: 4) {
-                            HStack(spacing: 12) {
-                                ForEach(ownedEquipment) { item in
-                                    equipmentStatus(item)
-                                }
-                            }
-                            HStack(spacing: 12) {
-                                equipmentStatus(ridingAppEquipment)
-                                equipmentNotes
+                        // One row for everything. Splitting three across the top
+                        // and one underneath left the riding app looking like a
+                        // different kind of thing to the equipment above it.
+                        HStack(spacing: 10) {
+                            ForEach(equipmentItems) { item in
+                                equipmentStatus(item)
                             }
                         }
+                        equipmentNotes
                     }
                     if dynamicTypeSize.isAccessibilitySize {
                         equipmentNotes
@@ -1486,13 +1494,21 @@ struct ShiftingView: View {
         HStack(spacing: 12) {
             if configuration.usesClick, click.isReady, click.batteryIsLow,
                let battery = click.batteryLevel {
-                HStack(spacing: 4) {
+                // A shifter about to go flat mid-ride is not a footnote. It is
+                // the one thing on this screen a rider can still do something
+                // about, so it is drawn as the warning it is.
+                HStack(spacing: 5) {
                     Image(systemName: "battery.25percent")
-                        .foregroundStyle(.orange)
-                    Text("Click \(battery)%")
+                    Text("Click battery \(battery)%")
                 }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Color.orange.opacity(0.16), in: Capsule())
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Click battery low, \(battery) percent")
+                .accessibilityIdentifier("note.clickBattery")
             }
             if coordinator.ridingAppSetWheelSize {
                 Text("Wheel size from your app")
@@ -1588,7 +1604,15 @@ struct ShiftingView: View {
                 .accessibilityLabel("Gear")
                 .accessibilityValue(gearAccessibilityValue)
             Text(secondaryGearText)
-                .font(.largeTitle.weight(.bold))
+                .font(
+                    .system(
+                        size: GearReadoutMetrics.secondaryPointSize(
+                            forPrimary: max(44, fontSize)
+                        ),
+                        weight: .semibold,
+                        design: .rounded
+                    )
+                )
                 .foregroundStyle(isShiftPending ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
@@ -1623,7 +1647,8 @@ struct ShiftingView: View {
                 : "Requests the next harder gear. Hold to keep shifting harder.",
             disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder,
             externallyPressed: click.pressedButton
-                == (easier ? .minus : .plus)
+                == (easier ? .minus : .plus),
+            isProminent: !easier
         ) {
             coordinator.shift(direction)
         } repeatAction: {
@@ -1840,6 +1865,11 @@ private struct ShiftButton: View {
     let hint: String
     let disabled: Bool
     var externallyPressed = false
+    /// Harder is drawn solid and easier is drawn light. Two identical slabs
+    /// differing only by a small symbol have to be read before they can be
+    /// used; a difference in weight can be seen without looking directly at
+    /// it, and survives being seen in greyscale.
+    var isProminent = true
     let action: () -> Void
     let repeatAction: () -> Void
     let releaseAction: () -> Void
@@ -1854,20 +1884,8 @@ private struct ShiftButton: View {
     @State private var suppressTapUntil: Date?
 
     var body: some View {
-        Button(action: tapped) {
-            VStack(spacing: 6) {
-                Image(systemName: symbol)
-                    .font(.system(size: symbolSize, weight: .black, design: .rounded))
-                    .frame(height: symbolSize)
-                Text(title)
-                    .font(.title2.weight(.bold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.roundedRectangle(radius: 24))
+        styledButton
+            .buttonBorderShape(.roundedRectangle(radius: 24))
         .disabled(disabled)
         .brightness(externallyPressed ? -0.12 : 0)
         .scaleEffect(externallyPressed && !reduceMotion ? 0.96 : 1)
@@ -1898,6 +1916,37 @@ private struct ShiftButton: View {
         .accessibilityHint(
             disabled ? "You are already in the last gear" : hint
         )
+    }
+
+    @ViewBuilder
+    private var styledButton: some View {
+        if isProminent {
+            plainButton.buttonStyle(.borderedProminent)
+        } else {
+            // Tinted rather than neutral: a grey slab beside a solid one reads
+            // as unavailable, and this button is anything but.
+            plainButton
+                .buttonStyle(.bordered)
+                .background(
+                    Color.accentColor.opacity(disabled ? 0 : 0.16),
+                    in: RoundedRectangle(cornerRadius: 24)
+                )
+        }
+    }
+
+    private var plainButton: some View {
+        Button(action: tapped) {
+            VStack(spacing: 6) {
+                Image(systemName: symbol)
+                    .font(.system(size: symbolSize, weight: .black, design: .rounded))
+                    .frame(height: symbolSize)
+                Text(title)
+                    .font(.title2.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 
     private func tapped() {
@@ -1953,44 +2002,55 @@ private struct GearPositionRail: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiate
 
     var body: some View {
-        GeometryReader { proxy in
+        let markers = GearRail.markers(
+            count: gears.count,
+            selected: selectedIndex,
+            requested: requestedIndex
+        )
+        return GeometryReader { proxy in
             let spacing: CGFloat = 4
             let width = max(
                 3,
-                (proxy.size.width - spacing * CGFloat(max(0, gears.count - 1)))
-                    / CGFloat(max(1, gears.count))
+                (proxy.size.width - spacing * CGFloat(max(0, markers.count - 1)))
+                    / CGFloat(max(1, markers.count))
             )
-            HStack(spacing: spacing) {
-                ForEach(Array(gears.indices), id: \.self) { index in
+            // Bottom-aligned, so the filled gears behind the rider read as a
+            // level rising through the range rather than a row of dots that can
+            // only be understood by counting them.
+            HStack(alignment: .bottom, spacing: spacing) {
+                ForEach(Array(markers.enumerated()), id: \.offset) { _, marker in
                     Capsule()
-                        .fill(fill(for: index))
-                        .frame(width: width, height: index == selectedIndex ? 34 : 16)
+                        .fill(fill(marker))
+                        .frame(
+                            width: width,
+                            height: Self.height * marker.relativeHeight
+                        )
                         .overlay {
-                            if isTarget(index) || (differentiate && index == selectedIndex) {
+                            if marker == .requested
+                                || (differentiate && marker == .selected) {
                                 Capsule().stroke(Color.accentColor, lineWidth: 2)
                             }
                         }
                 }
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .frame(height: 40)
+        .frame(height: Self.height)
         // The big readout directly above already says which gear this is, and
         // saying it twice makes a rider swipe past the same fact to reach the
         // shift buttons. This is a picture of what that number means.
         .accessibilityHidden(true)
     }
 
-    private func fill(for index: Int) -> Color {
-        if index == selectedIndex { return .accentColor }
-        return .secondary.opacity(0.35)
-    }
+    private static let height: CGFloat = 44
 
-    /// The gear the rider asked for is outlined until the trainer confirms it,
-    /// so a tap is acknowledged without ever showing it as the current gear.
-    private func isTarget(_ index: Int) -> Bool {
-        guard let requestedIndex, requestedIndex != selectedIndex else { return false }
-        return index == requestedIndex
+    private func fill(_ marker: GearRailMarker) -> Color {
+        switch marker {
+        case .selected: .accentColor
+        case .requested: .accentColor.opacity(0.45)
+        case .behind: .accentColor.opacity(0.4)
+        case .ahead: .secondary.opacity(0.3)
+        }
     }
 }
 

@@ -40,6 +40,14 @@ public struct CassetteOption: Identifiable, Equatable, Sendable {
         guard let smallest = cogs.first, let largest = cogs.last else { return "" }
         return "\(smallest)-\(largest)"
     }
+
+    /// The name plus what tells it apart from the others that share it. Several
+    /// cassettes are called "11-28"; on a screen that lists them under their own
+    /// cog-count headings that is clear, but anywhere else — the selected value,
+    /// VoiceOver — it names three different parts at once.
+    public var qualifiedName: String {
+        "\(name) · \(speeds) cogs"
+    }
 }
 
 /// Real parts a rider can buy, so a saved setup shifts like the bike it names.

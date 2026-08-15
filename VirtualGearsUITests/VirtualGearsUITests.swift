@@ -143,6 +143,32 @@ final class VirtualGearsUITests: XCTestCase {
         )
     }
 
+    func testEveryEquipmentStatusSitsOnASingleRow() {
+        launch("-shotRide")
+
+        let centres = ["kickr", "click", "headwind", "ridingapp"].map {
+            app.descendants(matching: .any)["status.\($0)"].frame.midY
+        }
+        let spread = (centres.max() ?? 0) - (centres.min() ?? 0)
+        XCTAssertLessThan(
+            spread,
+            8,
+            "The equipment statuses are split across rows, orphaning one of them"
+        )
+    }
+
+    func testLowClickBatteryIsWarnedAboutRatherThanFootnoted() {
+        launch("-shotRideLowBattery")
+
+        let note = app.descendants(matching: .any)["note.clickBattery"]
+        assertVisibleElement(note)
+        XCTAssertGreaterThanOrEqual(
+            note.frame.height,
+            24,
+            "A dying shifter battery is drawn as quietly as a caption"
+        )
+    }
+
     func testStartupFailureExplainsConflictAndOffersRetry() {
         launch("-shotFailed")
 
@@ -152,7 +178,7 @@ final class VirtualGearsUITests: XCTestCase {
                 "Your trainer would not hand over control. Something else may still be connected to it."
             ]
         )
-        assertVisibleElement(app.buttons["Start Shifting"])
+        assertVisibleElement(app.buttons["Try Again"])
     }
 
     func testRideStatusIconsRemainVisibleInLandscape() {

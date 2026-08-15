@@ -110,10 +110,18 @@ struct SetupView: View {
         }
     }
 
-    private var shiftingValue: String {
+    /// The saved name, unless it is the row's own title. A Click that reports
+    /// itself as "Zwift Click" under a row called "Zwift Click" says the same
+    /// word twice and tells the rider nothing; the badge beside it already says
+    /// whether it is there.
+    private var shiftingValue: String? {
         let name = store.configuration.clickName
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return name.isEmpty ? "Not added" : name
+        if name.isEmpty { return "Not added" }
+        guard name.caseInsensitiveCompare("Zwift Click") != .orderedSame else {
+            return nil
+        }
+        return name
     }
 
     private var gearsSection: some View {
@@ -121,11 +129,14 @@ struct SetupView: View {
             NavigationLink {
                 GearChoiceView(store: store)
             } label: {
+                // The row leads with what the rider chose, not with a count of
+                // it. "24 gears · extra-low climbing range" under the word Gears
+                // describes the result of a decision without ever naming it.
                 LabeledContent {
-                    Text(store.configuration.drivetrainName)
+                    Text(store.configuration.gearSummary)
                 } label: {
                     Text("Gears")
-                    Text(store.configuration.gearSummary)
+                    Text(store.configuration.drivetrainName)
                 }
             }
 
@@ -696,7 +707,7 @@ struct GearChoiceView: View {
                     } label: {
                         LabeledContent(
                             "Cassette",
-                            value: store.configuration.cassette.name
+                            value: store.configuration.cassette.qualifiedName
                         )
                     }
                 } header: {
@@ -898,6 +909,7 @@ private struct CassetteChoiceView: View {
                     ForEach(options(speeds: speeds)) { option in
                         ChoiceRow(
                             title: option.name,
+                            spokenTitle: option.qualifiedName,
                             note: option.note,
                             detail: option.cogs.map(String.init)
                                 .joined(separator: ", "),
@@ -936,6 +948,10 @@ private struct CassetteChoiceView: View {
 /// dimmed and says why, rather than disappearing and leaving the rider guessing.
 private struct ChoiceRow: View {
     let title: String
+    /// What VoiceOver says, when the visible title alone is ambiguous. Three
+    /// cassettes are called "11-28"; on screen their section heading tells them
+    /// apart, but a rider hearing the list gets no heading with each row.
+    var spokenTitle: String?
     let note: String
     let detail: String?
     let selected: Bool
@@ -972,8 +988,8 @@ private struct ChoiceRow: View {
         .opacity(fits ? 1 : 0.5)
         .accessibilityLabel(
             fits
-                ? "\(title), \(note)"
-                : "\(title), too wide to combine with your other choice"
+                ? "\(spokenTitle ?? title), \(note)"
+                : "\(spokenTitle ?? title), too wide to combine with your other choice"
         )
         .accessibilityAddTraits(selected ? .isSelected : [])
     }

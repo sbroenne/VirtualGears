@@ -44,15 +44,17 @@ xcodebuild test \
 ```
 
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 26 scenarios cover every primary
+the simulator has Bluetooth hardware. Its 28 scenarios cover every primary
 screen, portrait and landscape status visibility, Accessibility Dynamic Type,
 startup failure, trainer reconnect, a riding app waiting, low Click battery,
 pending shifts, accepted Click press feedback, navigation, stop confirmation and
 cancellation, gear-mode switching, Headwind controls and Demo Mode interactions
-in both shift directions. Two of them are regression guards with measured
-assertions: the ride status must be wide enough to be read as words rather than
-collapsing to an icon, and cancelling the stop confirmation must return to the
-ride. Screenshots are attached to every test result. Protocol
+in both shift directions. Four of them are regression guards with measured
+assertions rather than existence checks: the ride status must be wide enough to
+be read as words rather than collapsing to an icon, cancelling the stop
+confirmation must return to the ride, every equipment status must sit on one
+row, and a low Click battery must be drawn at warning weight. Screenshots are
+attached to every test result. Protocol
 behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
 

@@ -286,7 +286,15 @@ deterministic UI coverage for failure, reconnect, waiting, low-battery,
 pending-shift and physical-press states. It moves the ride status out of the
 title bar, where it was squeezed until only a wordless warning icon remained, to
 a legible line beside the gear, and gives the stop confirmation a visible Cancel
-so a rider is never shown a destructive choice with no way out.
+so a rider is never shown a destructive choice with no way out. The ride screen
+was then reworked around what only it can show: the position rail fills in the
+gears already ridden through so a position can be seen instead of counted, the
+line under the gear became a caption rather than a rival to it, easier and harder
+are told apart by weight as well as by symbol, every equipment status sits on one
+row, and a low Click battery is drawn as a warning. Settings stopped saying
+"Zwift Click" twice in one row, the gears row leads with the gears chosen rather
+than a count of them, cassettes that share a name are told apart by their cog
+count, and retrying a failed start says "Try Again".
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
