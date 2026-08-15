@@ -1176,5 +1176,18 @@ extension ProxyCoordinator {
             TrainerSafety.referenceCircumferenceMillimeters
         updateDisplayedGear()
     }
+
+    public func stageScreenshotFailure(_ message: String) {
+        lifecycle.refuseStart(message)
+    }
+
+    public func stageScreenshotPendingShift() {
+        _ = gearEngine?.requestShift(by: 1)
+        requestedGearIndex = gearEngine?.requestedIndex
+    }
+
+    public func stageScreenshotReconnecting() {
+        lifecycle.markReconnecting()
+    }
 }
 #endif

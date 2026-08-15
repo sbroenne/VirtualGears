@@ -330,8 +330,8 @@ struct StartupView: View {
                 "Opens a simulated ride without connecting to a trainer"
             )
             Text(
-                "No trainer nearby? Watch a simulated ride show how shifting "
-                    + "resizes the trainer's wheel. Demo Mode does not use "
+                "No trainer nearby? Try the same large shift buttons and gear "
+                    + "display used during a real ride. Demo Mode does not use "
                     + "Bluetooth."
             )
             .font(.footnote)
@@ -358,7 +358,6 @@ struct StartupView: View {
                 id: "trainer",
                 name: store.configuration.kickrName.isEmpty
                     ? "Trainer" : store.configuration.kickrName,
-                role: "Trainer",
                 detail: connectionDetail(kickr.state),
                 state: connectionState(kickr.state, isReady: kickr.isReady)
             )
@@ -368,7 +367,6 @@ struct StartupView: View {
                 ConnectionStatusItem(
                     id: "click",
                     name: store.configuration.clickName,
-                    role: "Zwift Click",
                     detail: connectionDetail(click.state),
                     state: connectionState(
                         click.state,
@@ -383,7 +381,6 @@ struct StartupView: View {
                 ConnectionStatusItem(
                     id: "headwind",
                     name: store.configuration.headwindName ?? "Wahoo HEADWIND",
-                    role: "Fan",
                     detail: connectionDetail(headwind.state),
                     state: connectionState(
                         headwind.state,
@@ -399,8 +396,7 @@ struct StartupView: View {
             items.append(
                 ConnectionStatusItem(
                     id: "riding-app",
-                    name: "PC riding app",
-                    role: "Riding app",
+                    name: "Riding app",
                     detail: steering
                         ? "Connected and steering"
                         : (connected ? "Connected" : "Waiting for connection"),
@@ -479,7 +475,10 @@ struct StartupView: View {
             headwind.applySavedControlPreference()
             coordinator.startShifting(configuration: store.configuration)
         } label: {
-            Label("Start Shifting", systemImage: "bicycle")
+            Label(
+                canStart ? "Start Shifting" : "Waiting for trainer",
+                systemImage: canStart ? "bicycle" : "hourglass"
+            )
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, minHeight: 64)
         }
@@ -614,11 +613,16 @@ struct DemoModeView: View {
             Label("Demo Mode · Simulated", systemImage: "testtube.2")
                 .font(.title3.weight(.bold))
             Text(
-                "No trainer is connected. This demo stays on your iPhone and "
-                    + "does not use Bluetooth. The wheel sizes and commands "
-                    + "below are the real ones a shift would send."
+                "Try the same large shift buttons and gear display used during "
+                    + "a real ride."
             )
             .font(.subheadline)
+            Text(
+                "No trainer is connected and Bluetooth stays off. The details "
+                    + "below explain what a confirmed shift changes."
+            )
+            .font(.footnote)
+            .foregroundStyle(.secondary)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1258,7 +1262,10 @@ struct ShiftingView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(configuration.drivetrainName)
+                Text(
+                    dynamicTypeSize.isAccessibilitySize
+                        ? "Gears" : configuration.drivetrainName
+                )
                     .font(.headline)
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.bold))
@@ -1346,85 +1353,122 @@ struct ShiftingView: View {
         return "\(problem.title), \(problem.detail)"
     }
 
-    /// Supporting detail, so it sits at the bottom in the quietest type on the
-    /// screen and never takes more than one line. When something is wrong that
-    /// single line becomes the plain-English problem instead, so the rider only
-    /// ever reads one thing down here.
+    /// Every device keeps its own status element. Accessibility sizes use two
+    /// columns rather than breaking short equipment names in the middle.
     private var equipmentFooter: some View {
         Group {
             if let problem = equipmentItems.first(where: {
                 !$0.isOptional && $0.state != .ok
             }) {
-                Label(
-                    "\(problem.title) · \(problem.detail)",
-                    systemImage: problem.state.symbol
+                HStack(spacing: 6) {
+                    Image(systemName: problem.state.symbol)
+                        .foregroundStyle(problem.state.tint)
+                    Text("\(problem.title) · \(problem.detail)")
+                }
+                .font(.body.weight(.semibold))
+                .lineLimit(2)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    Color(.secondarySystemGroupedBackground),
+                    in: Capsule()
                 )
-                .foregroundStyle(problem.state.tint)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(equipmentProblem ?? "")
                 .accessibilityIdentifier("status.\(problem.id)")
             } else {
-                // The KICKR and the Click are grouped because Virtual Gears is
-                // the one connecting to them. The riding app is set apart
-                // because it connects to Virtual Gears instead.
-                VStack(spacing: 4) {
-                    equipmentGroup(items: ownedEquipment)
-                    HStack(spacing: 12) {
-                        equipmentGroup(items: [ridingAppEquipment])
-                        // Deliberately separate from the Click's status symbol.
-                        // Tinting that symbol would look like a lost connection.
-                        if configuration.usesClick, click.isReady, click.batteryIsLow,
-                           let battery = click.batteryLevel {
-                            HStack(spacing: 4) {
-                                Image(systemName: "battery.25percent")
-                                    .foregroundStyle(.orange)
-                                Text("Click \(battery)%")
+                VStack(spacing: 6) {
+                    if dynamicTypeSize.isAccessibilitySize {
+                        Grid(horizontalSpacing: 6, verticalSpacing: 6) {
+                            ForEach(
+                                Array(statusRows.enumerated()),
+                                id: \.offset
+                            ) { _, row in
+                                GridRow {
+                                    ForEach(row) { item in
+                                        equipmentStatus(item, expands: true)
+                                    }
+                                }
                             }
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(
-                                "Click battery low, \(battery) percent"
-                            )
                         }
-                        if coordinator.ridingAppSetWheelSize {
-                            Text("Wheel size from your app")
-                                .accessibilityLabel(
-                                    "Your riding app set the wheel size. "
-                                        + "Your gears are built around it."
-                                )
+                    } else {
+                        VStack(spacing: 4) {
+                            HStack(spacing: 12) {
+                                ForEach(ownedEquipment) { item in
+                                    equipmentStatus(item)
+                                }
+                            }
+                            HStack(spacing: 12) {
+                                equipmentStatus(ridingAppEquipment)
+                                equipmentNotes
+                            }
                         }
                     }
+                    if dynamicTypeSize.isAccessibilitySize {
+                        equipmentNotes
+                    }
                 }
-                .foregroundStyle(.secondary)
             }
         }
-        .font(.caption)
-        // The one line a rider most needs when something is wrong is the line
-        // that must not be squeezed away. Large text sizes are chosen by people
-        // who need them, so it wraps rather than shrinking to nothing.
-        .lineLimit(2)
-        .minimumScaleFactor(0.8)
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
 
-    /// Every item carries its own tick. Sharing one tick across a group read as
-    /// though only the first piece of equipment was connected.
-    private func equipmentGroup(items: [EquipmentItem]) -> some View {
-        HStack(spacing: 10) {
-            ForEach(items) { item in
+    private var statusRows: [[EquipmentItem]] {
+        stride(from: 0, to: equipmentItems.count, by: 2).map { start in
+            Array(equipmentItems[start..<min(start + 2, equipmentItems.count)])
+        }
+    }
+
+    private func equipmentStatus(
+        _ item: EquipmentItem,
+        expands: Bool = false
+    ) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: item.state.symbol)
+                .foregroundStyle(item.state.tint)
+                .accessibilityIdentifier("status.\(item.id).icon")
+            Text(
+                dynamicTypeSize.isAccessibilitySize && item.id == "ridingapp"
+                    ? "App" : item.title
+            )
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .accessibilityIdentifier("status.\(item.id).label")
+        }
+        .font(.footnote.weight(.medium))
+        .foregroundStyle(.secondary)
+        .padding(.vertical, expands ? 4 : 0)
+        .frame(maxWidth: expands ? .infinity : nil)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(item.title), \(item.detail)")
+        .accessibilityIdentifier("status.\(item.id)")
+    }
+
+    @ViewBuilder
+    private var equipmentNotes: some View {
+        HStack(spacing: 12) {
+            if configuration.usesClick, click.isReady, click.batteryIsLow,
+               let battery = click.batteryLevel {
                 HStack(spacing: 4) {
-                    Image(systemName: item.state.symbol)
-                        .foregroundStyle(item.state.tint)
-                        .accessibilityIdentifier("status.\(item.id).icon")
-                    Text(item.title)
-                        .accessibilityIdentifier("status.\(item.id).label")
+                    Image(systemName: "battery.25percent")
+                        .foregroundStyle(.orange)
+                    Text("Click \(battery)%")
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(item.title), \(item.detail)")
-                .accessibilityIdentifier("status.\(item.id)")
+                .accessibilityLabel("Click battery low, \(battery) percent")
+            }
+            if coordinator.ridingAppSetWheelSize {
+                Text("Wheel size from your app")
+                    .accessibilityLabel(
+                        "Your riding app set the wheel size. "
+                            + "Your gears are built around it."
+                    )
             }
         }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     private var equipmentItems: [EquipmentItem] {
@@ -1439,7 +1483,8 @@ struct ShiftingView: View {
                 title: "KICKR",
                 state: kickr.isReady
                     ? .ok : (kickr.state.isConnectionInProgress ? .pending : .warn),
-                detail: kickr.state.label
+                detail: coordinator.state == .reconnecting
+                    ? "Reconnecting" : kickr.state.label
             )
         ]
         if configuration.usesClick {
@@ -1478,15 +1523,12 @@ struct ShiftingView: View {
         } else if isConnected {
             detail = "Connected"
         } else if isAdvertising {
-            // Virtual Gears broadcasts its own name, but iOS also reports the
-            // phone's name and will not let an app change it, so some riding
-            // apps list the phone instead. A rider hunting a name that is not
-            // there assumes it is broken, so name both before they look.
-            detail = "Pick Virtual Gears or your iPhone's name"
+            detail = "Waiting for connection"
         } else {
             detail = "Not advertising"
         }
         return EquipmentItem(
+            isOptional: true,
             id: "ridingapp",
             title: "Riding app",
             state: isConnected ? .ok : (isAdvertising ? .pending : .warn),
@@ -1710,7 +1752,6 @@ private struct EquipmentItem: Identifiable {
 private struct ConnectionStatusItem: Identifiable {
     let id: String
     let name: String
-    let role: String
     let detail: String
     let state: EquipmentItem.LinkState
 }
@@ -1735,7 +1776,7 @@ private struct ConnectionStatusList: View {
                         Text(item.name)
                             .font(.headline)
                             .lineLimit(1)
-                        Text("\(item.role) · \(item.detail)")
+                        Text(item.detail)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
@@ -1745,7 +1786,7 @@ private struct ConnectionStatusList: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(item.name), \(item.role), \(item.detail)")
+                .accessibilityLabel("\(item.name), \(item.detail)")
                 .accessibilityIdentifier("status.\(item.id)")
             }
         }
@@ -1818,6 +1859,7 @@ private struct ShiftButton: View {
             if scenePhase != .active { cancelRepeat() }
         }
         .accessibilityLabel("Shift \(title.lowercased())")
+        .accessibilityValue(externallyPressed ? "Pressed" : "")
         .accessibilityHint(
             disabled ? "You are already in the last gear" : hint
         )

@@ -14,14 +14,34 @@ final class VirtualGearsUITests: XCTestCase {
         assertStatusItems(["trainer", "click", "headwind"])
     }
 
+    func testStartingScreenUsesWaitingStateInsteadOfDisabledStartAction() {
+        launch("-shotStarting")
+
+        assertVisibleElement(app.buttons["Waiting for trainer"])
+        XCTAssertFalse(app.buttons["Start Shifting"].exists)
+    }
+
     func testReadyScreenShowsTrainerAndRidingAppAdvertisingStatus() {
         launch("-shotReady")
 
         XCTAssertTrue(app.staticTexts["Ready to shift"].waitForExistence(timeout: 3))
         assertStatusItems(["trainer", "click", "headwind", "riding-app"])
         let ridingApp = app.descendants(matching: .any)["status.riding-app"]
-        XCTAssertTrue(ridingApp.label.contains("PC riding app"))
+        XCTAssertTrue(ridingApp.label.contains("Riding app"))
         XCTAssertTrue(ridingApp.label.contains("Waiting for connection"))
+    }
+
+    func testReadyScreenUsesPlatformNeutralNonDuplicativeStatusCopy() {
+        launch("-shotReady")
+
+        let trainer = app.descendants(matching: .any)["status.trainer"]
+        let click = app.descendants(matching: .any)["status.click"]
+        let fan = app.descendants(matching: .any)["status.headwind"]
+        let ridingApp = app.descendants(matching: .any)["status.riding-app"]
+        XCTAssertEqual(trainer.label, "Wahoo KICKR 2A93, Connected")
+        XCTAssertEqual(click.label, "Zwift Click, Connected")
+        XCTAssertEqual(fan.label, "KICKR HEADWIND 4D21, Connected")
+        XCTAssertEqual(ridingApp.label, "Riding app, Waiting for connection")
     }
 
     func testRideShowsAllStatusIconsAndPrimaryControls() {
@@ -35,6 +55,91 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisibleElement(app.buttons["Stop virtual shifting"])
         assertVisibleElement(app.descendants(matching: .any)["Gear"].firstMatch)
         assertStatusItems(["kickr", "click", "headwind", "ridingapp"])
+    }
+
+    func testRideKeepsEveryStatusIndependentlyVisible() {
+        launch("-shotRide")
+
+        for identifier in ["kickr", "click", "headwind", "ridingapp"] {
+            let item = app.descendants(matching: .any)["status.\(identifier)"]
+            assertVisibleElement(item)
+        }
+    }
+
+    func testAccessibilityRideKeepsStatusWordsAndToolbarSeparated() {
+        launch("-shotRideAccessibility")
+
+        for identifier in ["kickr", "click", "headwind", "ridingapp"] {
+            let item = app.descendants(matching: .any)["status.\(identifier)"]
+            assertVisibleElement(item)
+            XCTAssertLessThanOrEqual(
+                item.frame.height,
+                70,
+                "\(identifier) wrapped into a tall, broken label"
+            )
+        }
+        let gearMenu = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "gears")
+        ).firstMatch
+        assertVisibleElement(gearMenu)
+        for control in ["Settings", "Headwind controls"] {
+            XCTAssertTrue(
+                app.buttons[control].frame.intersection(gearMenu.frame).isNull,
+                "The gear menu overlaps \(control)"
+            )
+        }
+    }
+
+    func testRideWaitingForRidingAppKeepsEveryEquipmentStatus() {
+        launch("-shotRideWaiting")
+
+        assertStatusItems(["kickr", "click", "headwind", "ridingapp"])
+        XCTAssertTrue(
+            app.descendants(matching: .any)["status.ridingapp"].label
+                .contains("Waiting for connection")
+        )
+    }
+
+    func testRideShowsLowClickBatteryWithoutReplacingStatuses() {
+        launch("-shotRideLowBattery")
+
+        assertStatusItems(["kickr", "click", "headwind", "ridingapp"])
+        assertVisibleElement(app.descendants(matching: .any)["Click battery low, 15 percent"])
+    }
+
+    func testRideShowsPendingShiftFeedback() {
+        launch("-shotRidePending")
+
+        assertVisibleElement(app.staticTexts["Shifting…"])
+        assertStatusItems(["kickr", "click", "headwind", "ridingapp"])
+    }
+
+    func testAcceptedClickPressMarksMatchingButtonPressed() {
+        launch("-shotRidePressed")
+
+        XCTAssertEqual(app.buttons["Shift harder"].value as? String, "Pressed")
+        XCTAssertNotEqual(app.buttons["Shift easier"].value as? String, "Pressed")
+    }
+
+    func testReconnectProblemIsProminentAndPlainLanguage() {
+        launch("-shotRideReconnecting")
+
+        let problem = app.descendants(matching: .any)["status.kickr"]
+        assertVisibleElement(problem)
+        XCTAssertGreaterThanOrEqual(problem.frame.height, 32)
+        XCTAssertTrue(problem.label.contains("Reconnecting"))
+    }
+
+    func testStartupFailureExplainsConflictAndOffersRetry() {
+        launch("-shotFailed")
+
+        assertVisibleElement(app.staticTexts["Shifting could not start"])
+        assertVisibleElement(
+            app.staticTexts[
+                "Your trainer would not hand over control. Something else may still be connected to it."
+            ]
+        )
+        assertVisibleElement(app.buttons["Start Shifting"])
     }
 
     func testRideStatusIconsRemainVisibleInLandscape() {
@@ -86,6 +191,12 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Virtual gears"].exists)
         XCTAssertTrue(app.buttons["Copy a real bike"].exists)
         assertVisibleElement(app.staticTexts["24 gears"].firstMatch)
+        XCTAssertFalse(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "same hard end")
+        ).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "very wide")
+        ).firstMatch.exists)
     }
 
     func testRealGearChoiceNavigatesToChainringsAndCassette() {
@@ -121,6 +232,11 @@ final class VirtualGearsUITests: XCTestCase {
 
         assertVisible("screen.demo")
         XCTAssertTrue(app.navigationBars["Demo Ride"].exists)
+        assertVisibleElement(
+            app.staticTexts[
+                "Try the same large shift buttons and gear display used during a real ride."
+            ]
+        )
         let gear = app.descendants(matching: .any)["Simulated gear"]
         assertVisibleElement(gear)
         let initialValue = gear.value as? String

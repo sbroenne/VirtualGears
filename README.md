@@ -76,6 +76,8 @@ with physical hardware.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
   control and support for larger text.
+- **Persistent equipment statuses** that keep the trainer, Click, fan and
+  riding app visible independently, including while the riding app is waiting.
 - **Automatic optional-equipment discovery** for an original Zwift Click and
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.

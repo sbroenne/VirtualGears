@@ -26,6 +26,9 @@ and haptic, which occur only after the trainer confirms the shift.
 The ride controls use large targets in portrait and landscape. At Accessibility
 Dynamic Type sizes, the ride screen uses its vertical layout even when the
 phone is sideways so controls have room to reflow instead of being compressed.
+Equipment statuses reflow into a two-column grid at those sizes, keeping short
+names on one line instead of breaking words apart. The toolbar shortens the gear
+menu label so it cannot overlap the equipment controls.
 
 Virtual Gears respects the iPhone's Reduce Motion setting for the gear-number
 transition. Connection and status states use names and symbols alongside

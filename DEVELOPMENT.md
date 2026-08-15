@@ -41,11 +41,13 @@ xcodebuild test \
 ```
 
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. It covers every primary screen, status
-icon visibility in portrait and landscape, shifting controls, settings
-destinations, gear configuration, Headwind controls and Demo Mode interactions.
-Screenshots are attached to every test result. Protocol behavior and equipment
-lifecycle remain covered by the package tests and physical-hardware evidence.
+the simulator has Bluetooth hardware. Its 20 scenarios cover every primary
+screen, portrait and landscape status visibility, Accessibility Dynamic Type,
+startup failure, trainer reconnect, a riding app waiting, low Click battery,
+pending shifts, accepted Click press feedback, navigation, Headwind controls and
+Demo Mode interactions. Screenshots are attached to every test result. Protocol
+behavior and equipment lifecycle remain covered by the package tests and
+physical-hardware evidence.
 
 Open the iPhone project:
 

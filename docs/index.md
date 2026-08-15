@@ -114,6 +114,10 @@ Headwind and riding-app status. Demo Mode never uses Bluetooth and never changes
 saved equipment. It is a tour of the product, not evidence that untested
 physical hardware works.
 
+During shifting, the trainer, Click, fan and riding app each keep their own
+status. A riding app that is still waiting to connect does not hide
+the equipment Virtual Gears already connected.
+
 ### Everything changeable mid-ride
 
 Trainer, gears, Click and Headwind can all be changed from the ride screen.

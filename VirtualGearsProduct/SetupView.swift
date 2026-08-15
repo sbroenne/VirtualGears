@@ -671,9 +671,9 @@ struct GearChoiceView: View {
             } footer: {
                 Text(
                     store.configuration.usesVirtualGears
-                        ? "Twenty-four very wide virtual gears, from an easier "
-                            + "climbing gear to the same hard end. They belong "
-                            + "to no particular bike."
+                        ? "Twenty-four evenly spaced gears with an extra-low "
+                            + "climbing range. They are designed for indoor "
+                            + "riding rather than copied from a particular bike."
                         : "Copy the numbers printed on your own bike, or pick "
                             + "any combination you would like to ride. It does "
                             + "not have to be a set that anyone sells."

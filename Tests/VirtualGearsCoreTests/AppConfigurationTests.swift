@@ -83,6 +83,10 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertNotNil(configuration.drivetrain)
         XCTAssertTrue(configuration.hasSafeCircumference)
         XCTAssertEqual(configuration.drivetrainName, "Virtual gears")
+        XCTAssertEqual(
+            configuration.gearSummary,
+            "24 gears · extra-low climbing range"
+        )
     }
 
     /// Gears wider than the trainer can copy must block a ride rather than be

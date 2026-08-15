@@ -76,8 +76,9 @@ the iPhone and when advertising itself as a trainer.
     Virtual Gears supplies and displays its own gears on the iPhone through an ordinary
     FTMS trainer connection; it does not support Zwift's native gear system.
 
-    You get a full set of gears you can shift through mid-ride — either 24 very wide
-    virtual gears or an exact copy of the gears on your real bike.
+    You get a full set of gears you can shift through mid-ride — either 24 evenly
+    spaced gears with an extra-low climbing range or an exact copy of the gears on
+    your real bike.
 
     NOTHING TO SET UP
     Open the app and it finds your trainer, connects to it and appears to your
@@ -276,6 +277,13 @@ button while keeping the gear number and haptic tied to trainer confirmation.
 Build 8 restores the explicit Start Shifting step while making the transparent
 trainer proxy available as soon as the KICKR is ready, and keeps every configured
 equipment status visible on the shifting screen.
+
+Source build 1.0 (9) has not yet been uploaded. It fixes the case where a riding
+app waiting to connect replaced the KICKR, Click and fan statuses; each connection
+now keeps its own status. It also adds adaptive status layout for
+Accessibility Dynamic Type, clearer startup/status/gear/demo wording, and
+deterministic UI coverage for failure, reconnect, waiting, low-battery,
+pending-shift and physical-press states.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

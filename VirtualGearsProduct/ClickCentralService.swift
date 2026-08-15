@@ -542,6 +542,10 @@ extension ClickCentralService {
         self.batteryLevel = batteryLevel
         state = .ready
     }
+
+    func stageScreenshotPressedButton(_ button: ZwiftClickButton) {
+        pressedButton = button
+    }
 }
 #endif
 

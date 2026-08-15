@@ -145,6 +145,9 @@ public extension AppConfiguration {
         guard drivetrain != nil else {
             return "Too wide a range for the trainer"
         }
+        if usesVirtualGears {
+            return "\(gearCount) gears · extra-low climbing range"
+        }
         return "\(gearCount) gears · \(rangeDescription)"
     }
 
