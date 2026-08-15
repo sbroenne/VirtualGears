@@ -53,8 +53,9 @@ supported.
    may show the iPhone's name instead.
 4. Ride and shift with the large **Easier** and **Harder** buttons.
 
-There is no start button and no setup wizard. If it finds more than one trainer,
-it asks you to choose yours by name.
+There is no setup wizard. Once the trainer is connected, tap **Start Shifting**
+when you want Virtual Gears to apply its gears. If it finds more than one
+trainer, it asks you to choose yours by name.
 
 The same rule applies to optional equipment: one Click or Headwind is used
 automatically; if several are found, Virtual Gears asks instead of guessing.

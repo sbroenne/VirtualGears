@@ -120,6 +120,16 @@ public final class ProxyCoordinator {
             && (confirmedGearIndex ?? Int.max) < gearSequence.count - 1
     }
 
+    /// Makes the transparent trainer proxy available without enabling gears.
+    ///
+    /// The riding app owns its ride. Virtual Gears can therefore pass trainer
+    /// data and commands through as soon as the KICKR is usable, while the rider
+    /// separately decides when to apply virtual shifting.
+    public func makeTrainerProxyAvailable() {
+        guard kickr.isReady else { return }
+        peripheral.startAdvertising()
+    }
+
     public init(
         kickr: any TrainerLink,
         click: any ShifterLink,
@@ -340,7 +350,7 @@ public final class ProxyCoordinator {
             hasAppliedVirtualGear = true
             defaults.set(wheelSize, forKey: interruptedShiftingKey)
             guard startMayProceed(id) else { throw CancellationError() }
-            peripheral.startAdvertising()
+            makeTrainerProxyAvailable()
             try await waitUntilPeripheralReady(shiftingID: id)
             lifecycle.markActive()
             log("Ride session started")

@@ -41,9 +41,10 @@ advertise, connect or send Bluetooth commands.
 
 <figure markdown>
   ![The saved trainer connecting while the Zwift Click and Headwind are connected](screenshots/starting.png){ width="280" }
-  <figcaption>Open the app and it goes looking for your trainer. There is
-  nothing to press for a real ride. Try Demo is available when no trainer is
-  nearby. Optional equipment reconnects by itself.</figcaption>
+  <figcaption>Open the app and it goes looking for your trainer. Once connected,
+  Start Shifting applies the gears; the riding app remains responsible for the
+  ride itself. Try Demo is available when no trainer is nearby. Optional
+  equipment reconnects by itself.</figcaption>
 </figure>
 
 <figure markdown>

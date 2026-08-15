@@ -136,7 +136,6 @@ private struct ScreenshotFixtureView: View {
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    autoStarts: true,
                     beginsDiscovery: false
                 )
             case .ride:

@@ -17,6 +17,10 @@ button continues shifting. Equipment, connection problems, battery warnings
 and Bluetooth errors have spoken descriptions rather than relying only on
 icons or colour.
 
+Pressing the optional Zwift Click visibly presses the matching on-screen
+button. This visual acknowledgement is separate from the gear announcement
+and haptic, which occur only after the trainer confirms the shift.
+
 ## Display and motion
 
 The ride controls use large targets in portrait and landscape. At Accessibility

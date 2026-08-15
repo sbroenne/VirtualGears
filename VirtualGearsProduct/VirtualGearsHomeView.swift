@@ -9,9 +9,6 @@ struct VirtualGearsHomeView: View {
     @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     @Binding var isDemoMode: Bool
-    /// Set once the rider stops a ride, so the app does not immediately start a
-    /// new one. Reopening the app is the only way to ask for another ride.
-    @State private var riderStopped = false
     /// Whether demo entry took the trainer service away from a still-connected
     /// riding app, so exit knows to put it back.
     @State private var demoInterruptedAdvertising = false
@@ -29,7 +26,7 @@ struct VirtualGearsHomeView: View {
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    onRiderStop: { riderStopped = true }
+                    onRiderStop: {}
                 )
             } else {
                 StartupView(
@@ -38,7 +35,6 @@ struct VirtualGearsHomeView: View {
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    autoStarts: !riderStopped,
                     onTryDemo: enterDemoMode
                 )
             }
@@ -148,8 +144,6 @@ struct StartupView: View {
     @Bindable var click: ClickCentralService
     @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
-    /// False after the rider stops a ride, so this screen waits for a tap.
-    var autoStarts: Bool = true
     var beginsDiscovery = true
     var onTryDemo: () -> Void = {}
     @State private var showsSettings = false
@@ -167,10 +161,11 @@ struct StartupView: View {
                         retryButton
                     } else if mustChoose {
                         chooser
-                    } else if autoStarts {
-                        searching
+                    } else if canStart {
+                        readyCard
+                        retryButton
                     } else {
-                        stoppedCard
+                        searching
                         retryButton
                     }
                     demoEntry
@@ -205,7 +200,7 @@ struct StartupView: View {
                     await begin()
                 }
             }
-            .onChange(of: canStart) { _, _ in startIfReady() }
+            .onChange(of: canStart) { _, _ in makeProxyAvailableIfReady() }
             .onChange(of: kickr.candidates) { _, _ in considerCandidates() }
             .onDisappear {
                 kickr.stopScanning(reconnectSavedDevice: false)
@@ -218,7 +213,7 @@ struct StartupView: View {
     private func begin() async {
         if store.configuration.hasValidKickr {
             kickr.autoConnectSavedDevice()
-            startIfReady()
+            makeProxyAvailableIfReady()
         } else {
             trainerScanSettled = false
             kickr.startScanning()
@@ -229,12 +224,12 @@ struct StartupView: View {
         guard !Task.isCancelled else { return }
         trainerScanSettled = true
         considerCandidates()
-        startIfReady()
+        makeProxyAvailableIfReady()
     }
 
     /// Never interrupts a connection already under way.
     private func considerCandidates() {
-        guard trainerScanSettled, autoStarts,
+        guard trainerScanSettled,
               !store.configuration.hasValidKickr,
               kickr.selectedID == nil, !mustChoose else { return }
         let seen = kickr.candidates.map { DiscoveredTrainer(id: $0.id) }
@@ -347,11 +342,11 @@ struct StartupView: View {
 
     // MARK: - Stopping and failing
 
-    private var stoppedCard: some View {
+    private var readyCard: some View {
         VStack(spacing: 16) {
-            Text("Virtual shifting stopped")
+            Text("Ready to shift")
                 .font(.title3.weight(.semibold))
-            connectionList(includeRidingApp: false)
+            connectionList(includeRidingApp: true)
         }
         .frame(maxWidth: .infinity)
     }
@@ -509,13 +504,11 @@ struct StartupView: View {
         return nil
     }
 
-    /// The app does only one thing, so opening it is the instruction.
-    private func startIfReady() {
-        guard autoStarts, canStart, coordinator.state == .idle else { return }
+    private func makeProxyAvailableIfReady() {
+        guard canStart else { return }
         kickr.stopScanning()
         mustChoose = false
-        headwind.applySavedControlPreference()
-        coordinator.startShifting(configuration: store.configuration)
+        coordinator.makeTrainerProxyAvailable()
     }
 }
 
@@ -1368,28 +1361,31 @@ struct ShiftingView: View {
                 // The KICKR and the Click are grouped because Virtual Gears is
                 // the one connecting to them. The riding app is set apart
                 // because it connects to Virtual Gears instead.
-                HStack(spacing: 26) {
-                    equipmentGroup(items: ownedEquipment.filter { $0.state == .ok })
-                    equipmentGroup(items: [ridingAppEquipment])
-                    // Deliberately separate from the Click's tick, which means
-                    // connected. Tinting that tick would read, at a glance on
-                    // a moving bike, as the Click having dropped out.
-                    if configuration.usesClick, click.isReady, click.batteryIsLow,
-                        let battery = click.batteryLevel {
-                        HStack(spacing: 4) {
-                            Image(systemName: "battery.25percent")
-                                .foregroundStyle(.orange)
-                            Text("Click \(battery)%")
-                        }
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("Click battery low, \(battery) percent")
-                    }
-                    if coordinator.ridingAppSetWheelSize {
-                        Text("Wheel size from your app")
+                VStack(spacing: 4) {
+                    equipmentGroup(items: ownedEquipment)
+                    HStack(spacing: 12) {
+                        equipmentGroup(items: [ridingAppEquipment])
+                        // Deliberately separate from the Click's status symbol.
+                        // Tinting that symbol would look like a lost connection.
+                        if configuration.usesClick, click.isReady, click.batteryIsLow,
+                           let battery = click.batteryLevel {
+                            HStack(spacing: 4) {
+                                Image(systemName: "battery.25percent")
+                                    .foregroundStyle(.orange)
+                                Text("Click \(battery)%")
+                            }
+                            .accessibilityElement(children: .ignore)
                             .accessibilityLabel(
-                                "Your riding app set the wheel size. "
-                                    + "Your gears are built around it."
+                                "Click battery low, \(battery) percent"
                             )
+                        }
+                        if coordinator.ridingAppSetWheelSize {
+                            Text("Wheel size from your app")
+                                .accessibilityLabel(
+                                    "Your riding app set the wheel size. "
+                                        + "Your gears are built around it."
+                                )
+                        }
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -1412,12 +1408,12 @@ struct ShiftingView: View {
         HStack(spacing: 10) {
             ForEach(items) { item in
                 HStack(spacing: 4) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    Image(systemName: item.state.symbol)
+                        .foregroundStyle(item.state.tint)
                     Text(item.title)
                 }
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(item.title), connected")
+                .accessibilityLabel("\(item.title), \(item.detail)")
             }
         }
     }
@@ -1532,17 +1528,20 @@ struct ShiftingView: View {
     }
 
     private func shiftButton(easier: Bool) -> some View {
-        ShiftButton(
+        let direction: ShiftDirection = easier ? .easier : .harder
+        return ShiftButton(
             title: easier ? "Easier" : "Harder",
             symbol: easier ? "minus" : "plus",
             hint: easier
                 ? "Requests the next easier gear. Hold to keep shifting easier."
                 : "Requests the next harder gear. Hold to keep shifting harder.",
-            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder
+            disabled: easier ? !coordinator.canShiftEasier : !coordinator.canShiftHarder,
+            externallyPressed: click.pressedButton
+                == (easier ? .minus : .plus)
         ) {
-            coordinator.shift(easier ? .easier : .harder)
+            coordinator.shift(direction)
         } repeatAction: {
-            coordinator.beginHold(easier ? .easier : .harder)
+            coordinator.beginHold(direction)
         } releaseAction: {
             coordinator.endHold()
         }
@@ -1753,10 +1752,12 @@ private struct ShiftButton: View {
     let symbol: String
     let hint: String
     let disabled: Bool
+    var externallyPressed = false
     let action: () -> Void
     let repeatAction: () -> Void
     let releaseAction: () -> Void
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
     @State private var repeatTask: Task<Void, Never>?
     @State private var isHeld = false
@@ -1781,6 +1782,18 @@ private struct ShiftButton: View {
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.roundedRectangle(radius: 24))
         .disabled(disabled)
+        .brightness(externallyPressed ? -0.12 : 0)
+        .scaleEffect(externallyPressed && !reduceMotion ? 0.96 : 1)
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(.tint, lineWidth: externallyPressed ? 5 : 0)
+                .padding(2)
+                .allowsHitTesting(false)
+        }
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.08),
+            value: externallyPressed
+        )
         // The button keeps its normal tap behaviour; this only adds the hold.
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)

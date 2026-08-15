@@ -80,8 +80,8 @@ the iPhone and when advertising itself as a trainer.
     virtual gears or an exact copy of the gears on your real bike.
 
     NOTHING TO SET UP
-    Open the app and it starts. It finds your trainer, connects to it, puts your
-    gears on and appears to your riding app on its own. Optional original Zwift Click and
+    Open the app and it finds your trainer, connects to it and appears to your
+    riding app. Tap Start Shifting when you want it to put your gears on. Optional original Zwift Click and
     Wahoo Headwind accessories are found and remembered automatically too. If more than
     one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
     identical names, pressing a button identifies the one you want.
@@ -117,7 +117,8 @@ the iPhone and when advertising itself as a trainer.
 
     OPTIONAL SHIFT BUTTONS
     Wake an original Zwift Click before opening Virtual Gears and it connects
-    automatically. It shifts alongside the on-screen buttons, but is never required.
+    automatically. It shifts alongside the on-screen buttons and visibly presses
+    the matching control, but is never required.
 
     OPTIONAL HEADWIND CONTROL
     Turn on a Wahoo KICKR HEADWIND before opening Virtual Gears and it connects
@@ -264,12 +265,17 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current review build is 1.0 (6). Build 5 added the Demo Mode that shows the
-wheel size and command bytes changing. Build 6 removes a wheel-size limit that
-was never real: a physical KICKR V5 accepts every value the command can express,
-so the app now states the range of riding-app wheel sizes it supports instead of
-guessing at a trainer limit. It also stops describing itself to riders as
-starting a session, because it does not — it puts their gears on.
+The current TestFlight build is 1.0 (8). Build 5 added the Demo Mode that shows
+the wheel size and command bytes changing. Build 6 removed a wheel-size limit
+that was never real: a physical KICKR V5 accepts every value the command can
+express, so the app now states the range of riding-app wheel sizes it supports
+instead of guessing at a trainer limit. It also stopped describing itself to
+riders as starting a session, because it does not — it puts their gears on.
+Build 7 mirrors an accepted Zwift Click press on the matching on-screen shift
+button while keeping the gear number and haptic tied to trainer confirmation.
+Build 8 restores the explicit Start Shifting step while making the transparent
+trainer proxy available as soon as the KICKR is ready, and keeps every configured
+equipment status visible on the shifting screen.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
