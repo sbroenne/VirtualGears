@@ -278,7 +278,9 @@ Build 8 restores the explicit Start Shifting step while making the transparent
 trainer proxy available as soon as the KICKR is ready, and keeps every configured
 equipment status visible on the shifting screen.
 
-Source build 1.0 (9) has not yet been uploaded. It fixes the case where a riding
+Build 1.0 (10) was uploaded to TestFlight on 15 August 2026. Build 9 was never
+uploaded, so build 10 carries everything since build 8. It fixes the case where a
+riding
 app waiting to connect replaced the KICKR, Click and fan statuses; each connection
 now keeps its own status. It also adds adaptive status layout for
 Accessibility Dynamic Type, clearer startup/status/gear/demo wording, and
@@ -295,6 +297,10 @@ row, and a low Click battery is drawn as a warning. Settings stopped saying
 "Zwift Click" twice in one row, the gears row leads with the gears chosen rather
 than a count of them, cassettes that share a name are told apart by their cog
 count, and retrying a failed start says "Try Again".
+
+Every change in build 10 was made against the simulator. The gear rail, shift
+button weighting, one-row status footer and battery warning have not yet been
+checked on a physical KICKR while riding.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
