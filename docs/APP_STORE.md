@@ -283,7 +283,10 @@ app waiting to connect replaced the KICKR, Click and fan statuses; each connecti
 now keeps its own status. It also adds adaptive status layout for
 Accessibility Dynamic Type, clearer startup/status/gear/demo wording, and
 deterministic UI coverage for failure, reconnect, waiting, low-battery,
-pending-shift and physical-press states.
+pending-shift and physical-press states. It moves the ride status out of the
+title bar, where it was squeezed until only a wordless warning icon remained, to
+a legible line beside the gear, and gives the stop confirmation a visible Cancel
+so a rider is never shown a destructive choice with no way out.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

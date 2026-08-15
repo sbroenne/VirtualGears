@@ -130,6 +130,19 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(problem.label.contains("Reconnecting"))
     }
 
+    func testReconnectStatusIsSpelledOutRatherThanShrunkToAnIcon() {
+        launch("-shotRideReconnecting")
+
+        let status = app.descendants(matching: .any)["ride.status"]
+        assertVisibleElement(status)
+        XCTAssertEqual(status.label, "Control lost · reconnecting")
+        XCTAssertGreaterThan(
+            status.frame.width,
+            200,
+            "The ride status is squeezed down to a wordless icon"
+        )
+    }
+
     func testStartupFailureExplainsConflictAndOffersRetry() {
         launch("-shotFailed")
 
@@ -177,6 +190,26 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisibleElement(app.buttons["Shift easier"])
         assertVisibleElement(app.buttons["Shift harder"])
         assertVisibleElement(app.buttons["Stop Shifting"])
+    }
+
+    func testCancellingTheStopConfirmationReturnsToTheRide() {
+        launch("-shotRide")
+
+        app.buttons["Stop virtual shifting"].tap()
+
+        assertVisibleElement(app.buttons["Stop Shifting"])
+        assertVisibleElement(app.buttons["Cancel"])
+
+        app.buttons["Cancel"].tap()
+
+        XCTAssertFalse(
+            app.buttons["Stop Shifting"].waitForExistence(timeout: 1),
+            "Cancelling left the confirmation on screen"
+        )
+        assertVisible("screen.ride")
+        assertVisibleElement(app.buttons["Shift easier"])
+        assertVisibleElement(app.buttons["Shift harder"])
+        assertVisibleElement(app.buttons["Stop virtual shifting"])
     }
 
     func testSettingsNavigatesToEveryDestination() {

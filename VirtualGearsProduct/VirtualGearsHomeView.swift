@@ -1146,15 +1146,13 @@ struct ShiftingView: View {
                         .accessibilityLabel("Headwind controls")
                     }
                 }
-                // The middle of the bar says what the ride is doing whenever it
-                // is doing anything other than simply running.
+                // What the ride is doing is said in words next to the gear, not
+                // here. The middle of the bar is squeezed between the controls
+                // on either side, and a status put here loses its text long
+                // before it loses its icon, leaving a bare warning glyph with
+                // nothing to explain it.
                 ToolbarItem(placement: .principal) {
-                    if coordinator.state != .active {
-                        Label(statusText, systemImage: statusSymbol)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(statusColor)
-                            .lineLimit(1)
-                    } else {
+                    if coordinator.state == .active && !isChangingGears {
                         gearsMenu
                     }
                 }
@@ -1226,17 +1224,21 @@ struct ShiftingView: View {
             performFeedback(coordinator.lastShiftFeedback)
             announce("Gear \(gearAccessibilityValue)")
         }
-        .confirmationDialog(
-            "Stop virtual shifting?",
-            isPresented: $confirmsStop,
-            titleVisibility: .visible
-        ) {
+        // An alert rather than a confirmation dialog, because the dialog renders
+        // as a compact card that drops its cancel button entirely, leaving a
+        // rider mid-ride with a destructive choice and no visible way out.
+        .alert("Stop virtual shifting?", isPresented: $confirmsStop) {
+            Button("Cancel", role: .cancel) {}
             Button("Stop Shifting", role: .destructive) {
                 onRiderStop()
                 headwind.releaseFanControl()
                 Task { await coordinator.stopShifting() }
             }
-            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "The trainer goes back to its own gearing. "
+                    + "Your riding app stays connected."
+            )
         }
         .accessibilityIdentifier("screen.ride")
     }
@@ -1335,10 +1337,43 @@ struct ShiftingView: View {
     }
 
     private func gearHero(fontSize: CGFloat) -> some View {
-        gearReadout(
-            fontSize: fontSize
-        )
+        VStack(spacing: 12) {
+            if showsRideStatus {
+                rideStatus
+            }
+            gearReadout(
+                fontSize: fontSize
+            )
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// True whenever the ride is doing something other than simply running, and
+    /// so has something to say to the rider.
+    private var showsRideStatus: Bool {
+        coordinator.state != .active || isChangingGears
+    }
+
+    /// Says what the ride is doing, in words, at a size that survives being read
+    /// from a bike. The icon carries no meaning on its own, so it is hidden from
+    /// VoiceOver and never allowed to appear without its text.
+    private var rideStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: statusSymbol)
+                .font(.title3.weight(.semibold))
+                .accessibilityHidden(true)
+            Text(statusText)
+                .font(.title3.weight(.semibold))
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .minimumScaleFactor(0.7)
+        }
+        .foregroundStyle(statusColor)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(statusColor.opacity(0.14), in: .rect(cornerRadius: 16))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("ride.status")
     }
 
     private var hasEquipmentProblem: Bool {
