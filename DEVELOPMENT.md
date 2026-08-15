@@ -27,8 +27,11 @@ does not add any physical-hardware evidence.
 Run the hardware-independent test suite:
 
 ```bash
-swift test
+swift test --enable-code-coverage
 ```
+
+CI requires at least 90% line coverage for `Sources/VirtualGearsCore`, excluding
+tests and hardware investigation tools.
 
 Run the simulator UI regression suite:
 
@@ -41,11 +44,12 @@ xcodebuild test \
 ```
 
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 20 scenarios cover every primary
+the simulator has Bluetooth hardware. Its 24 scenarios cover every primary
 screen, portrait and landscape status visibility, Accessibility Dynamic Type,
 startup failure, trainer reconnect, a riding app waiting, low Click battery,
-pending shifts, accepted Click press feedback, navigation, Headwind controls and
-Demo Mode interactions. Screenshots are attached to every test result. Protocol
+pending shifts, accepted Click press feedback, navigation, stop confirmation,
+gear-mode switching, Headwind controls and Demo Mode interactions in both shift
+directions. Screenshots are attached to every test result. Protocol
 behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
 

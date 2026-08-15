@@ -168,6 +168,17 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Stop Shifting"].exists)
     }
 
+    func testStoppingRequiresConfirmationBeforeRideControlsDisappear() {
+        launch("-shotRide")
+
+        app.buttons["Stop virtual shifting"].tap()
+
+        assertVisible("screen.ride")
+        assertVisibleElement(app.buttons["Shift easier"])
+        assertVisibleElement(app.buttons["Shift harder"])
+        assertVisibleElement(app.buttons["Stop Shifting"])
+    }
+
     func testSettingsNavigatesToEveryDestination() {
         launch("-shotSettings")
 
@@ -197,6 +208,19 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "very wide")
         ).firstMatch.exists)
+    }
+
+    func testGearModeCanSwitchBetweenVirtualAndRealBikeOptions() {
+        launch("-shotGears")
+
+        app.buttons["Copy a real bike"].tap()
+        assertVisibleElement(app.staticTexts["Chainrings"])
+        assertVisibleElement(app.staticTexts["Cassette"])
+
+        app.buttons["Virtual gears"].tap()
+        XCTAssertFalse(app.staticTexts["Chainrings"].exists)
+        XCTAssertFalse(app.staticTexts["Cassette"].exists)
+        assertVisibleElement(app.staticTexts["24 gears"].firstMatch)
     }
 
     func testRealGearChoiceNavigatesToChainringsAndCassette() {
@@ -255,6 +279,40 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisible("screen.demo-headwind")
         app.buttons["Manual"].tap()
         assertVisibleElement(app.buttons["50 percent"])
+    }
+
+    func testDemoCanShiftHarderAndEasierBackToItsStartingGear() {
+        launch("-shotDemo")
+
+        let gear = app.descendants(matching: .any)["Simulated gear"]
+        assertVisibleElement(gear)
+        let initialValue = gear.value as? String
+
+        app.buttons["Shift harder"].tap()
+        expectation(
+            for: NSPredicate(format: "value != %@", initialValue ?? ""),
+            evaluatedWith: gear
+        )
+        waitForExpectations(timeout: 2)
+
+        app.buttons["Shift easier"].tap()
+        expectation(
+            for: NSPredicate(format: "value == %@", initialValue ?? ""),
+            evaluatedWith: gear
+        )
+        waitForExpectations(timeout: 2)
+    }
+
+    func testDemoFanPresetsChangeTheDisplayedSpeed() {
+        launch("-shotDemo")
+
+        app.buttons["Fan"].tap()
+        assertVisible("screen.demo-headwind")
+        app.buttons["Manual"].tap()
+        app.buttons["75 percent"].tap()
+
+        XCTAssertTrue(app.buttons["75 percent"].isSelected)
+        XCTAssertFalse(app.buttons["50 percent"].isSelected)
     }
 
     private func launch(_ fixture: String) {
