@@ -43,6 +43,11 @@ struct VirtualGearsHomeView: View {
             guard !isDemoMode else { return }
             await discoverOptionalEquipment()
         }
+        .onChange(of: coordinator.failure, initial: true) { _, failure in
+            guard HeadwindShiftingPolicy.shouldReleaseControl(after: failure)
+            else { return }
+            headwind.releaseFanControl()
+        }
     }
 
     private func enterDemoMode() {
@@ -161,11 +166,8 @@ struct StartupView: View {
                         retryButton
                     } else if mustChoose {
                         chooser
-                    } else if canStart {
-                        readyCard
-                        retryButton
                     } else {
-                        searching
+                        readinessCard
                         retryButton
                     }
                     // Fixed in the layout regardless of state, so it never
@@ -197,6 +199,7 @@ struct StartupView: View {
                         kickr: kickr,
                         click: click,
                         headwind: headwind,
+                        coordinator: coordinator,
                         onFinish: { showsSettings = false }
                     )
                 }
@@ -259,12 +262,25 @@ struct StartupView: View {
         kickr.selectAndConnect(id)
     }
 
-    private var searching: some View {
+    /// Waiting and ready deliberately share one layout. The invisible side of
+    /// each transition still participates in layout, so the primary action does
+    /// not move when the trainer becomes ready, including at large text sizes.
+    private var readinessCard: some View {
         VStack(spacing: 16) {
-            ProgressView().controlSize(.large)
-            Text(searchingTitle)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
+            ProgressView()
+                .controlSize(.large)
+                .opacity(canStart ? 0 : 1)
+                .accessibilityHidden(canStart)
+            ZStack {
+                Text(searchingTitle)
+                    .opacity(canStart ? 0 : 1)
+                    .accessibilityHidden(canStart)
+                Text("Ready to shift")
+                    .opacity(canStart ? 1 : 0)
+                    .accessibilityHidden(!canStart)
+            }
+            .font(.title3.weight(.semibold))
+            .multilineTextAlignment(.center)
             Text(
                 "Turn the pedals if your trainer is asleep. Your riding app can "
                     + "find Virtual Gears as soon as the trainer is connected."
@@ -272,7 +288,9 @@ struct StartupView: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
-            connectionList(includeRidingApp: false)
+            .opacity(canStart ? 0 : 1)
+            .accessibilityHidden(canStart)
+            connectionList(includeRidingApp: true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
@@ -346,15 +364,6 @@ struct StartupView: View {
     }
 
     // MARK: - Stopping and failing
-
-    private var readyCard: some View {
-        VStack(spacing: 16) {
-            Text("Ready to shift")
-                .font(.title3.weight(.semibold))
-            connectionList(includeRidingApp: true)
-        }
-        .frame(maxWidth: .infinity)
-    }
 
     private func connectionList(includeRidingApp: Bool) -> some View {
         var items = [
@@ -1195,6 +1204,7 @@ struct ShiftingView: View {
                     kickr: kickr,
                     click: click,
                     headwind: headwind,
+                    coordinator: coordinator,
                     onFinish: { showsSettings = false }
                 )
             }

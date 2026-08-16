@@ -30,6 +30,10 @@ Most problems have a known answer already:
   in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
   Gears uses 2070 mm by default. See
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
+- **The Headwind did not return to its earlier setting after Stop Shifting.**
+  Keep the fan powered on or let it reconnect. Virtual Gears keeps the exact
+  pre-shifting state pending until the Headwind confirms the hand-back; any
+  refusal or timeout is shown in the app and recorded in its diagnostic log.
 
 ## What to include in a bug report
 
@@ -40,6 +44,11 @@ The more of this you can give, the better the odds of a fix:
 - What you did, what you expected, and what happened instead
 - Whether the app showed an error, and its exact wording
 - Whether a Zwift Click or Headwind was connected
+
+In Virtual Gears, open **Settings → About & Diagnostics** and tap **Copy
+Diagnostics**. Paste that report into the issue. It includes the app version and
+live connection state, but no trainer identifier, riding-app identifier, user
+name or ride log.
 
 ## What to expect
 

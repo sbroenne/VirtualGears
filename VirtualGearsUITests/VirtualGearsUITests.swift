@@ -44,6 +44,20 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertEqual(ridingApp.label, "Riding app, Waiting for connection")
     }
 
+    func testPrimaryActionDoesNotMoveWhenTrainerBecomesReady() {
+        assertPrimaryActionKeepsPosition(
+            waitingFixture: "-shotStarting",
+            readyFixture: "-shotReady"
+        )
+    }
+
+    func testAccessibilityPrimaryActionDoesNotMoveWhenTrainerBecomesReady() {
+        assertPrimaryActionKeepsPosition(
+            waitingFixture: "-shotStartingAccessibility",
+            readyFixture: "-shotReadyAccessibility"
+        )
+    }
+
     func testRideShowsAllStatusIconsAndPrimaryControls() {
         launch("-shotRide")
 
@@ -242,7 +256,16 @@ final class VirtualGearsUITests: XCTestCase {
         launch("-shotSettings")
 
         assertVisible("screen.settings")
-        for destination in ["Trainer", "Zwift Click", "Wahoo Headwind", "Gears"] {
+        for destination in [
+            "Trainer",
+            "Zwift Click",
+            "Wahoo Headwind",
+            "Gears",
+            "About & Diagnostics",
+        ] {
+            if destination == "About & Diagnostics" {
+                app.swipeUp()
+            }
             let row = app.staticTexts[destination].firstMatch
             assertVisibleElement(row)
             row.tap()
@@ -250,6 +273,19 @@ final class VirtualGearsUITests: XCTestCase {
                 app.navigationBars[destination].waitForExistence(timeout: 2),
                 "\(destination) screen did not open"
             )
+            if destination == "About & Diagnostics" {
+                assertVisibleElement(
+                    app.staticTexts.matching(
+                        NSPredicate(format: "label BEGINSWITH %@", "Version ")
+                    ).firstMatch
+                )
+                app.swipeUp()
+                app.swipeUp()
+                let copy = app.buttons["Copy Diagnostics"]
+                assertVisibleElement(copy)
+                copy.tap()
+                assertVisibleElement(app.staticTexts["Diagnostics copied"])
+            }
             app.navigationBars.buttons.firstMatch.tap()
         }
     }
@@ -410,6 +446,35 @@ final class VirtualGearsUITests: XCTestCase {
             fixture, "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
+    }
+
+    private func assertPrimaryActionKeepsPosition(
+        waitingFixture: String,
+        readyFixture: String
+    ) {
+        launch(waitingFixture)
+        let waiting = app.buttons["Waiting for trainer"]
+        XCTAssertTrue(waiting.waitForExistence(timeout: 3))
+        let waitingFrame = waiting.frame
+        app.terminate()
+
+        launch(readyFixture)
+        let ready = app.buttons["Start Shifting"]
+        XCTAssertTrue(ready.waitForExistence(timeout: 3))
+        let readyFrame = ready.frame
+
+        XCTAssertEqual(
+            waitingFrame.midY,
+            readyFrame.midY,
+            accuracy: 1,
+            "The primary action moved when the trainer became ready"
+        )
+        XCTAssertEqual(
+            waitingFrame.height,
+            readyFrame.height,
+            accuracy: 1,
+            "The primary action changed height when the trainer became ready"
+        )
     }
 
     func testTheChainReminderNeverAppearsOrDisappearsAcrossStartupStates() {

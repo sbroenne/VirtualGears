@@ -95,7 +95,9 @@ struct VirtualGearsApp: App {
 #if DEBUG
 enum ScreenshotFixture: String {
     case starting = "-shotStarting"
+    case startingAccessibility = "-shotStartingAccessibility"
     case ready = "-shotReady"
+    case readyAccessibility = "-shotReadyAccessibility"
     case failed = "-shotFailed"
     case ride = "-shotRide"
     case rideAccessibility = "-shotRideAccessibility"
@@ -138,7 +140,8 @@ private struct ScreenshotFixtureView: View {
     var body: some View {
         Group {
             switch scenario {
-            case .starting, .ready, .failed:
+            case .starting, .startingAccessibility, .ready,
+                 .readyAccessibility, .failed:
                 StartupView(
                     store: store,
                     kickr: kickr,
@@ -164,6 +167,7 @@ private struct ScreenshotFixtureView: View {
                         kickr: kickr,
                         click: click,
                         headwind: headwind,
+                        coordinator: coordinator,
                         autoConnectsOnAppear: false
                     )
                 }
@@ -180,7 +184,10 @@ private struct ScreenshotFixtureView: View {
             }
         }
         .dynamicTypeSize(
-            scenario == .rideAccessibility ? .accessibility5 : .large
+            scenario == .rideAccessibility
+                || scenario == .startingAccessibility
+                || scenario == .readyAccessibility
+                ? .accessibility5 : .large
         )
         .task {
             stage()
@@ -209,7 +216,7 @@ private struct ScreenshotFixtureView: View {
 
         kickr.stageScreenshot(
             name: configuration.kickrName,
-            state: scenario == .starting
+            state: scenario == .starting || scenario == .startingAccessibility
                 ? .connecting(name: configuration.kickrName) : .ready
         )
         click.stageScreenshot(name: configuration.clickName, batteryLevel: 82)
@@ -224,7 +231,8 @@ private struct ScreenshotFixtureView: View {
             click.stageScreenshotPressedButton(.plus)
         }
 
-        if scenario == .ready || scenario == .rideWaiting {
+        if scenario == .ready || scenario == .readyAccessibility
+            || scenario == .rideWaiting {
             (coordinator.peripheral as? FTMSPeripheral)?
                 .stageScreenshotAdvertising()
         } else if isRideScenario {

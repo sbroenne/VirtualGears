@@ -65,11 +65,13 @@ final class HeadwindCentralService: NSObject {
     private var deferredAction: DeferredAction?
     private var scansAfterDisconnect = false
     private var hasReceivedInitialState = false
+    private var hasAuthoritativeStateForConnection = false
     private var isIgnoringConflictingHeadwindState = false
     /// Whether a ride is what is asking for the fan. Connecting on its own is
     /// not, so the saved preference stays on the shelf until a ride starts.
     private var isDrivingTheFan = false
     private var hasStoredControlPreference: Bool
+    private var controlLifecycle = HeadwindControlLifecycle()
 
     private(set) var connectionIsStalled = false
 
@@ -97,13 +99,7 @@ final class HeadwindCentralService: NSObject {
     func startScanning() {
         guard !isSuspendedForDemo else { return }
         if hasSavedDevice {
-            guard isReady else {
-                deferredAction = .scan
-                commandError = nil
-                resumeSavedConnection()
-                return
-            }
-            restoreSensors(then: .scan)
+            restoreState(then: .scan)
             return
         }
         scanWhenPoweredOn = true
@@ -239,13 +235,7 @@ final class HeadwindCentralService: NSObject {
     /// Removing a connected fan is a state change, not just forgetting an ID.
     /// Manual mode survives disconnect, so sensor control must be confirmed first.
     func stopUsing() {
-        guard isReady else {
-            commandError =
-                "Reconnect the Headwind so Virtual Gears can return it to Sensors."
-            autoConnectSavedDevice()
-            return
-        }
-        restoreSensors(then: .remove)
+        restoreState(then: .remove)
     }
 
     /// Stops Bluetooth activity for Demo Mode without changing the remembered
@@ -298,6 +288,28 @@ final class HeadwindCentralService: NSObject {
         enqueue(.setMode(lastSensorMode))
     }
 
+    private func restoreState(then action: DeferredAction) {
+        deferredAction = action
+        commandError = nil
+        speedDebounceTask?.cancel()
+        commandQueue.removeAll()
+        if controlLifecycle.beginRestoration() != nil {
+            if isReady {
+                reconcileRestoration()
+            } else {
+                resumeSavedConnection()
+            }
+            return
+        }
+        requestedManual = false
+        persistControlPreference()
+        guard isReady else {
+            resumeSavedConnection()
+            return
+        }
+        restoreSensors(then: action)
+    }
+
     private func enqueue(
         _ command: HeadwindCommand,
         replacingSpeed: Bool = false
@@ -347,6 +359,8 @@ final class HeadwindCentralService: NSObject {
             case let .state(newMode, speed):
                 let isInitial = !hasReceivedInitialState
                 if !isInitial, hasStoredControlPreference,
+                   !controlLifecycle.isAwaitingBaseline,
+                   controlLifecycle.restorationTarget == nil,
                    (newMode == .manual) != requestedManual {
                     // A Headwind reports its state about once a second, so a
                     // disagreement that lasts logs forever and buries every
@@ -363,9 +377,20 @@ final class HeadwindCentralService: NSObject {
                 }
                 isIgnoringConflictingHeadwindState = false
                 apply(mode: newMode, speed: speed)
+                hasAuthoritativeStateForConnection = true
+                let observed = HeadwindState(mode: newMode, manualSpeed: speed)
                 if isInitial {
                     hasReceivedInitialState = true
                     state = .ready
+                }
+                if controlLifecycle.observeAuthoritative(
+                    observed,
+                    hasUnsettledCommand: pendingCommand != nil
+                ) {
+                    reconcileControlPreference()
+                } else if controlLifecycle.restorationTarget != nil {
+                    reconcileRestoration()
+                } else if isInitial {
                     reconcileControlPreference()
                 }
             case let .modeAcknowledged(newMode, succeeded):
@@ -407,6 +432,7 @@ final class HeadwindCentralService: NSObject {
         speed: Int
     ) {
         mode = newMode
+        manualSpeed = min(100, max(0, speed))
         let adoptsExistingState = !hasStoredControlPreference
         if adoptsExistingState {
             requestedManual = newMode == .manual
@@ -414,7 +440,6 @@ final class HeadwindCentralService: NSObject {
             persistControlPreference()
         }
         if newMode == .manual {
-            manualSpeed = min(100, max(0, speed))
             if adoptsExistingState, defaults.object(forKey: speedKey) == nil {
                 desiredManualSpeed = manualSpeed
                 defaults.set(manualSpeed, forKey: speedKey)
@@ -429,7 +454,21 @@ final class HeadwindCentralService: NSObject {
     /// when the fan connects: simply opening the app must never spin a fan up.
     func applySavedControlPreference() {
         isDrivingTheFan = true
-        guard isReady else { return }
+        switch controlLifecycle.phase {
+        case .controlling:
+            if pendingCommand == nil { reconcileControlPreference() }
+            return
+        case .awaitingBaseline:
+            return
+        case .idle, .restoring:
+            break
+        }
+        commandQueue.removeAll()
+        let mayApply = controlLifecycle.begin(
+            observedState: isReady ? observedState : nil,
+            hasUnsettledCommand: pendingCommand != nil
+        )
+        guard mayApply else { return }
         reconcileControlPreference()
     }
 
@@ -437,9 +476,16 @@ final class HeadwindCentralService: NSObject {
     /// connection again rather than a reason to start blowing.
     func releaseFanControl() {
         isDrivingTheFan = false
+        guard controlLifecycle.restorationTarget == nil else { return }
+        speedDebounceTask?.cancel()
+        commandQueue.removeAll()
+        guard controlLifecycle.beginRestoration() != nil else { return }
+        reconcileRestoration()
     }
 
     private func reconcileControlPreference() {
+        guard controlLifecycle.restorationTarget == nil,
+              !controlLifecycle.isAwaitingBaseline else { return }
         let commands = HeadwindControlPolicy.commands(
             for: HeadwindSituation(
                 weAreDrivingTheFan: isDrivingTheFan,
@@ -465,11 +511,53 @@ final class HeadwindCentralService: NSObject {
         }
     }
 
+    private var observedState: HeadwindState? {
+        guard let mode else { return nil }
+        return HeadwindState(mode: mode, manualSpeed: manualSpeed)
+    }
+
+    private func reconcileRestoration() {
+        guard let target = controlLifecycle.restorationTarget,
+              isReady, hasAuthoritativeStateForConnection,
+              var current = observedState else { return }
+        if let pendingCommand {
+            current = current.applying(pendingCommand)
+        }
+        for command in commandQueue {
+            current = current.applying(command)
+        }
+        let commands = HeadwindRestorationPolicy.commands(
+            restoring: target,
+            from: current
+        )
+        for command in commands {
+            enqueue(command)
+        }
+        finishRestorationIfComplete()
+    }
+
+    private func finishRestorationIfComplete() {
+        guard isReady, hasAuthoritativeStateForConnection,
+              pendingCommand == nil, commandQueue.isEmpty,
+              let observedState else { return }
+        if controlLifecycle.finishRestoration(ifObserved: observedState) {
+            commandError = nil
+            log("Restored Headwind state from before shifting")
+            if let deferredAction {
+                self.deferredAction = nil
+                requestedManual = false
+                persistControlPreference()
+                perform(deferredAction)
+            }
+        }
+    }
+
     private func commandConfirmed() {
         commandTimeoutTask?.cancel()
         pendingCommand = nil
         isCommandPending = false
         commandError = nil
+        finishRestorationIfComplete()
         sendNextCommand()
     }
 
@@ -478,9 +566,11 @@ final class HeadwindCentralService: NSObject {
         pendingCommand = nil
         commandQueue.removeAll()
         isCommandPending = false
-        // The action was waiting on a command that never landed. Leaving it
-        // armed would fire it against whatever the rider does next.
-        deferredAction = nil
+        if deferredAction != nil {
+            // The action was waiting on a command that never landed. Leaving it
+            // armed would fire it against whatever the rider does next.
+            deferredAction = nil
+        }
         commandError = message
         log(message, level: .error)
     }
@@ -567,6 +657,7 @@ final class HeadwindCentralService: NSObject {
         commandQueue.removeAll()
         pendingCommand = nil
         isCommandPending = false
+        controlLifecycle.deviceChanged(whileControlling: isDrivingTheFan)
         if let peripheral {
             state = .disconnecting
             central.cancelPeripheralConnection(peripheral)
@@ -582,6 +673,7 @@ final class HeadwindCentralService: NSObject {
         isCommandPending = false
         controlCharacteristic = nil
         hasReceivedInitialState = false
+        hasAuthoritativeStateForConnection = false
         if !keepingPeripheral { peripheral = nil }
     }
 
@@ -590,6 +682,7 @@ final class HeadwindCentralService: NSObject {
         case .remove:
             clearSelection()
         case .scan:
+            controlLifecycle.deviceChanged(whileControlling: isDrivingTheFan)
             desiredConnection = false
             scansAfterDisconnect = true
             guard let peripheral else {

@@ -1,6 +1,6 @@
 # Privacy Policy for Virtual Gears
 
-Last updated: 8 August 2026
+Last updated: 16 August 2026
 
 ## The short version
 
@@ -21,6 +21,12 @@ These stay on your iPhone. Deleting the app deletes them.
 Demo Mode uses a separate in-memory setup. Its simulated equipment and gear
 choices are discarded when you leave the demo and are not written over the
 equipment or gears saved for real rides.
+
+The About & Diagnostics screen reads live connection state already held by the
+app. Its report is generated on the iPhone and contains no user names, Bluetooth
+identifiers, trainer identifiers or ride logs. Nothing happens until you tap
+**Copy Diagnostics**, which places the text on the iOS clipboard for you to
+paste where you choose. Virtual Gears does not upload or send it.
 
 ## What the app does not do
 

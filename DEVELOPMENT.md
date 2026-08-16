@@ -44,7 +44,7 @@ xcodebuild test \
 ```
 
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 30 scenarios cover every primary
+the simulator has Bluetooth hardware. Its 32 scenarios cover every primary
 screen, portrait and landscape status visibility, Accessibility Dynamic Type,
 startup failure, trainer reconnect, a riding app waiting, low Click battery,
 pending shifts, accepted Click press feedback, navigation, stop confirmation and
@@ -56,12 +56,33 @@ confirmation must return to the ride, every equipment status must sit on one
 row, a low Click battery must be drawn at warning weight, the Easier/Harder
 buttons in Demo Mode must be drawn with the same distinct visual weight as the
 ride screen's (sampled by pixel colour, since button styling isn't exposed via
-the accessibility tree), and the chain-position reminder must never appear or
-disappear across startup states (it previously vanished the instant the
-trainer connected, making the button above it jump). Screenshots are
+the accessibility tree), the chain-position reminder must never appear or
+disappear across startup states, and the primary action must retain the same
+frame when waiting becomes ready at normal and Accessibility Dynamic Type
+sizes. The reminder-only fix did not prevent the jump because the waiting and
+ready cards still had different heights. Screenshots are
 attached to every test result. Protocol
 behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
+
+### Headwind hand-back evidence, 16 August 2026
+
+Build 11 was physically reproduced leaving the Headwind at Virtual Gears'
+manual speed after **Stop Shifting**. The fan was not being stopped by the
+riding app; Virtual Gears simply relinquished its own bookkeeping without
+sending a restoring command. Restoration now uses the state notification
+observed immediately before the first shifting command and retains it until the
+fan acknowledges the complete hand-back. Hardware-independent policy and
+lifecycle tests cover Off, heart-rate sensor, speed sensor, Sleep, Manual with
+its exact prior percentage, command ordering, start-before-ready, repeated
+start/stop, failed-command retry, failed shifting-start hand-back and
+disconnect/reconnect. Replacement/removal tests require the exact Off, Sleep or
+Manual baseline to finish before the old fan's lifecycle is discarded.
+
+The same physical session found that Headwind Bluetooth commands spaced 5%
+apart produced audibly distinct speed steps. That is hardware evidence for the
+slider's granularity even though the fan's own buttons expose four presets; it
+is an audible observation, not a calibrated airflow measurement.
 
 Open the iPhone project:
 
@@ -476,11 +497,8 @@ resistance commands — it sent exactly one of those, at startup.
 
 The CPS-enabled iPhone build was then tested directly on 2026-08-16. FulGaz on
 macOS connected to Virtual Gears and displayed live power and cadence. FulGaz on
-Windows saw the same phone but initially failed before subscribing to any
-app-owned characteristic. The same Windows installation connected to
-CPS-enabled AppTap, and RideSim on a Mac connected to the phone, discovered FTMS
-and CPS, exchanged control commands, received ride data, disconnected and
-reconnected with all 15 checks passing.
+Windows saw the same phone but failed before subscribing to any app-owned
+characteristic. The same Windows installation connected to CPS-enabled AppTap.
 
 [QZ (qdomyos-zwift)](https://github.com/cagnulein/qdomyos-zwift), an independent
 GPL-3.0 project, supplied the missing comparison through its publicly visible
@@ -497,10 +515,20 @@ independently and then proved with the four phone builds below:
 | FTMS only | Read + notify | Connection failed |
 | FTMS + CPS | Read + notify | Connected |
 
-The last build delivered live power and cadence. FulGaz on Windows therefore
-requires the advertised service list and readable measurement surface to agree;
-neither half fixes the connection by itself. The shipping peripheral now uses
-that proven combination, and RideSim checks both properties.
+That experiment showed one Windows connection using the full contract, but it
+did not establish reliable compatibility. With TestFlight build 1.0 (11)
+installed and verified, a fresh macOS RideSim central passes all 17 checks:
+advertised FTMS and CPS, readable and notifiable Indoor Bike Data and Cycling
+Power Measurement, control, telemetry, disconnect and reconnect. FulGaz on
+macOS works against the same build. RealVelo and MyWhoosh work on Windows.
+FulGaz on Windows remains intermittent: it can see Virtual Gears and still fail
+to connect. The shipping peripheral exposes the correct GATT contract, but that
+does not prove or fix FulGaz compatibility.
+
+The in-app About & Diagnostics screen reports this live contract and the
+existing trainer, proxy, subscriber, control and latest-event state. It reads
+the observable service state only and does not change Bluetooth behavior. Its
+copyable report omits user names, UUIDs, trainer identifiers and product logs.
 
 iOS also changes peripheral advertising when the phone locks. The app therefore
 keeps the screen awake from the moment the trainer proxy is made available, not

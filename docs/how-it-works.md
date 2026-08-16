@@ -17,6 +17,12 @@ adds the gears; **Stop Shifting** removes the virtual gear and restores the
 normal wheel circumference. Neither button starts or stops the ride in the
 riding app, and stopping shifting leaves that app connected.
 
+If Virtual Gears changed an optional Headwind while shifting, **Stop Shifting**
+also restores the fan state observed immediately before control began. Off,
+heart-rate sensor, speed sensor, Sleep and Manual with its previous percentage
+are restored exactly. This is a fan hand-back, not a signal that the riding
+app's ride has ended.
+
 The iPhone screen stays awake for as long as this trainer proxy is available.
 iOS changes Bluetooth advertising after the phone locks, which can make a
 waiting trainer disappear from riding apps on Windows and other computers.

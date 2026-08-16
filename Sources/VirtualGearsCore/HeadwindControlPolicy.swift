@@ -69,3 +69,145 @@ public enum HeadwindControlPolicy {
         return commands
     }
 }
+
+/// One authoritative state report from a Headwind. The manual speed remains
+/// meaningful outside manual mode because the fan remembers it for the next
+/// time manual mode is selected.
+public struct HeadwindState: Equatable, Sendable {
+    public var mode: HeadwindMode
+    public var manualSpeed: Int
+
+    public init(mode: HeadwindMode, manualSpeed: Int) {
+        self.mode = mode
+        self.manualSpeed = min(100, max(0, manualSpeed))
+    }
+
+    public func applying(_ command: HeadwindCommand) -> Self {
+        switch command {
+        case let .setMode(mode):
+            return .init(mode: mode, manualSpeed: manualSpeed)
+        case let .setManualSpeed(speed):
+            return .init(mode: .manual, manualSpeed: speed)
+        }
+    }
+
+    public func matches(_ other: Self) -> Bool {
+        mode == other.mode && manualSpeed == other.manualSpeed
+    }
+}
+
+/// Plans the shortest ordered command sequence that restores an exact state.
+public enum HeadwindRestorationPolicy {
+    public static func commands(
+        restoring target: HeadwindState,
+        from current: HeadwindState
+    ) -> [HeadwindCommand] {
+        guard !current.matches(target) else { return [] }
+        var commands: [HeadwindCommand] = []
+        if current.manualSpeed != target.manualSpeed {
+            if current.mode != .manual {
+                commands.append(.setMode(.manual))
+            }
+            commands.append(.setManualSpeed(target.manualSpeed))
+        }
+        let projectedMode = commands.isEmpty ? current.mode : .manual
+        if projectedMode != target.mode {
+            commands.append(.setMode(target.mode))
+        }
+        return commands
+    }
+}
+
+public enum HeadwindShiftingPolicy {
+    public static func shouldReleaseControl(after failure: ShiftingFailure?) -> Bool {
+        guard let failure else { return false }
+        return !failure.happenedWhileStopping
+    }
+}
+
+/// Owns the pre-control snapshot for exactly one shifting lifecycle.
+public struct HeadwindControlLifecycle: Equatable, Sendable {
+    public enum Phase: Equatable, Sendable {
+        case idle
+        case awaitingBaseline
+        case controlling(HeadwindState)
+        case restoring(HeadwindState)
+    }
+
+    public private(set) var phase: Phase = .idle
+
+    public init() {}
+
+    public var isAwaitingBaseline: Bool {
+        phase == .awaitingBaseline
+    }
+
+    public var restorationTarget: HeadwindState? {
+        guard case let .restoring(state) = phase else { return nil }
+        return state
+    }
+
+    /// Returns true when control may be applied immediately. Repeated starts do
+    /// not replace the original baseline.
+    @discardableResult
+    public mutating func begin(
+        observedState: HeadwindState?,
+        hasUnsettledCommand: Bool
+    ) -> Bool {
+        switch phase {
+        case .controlling, .awaitingBaseline:
+            return false
+        case .idle, .restoring:
+            guard !hasUnsettledCommand, let observedState else {
+                phase = .awaitingBaseline
+                return false
+            }
+            phase = .controlling(observedState)
+            return true
+        }
+    }
+
+    /// Captures only an authoritative state notification, never a requested or
+    /// projected state.
+    @discardableResult
+    public mutating func observeAuthoritative(
+        _ state: HeadwindState,
+        hasUnsettledCommand: Bool = false
+    ) -> Bool {
+        guard phase == .awaitingBaseline, !hasUnsettledCommand else {
+            return false
+        }
+        phase = .controlling(state)
+        return true
+    }
+
+    @discardableResult
+    public mutating func beginRestoration() -> HeadwindState? {
+        switch phase {
+        case .idle:
+            return nil
+        case .awaitingBaseline:
+            phase = .idle
+            return nil
+        case let .controlling(state):
+            phase = .restoring(state)
+            return state
+        case let .restoring(state):
+            return state
+        }
+    }
+
+    @discardableResult
+    public mutating func finishRestoration(ifObserved state: HeadwindState) -> Bool {
+        guard case let .restoring(target) = phase, state.matches(target) else {
+            return false
+        }
+        phase = .idle
+        return true
+    }
+
+    /// A replacement fan needs its own baseline, not the removed fan's state.
+    public mutating func deviceChanged(whileControlling: Bool) {
+        phase = whileControlling ? .awaitingBaseline : .idle
+    }
+}

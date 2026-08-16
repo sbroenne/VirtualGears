@@ -43,8 +43,10 @@ direct-drive KICKR models are expected to work but have not yet been physically
 tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
 supported.
 
-On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
-on Windows, have been ridden end to end. Other FTMS riding apps are expected to
+On the riding-app side, FulGaz on macOS and RealVelo and MyWhoosh on Windows
+have been ridden end to end. FulGaz on Windows intermittently sees Virtual
+Gears but still fails to connect, despite the same build passing the complete
+FTMS and Cycling Power contract check. Other FTMS riding apps are expected to
 work but have not been tested.
 
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
@@ -93,9 +95,13 @@ with physical hardware.
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.
 - **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
+- **Careful Headwind hand-back** that restores the fan's exact pre-shifting
+  state when shifting stops, without stopping the riding app.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
 - **A Bluetooth-free Demo Mode** for exploring the app without equipment.
+- **About & Diagnostics** in Settings, with the app version, iPhone software,
+  trainer/proxy state and a user-initiated copyable report that stays on-device.
 
 ## Screenshots
 
