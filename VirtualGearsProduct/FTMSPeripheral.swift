@@ -326,10 +326,10 @@ final class FTMSPeripheral: NSObject {
 
     private func advertise() {
         // Only the fitness machine service is advertised, even though the
-        // cycling power service is published too. Two UUIDs made FulGaz fail to
-        // connect: iOS pushes the overflow into an area some riding apps cannot
-        // read, and a trainer they cannot see is no trainer at all. A riding app
-        // discovers the power service after connecting regardless.
+        // cycling power service is published too. FTMS is how riding apps find
+        // a trainer; they discover Cycling Power from the GATT table after
+        // connecting. Keeping the scan packet focused on FTMS also avoids
+        // depending on whether a riding app reads iOS's scan-response overflow.
         manager.startAdvertising([
             CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
             CBAdvertisementDataLocalNameKey: "Virtual Gears",
