@@ -272,7 +272,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (8). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (11). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -308,13 +308,21 @@ Every change in build 10 was made against the simulator. The gear rail, shift
 button weighting, one-row status footer and battery warning have not yet been
 checked on a physical KICKR while riding.
 
-Build 10 was ridden on a physical KICKR and surfaced two bugs, both fixed for
-build 11: the chain-position reminder was omitted from the "ready to start
-shifting" state, so it vanished the instant the trainer connected and made the
-Start Shifting button jump upward; it is now shown in a fixed position across
-every startup state. Demo Mode's shift buttons never received the
-easier/harder weight differentiation added in build 10, so they still looked
-like two equally prominent buttons; they now match the ride screen's styling.
+Build 1.0 (11) was uploaded to TestFlight on 16 August 2026. It fixes the two
+problems found while riding build 10: the chain-position reminder now stays in a
+fixed position across every startup state, and Demo Mode's shift buttons use the
+same easier/harder weighting as the real controls.
+
+Build 11 also separates the transparent trainer proxy from virtual shifting.
+Virtual Gears appears as a trainer as soon as the KICKR is ready; **Start
+Shifting** applies the gears and **Stop Shifting** removes them without ending
+the riding app's ride. A saved normal wheel circumference supplies the fallback
+when the riding app sends none. Cycling Power Service adds the power and cadence
+path MyWhoosh actually reads. FulGaz on Windows is supported by the
+hardware-proven combination of advertising FTMS and Cycling Power together and
+making both live measurements readable and notifiable. The iPhone stays awake
+while the trainer proxy is available so computer riding apps can discover it
+before connecting.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
