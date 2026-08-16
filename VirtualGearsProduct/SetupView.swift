@@ -297,7 +297,8 @@ struct SetupView: View {
                             [[UTType.plainText.identifier: report]],
                             options: [
                                 .localOnly: true,
-                                .expirationDate: Date().addingTimeInterval(600),
+                                .expirationDate:
+                                    DiagnosticsReport.clipboardExpiration(after: Date()),
                             ]
                         )
                         showsCopiedConfirmation = true

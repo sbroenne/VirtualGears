@@ -77,7 +77,7 @@ public struct DiagnosticsState: Equatable {
     }
 
     public var trainerSummary: String {
-        switch trainerConnection {
+        let summary = switch trainerConnection {
         case .ready:
             "Connected and ready"
         case .disconnected:
@@ -95,6 +95,7 @@ public struct DiagnosticsState: Equatable {
         case let .unavailable(reason), let .failed(reason):
             reason
         }
+        return DiagnosticsReport.redactingIdentifiers(in: summary)
     }
 
     public var advertisingSummary: String {
@@ -116,11 +117,15 @@ public struct DiagnosticsState: Equatable {
     }
 
     public var latestEventSummary: String {
-        latestPeripheralEvent?.diagnosticsDescription ?? "No peripheral event yet"
+        DiagnosticsReport.redactingIdentifiers(
+            in: latestPeripheralEvent?.diagnosticsDescription
+                ?? "No peripheral event yet"
+        )
     }
 }
 
 public enum DiagnosticsReport {
+    public static let clipboardLifetime: TimeInterval = 10 * 60
     public static let serviceContract =
         "FTMS 0x1826 + CPS 0x1818; Indoor Bike Data and Cycling Power "
             + "Measurement are readable and notifiable"
@@ -132,7 +137,7 @@ public enum DiagnosticsReport {
         device: String,
         state: DiagnosticsState
     ) -> String {
-        [
+        return redactingIdentifiers(in: [
             "\(app.displayName) diagnostics",
             "Timestamp: \(timestampString(timestamp))",
             "App: \(app.versionAndBuild)",
@@ -145,7 +150,21 @@ public enum DiagnosticsReport {
             "Latest FTMS event: \(state.latestEventSummary)",
             "Bluetooth contract: \(serviceContract)",
             "Privacy: Generated on-device and copied only when requested.",
-        ].joined(separator: "\n")
+        ].joined(separator: "\n"))
+    }
+
+    public static func clipboardExpiration(after date: Date) -> Date {
+        date.addingTimeInterval(clipboardLifetime)
+    }
+
+    static func redactingIdentifiers(in value: String) -> String {
+        let pattern =
+            #"\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\b"#
+        return value.replacingOccurrences(
+            of: pattern,
+            with: "[identifier removed]",
+            options: .regularExpression
+        )
     }
 
     private static func timestampString(_ date: Date) -> String {
