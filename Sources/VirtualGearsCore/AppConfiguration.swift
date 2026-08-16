@@ -15,6 +15,9 @@ public struct AppConfiguration: Codable, Equatable {
     /// The gears Zwift and Wahoo hand out when the bike has none of its own.
     /// It is the starting point because it needs no knowledge of the bike.
     public var usesVirtualGears = true
+    /// Nil in configurations saved before this setting existed. The computed
+    /// value below turns that into the long-standing 2070 mm default.
+    public private(set) var normalWheelCircumferenceMillimeters: Int?
 
     /// There is nothing to complete. A trainer worth remembering and gears the
     /// trainer can copy are all a ride needs, so being set up is simply being
@@ -22,7 +25,27 @@ public struct AppConfiguration: Codable, Equatable {
     public var setupComplete: Bool { canFinishSetup }
 
     public var neutralCircumferenceMillimeters: Int {
-        Int(TrainerSafety.referenceCircumferenceMillimeters)
+        guard let normalWheelCircumferenceMillimeters,
+              TrainerSafety.supportedRidingAppCircumferenceMillimeters.contains(
+                Double(normalWheelCircumferenceMillimeters)
+              )
+        else {
+            return Int(TrainerSafety.referenceCircumferenceMillimeters)
+        }
+        return normalWheelCircumferenceMillimeters
+    }
+
+    /// Saves the wheel size to use when the riding app has not supplied one.
+    /// Invalid values are refused rather than silently changed.
+    @discardableResult
+    public mutating func setNormalWheelCircumference(
+        millimeters: Int
+    ) -> Bool {
+        guard TrainerSafety.supportedRidingAppCircumferenceMillimeters.contains(
+            Double(millimeters)
+        ) else { return false }
+        normalWheelCircumferenceMillimeters = millimeters
+        return true
     }
 
     public var chainring: ChainringOption {

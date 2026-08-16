@@ -162,7 +162,16 @@ public struct DeviceDiscoveryState: Equatable, Sendable {
 }
 
 public enum DeviceDiscoveryPolicy {
-    public static let searchDuration = Duration.seconds(3)
+    /// How long a one-shot search waits before deciding what it found.
+    ///
+    /// Three seconds was too short to be honest. A Zwift Click and a HEADWIND
+    /// both sleep and only advertise for a moment after they are woken, so a
+    /// three-second look usually ended before the device had said anything, and
+    /// the rider was told nothing was there while holding a device that was.
+    public static let searchDuration = Duration.seconds(8)
+
+    /// How often a search that keeps looking checks what has turned up.
+    public static let pollInterval = Duration.milliseconds(500)
 }
 
 /// Both devices go to sleep on their own, and CoreBluetooth waits for them

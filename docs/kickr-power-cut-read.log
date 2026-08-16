@@ -1,0 +1,24 @@
+Looking for a KICKR. Wake it, and close the phone app first.
+Found Wahoo KICKR 2A93 at -61 dBm. Connecting.
+Found the standard control channel.
+Found the status channel.
+Found the speed channel.
+Found the Wahoo gear channel.
+Connected and listening.
+Trainer handed over control.
+Asked the trainer for no resistance, so it turns easily.
+
+Now turn the pedals by hand and keep them going. It should be light.
+Stop straight away if it is not. Waiting for movement.
+Movement detected at 10.9 km/h.
+Wheel size set to the known 2070 mm. Keep spinning.
+
+== What wheel size was the trainer using? ==
+Speed went from 19.2 to 13.4 km/h the moment the wheel size changed.
+So it had been using roughly 2967 mm.
+That is clearly not the default, so the trainer kept the odd size across the power cut. Putting the wheel size right after a crash genuinely matters: nothing else will.
+The trainer is now on 2070 mm, which is where it should be.
+You can stop turning the pedals.
+
+Done. Full log in /tmp/kickr-probe.log
+kickr-probe finished.

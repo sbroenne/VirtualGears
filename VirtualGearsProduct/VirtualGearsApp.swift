@@ -80,6 +80,7 @@ struct VirtualGearsApp: App {
             guard phase == .active, !isDemoMode,
                   !coordinator.isShiftingPresented else { return }
             kickr.autoConnectSavedDevice()
+            coordinator.makeTrainerProxyAvailable()
             if configurationStore.configuration.usesClick {
                 click.autoConnectSavedDevice()
             }

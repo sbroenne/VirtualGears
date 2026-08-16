@@ -26,9 +26,9 @@ Most problems have a known answer already:
 - **Your trainer is not a KICKR V5.** Check
   [which trainers work](requirements.md#which-trainers-work) first. Several
   models cannot work at all, and the page says which.
-- **Gears feel wrong after using the app.** Virtual Gears leaves the trainer's
-  wheel circumference at 2070 mm. If you had set a custom value in the Wahoo
-  app, set it again there. See
+- **Gears feel wrong after using the app.** Set **Normal wheel circumference**
+  in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
+  Gears uses 2070 mm by default. See
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
 
 ## What to include in a bug report

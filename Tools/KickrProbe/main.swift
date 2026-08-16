@@ -47,9 +47,17 @@ enum ProbeMode {
     case sweep(millimeters: [Double])
     /// Work out the wheel size the trainer is currently using.
     case read
+    /// Find out whether a riding app's standard FTMS reset wipes the wheel size
+    /// the gears are riding on. RealVelo sends one a second and a half after it
+    /// connects, which lands while gears are already set up, so the answer
+    /// decides whether the app must stop passing resets straight through.
+    case resetTest
     /// Ask the trainer what it claims to support, and find out whether it
     /// accepts the *standard* wheel-size command as well as Wahoo's own.
     case features
+    /// Print everything the trainer offers, service by service, so what a real
+    /// trainer looks like can be held up against what Virtual Gears publishes.
+    case tree
 }
 
 let mode: ProbeMode = {
@@ -69,8 +77,12 @@ let mode: ProbeMode = {
         )
     case "read":
         return .read
+    case "reset-test":
+        return .resetTest
     case "features":
         return .features
+    case "tree":
+        return .tree
     default:
         return .measure
     }
@@ -87,6 +99,8 @@ final class KickrProbe: NSObject {
     private var central: CBCentralManager!
     private var kickr: CBPeripheral? { finder.peripheral }
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
+    /// Service UUID to the characteristics under it, for `tree` mode.
+    private var treeFindings: [String: [String]] = [:]
     private var subscribed = Set<CBUUID>()
     private var hasStarted = false
     private var ignored = Set<String>()
@@ -105,7 +119,10 @@ final class KickrProbe: NSObject {
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
 
     private lazy var finder = PeripheralFinder(
-        scanServices: [ftmsService], discoveryServices: [ftmsService, powerService],
+        scanServices: [ftmsService],
+        // Everything, in tree mode: the point is to see what is there.
+        discoveryServices: { if case .tree = mode { return nil }
+            return [ftmsService, powerService] }(),
         say: say,
         matches: { [weak self] discovery in
             let name = discovery.peripheralName ?? ""
@@ -152,6 +169,14 @@ final class KickrProbe: NSObject {
     // MARK: - The experiment
 
     private func run() async {
+        // Listing what the trainer offers needs no control of it, and in this
+        // mode the probe never subscribes, so asking would only time out.
+        if case .tree = mode {
+            reportTree()
+            say("\nDone. Full log in \(logPath)")
+            finish(0)
+            return
+        }
         do {
             _ = try await sendFTMS(.requestControl)
             say("Trainer handed over control.")
@@ -167,18 +192,103 @@ final class KickrProbe: NSObject {
                 try await sweepWheelSizes(millimeters)
             case .read:
                 try await readWheelSize()
+            case .resetTest:
+                try await runResetTest()
             case .features:
                 try await surveyFeatures()
+            case .tree:
+                break
             }
         } catch {
             say("\nThe probe stopped early: \(error)")
             if case .read = mode {} else if case .set = mode {}
-            else if case .features = mode {} else {
+            else if case .features = mode {} else if case .tree = mode {}
+            else {
                 await restoreNeutral()
             }
         }
         say("\nDone. Full log in \(logPath)")
         finish(0)
+    }
+
+    /// Everything the trainer offers, to hold against what Virtual Gears
+    /// publishes to a riding app.
+    private func reportTree() {
+        say("")
+        say("=== What the trainer offers ===")
+        for service in treeFindings.keys.sorted() {
+            say("")
+            say("Service \(service)")
+            for line in treeFindings[service]!.sorted() {
+                say("  \(line)")
+            }
+        }
+        say("")
+        say("Virtual Gears publishes 1826 and 1818, plus what iOS adds itself.")
+    }
+
+    /// Sets a wheel size no trainer uses by default, sends the standard FTMS
+    /// reset a riding app sends, and then works out what the trainer is
+    /// actually riding on afterwards.
+    private func runResetTest() async throws {
+        let marker = 4000.0
+        say("\n== Does a riding app's reset wipe the gears? ==")
+        let command = try WahooKickrCommand.setWheelCircumference(
+            millimeters: marker
+        )
+        let raw = try await sendWahoo(command)
+        guard try WahooKickrResponse.decode(raw).confirmsSuccess(for: command)
+        else {
+            say("The trainer refused \(Int(marker)) mm, so there is nothing to test.")
+            return
+        }
+        say("Wheel size set to \(Int(marker)) mm, which is nothing like any default.")
+
+        do {
+            _ = try await sendFTMS(.reset)
+            say("Sent the standard FTMS reset, and the trainer accepted it.")
+        } catch {
+            say("The trainer refused the reset: \(error)")
+            say("That alone would answer the question, but the read below still runs.")
+        }
+
+        // A reset drops control by the FTMS rules, and the read needs control
+        // to ask for no resistance. Asking again here is exactly what a riding
+        // app does, so a refusal is itself worth knowing about.
+        // Listing what the trainer offers needs no control of it, and in this
+        // mode the probe never subscribes, so asking would only time out.
+        if case .tree = mode {
+            reportTree()
+            say("\nDone. Full log in \(logPath)")
+            finish(0)
+            return
+        }
+        do {
+            _ = try await sendFTMS(.requestControl)
+            say("Control was handed back after the reset.")
+        } catch {
+            say("The trainer would not hand control back after the reset: \(error)")
+        }
+
+        // A reset leaves the machine idle, and an idle KICKR stops reporting
+        // speed. RealVelo sends start straight after its own reset, so doing
+        // the same here both matches a real ride and gets the data flowing.
+        do {
+            _ = try await sendFTMS(.startOrResume)
+            say("Sent start, the same as a riding app does after its reset.")
+        } catch {
+            say("The trainer would not start after the reset: \(error)")
+        }
+
+        try await readWheelSize(
+            keptMessage: "That is still the odd size, so the reset did NOT touch the "
+                + "wheel size. Passing a riding app's reset through to the "
+                + "trainer does not break the gears.",
+            lostMessage: "That is back to the default, so the reset DID wipe the wheel "
+                + "size. A riding app connecting mid-session silently undoes "
+                + "the current gear, and the app must stop passing resets "
+                + "through while it is shifting."
+        )
     }
 
     /// Deliberately leaves the trainer on an unusual wheel size, so that after
@@ -215,7 +325,15 @@ final class KickrProbe: NSObject {
     /// to a known value mid-spin and reads the jump in speed. Speed is
     /// proportional to wheel size, so the size before the change is the known
     /// size multiplied by how much the speed fell.
-    private func readWheelSize() async throws {
+    private func readWheelSize(
+        keptMessage: String = "That is clearly not the default, so the trainer kept the odd "
+            + "size across the power cut. Putting the wheel size right "
+            + "after a crash genuinely matters: nothing else will.",
+        lostMessage: String = "That is about the same as the known size, so the trainer did "
+            + "not keep the odd size across the power cut. Putting the "
+            + "wheel size right after a crash matters less than feared, "
+            + "though it still matters while the trainer stays on."
+    ) async throws {
         guard let kickr, let data = characteristics[bikeDataUUID] else {
             throw ProbeError.notReady
         }
@@ -232,8 +350,12 @@ final class KickrProbe: NSObject {
         say(
             """
 
-            Now turn the pedals by hand and keep them going. It should be light.
-            Stop straight away if it is not. Waiting for movement.
+            Now turn the pedals by hand and keep them going.
+
+            It will take some effort even with no resistance: a direct-drive
+            flywheel is heavy, and that is normal. What is not normal is the
+            trainer pushing back harder the faster you go. Stop if that happens.
+            Waiting for movement.
             """
         )
         try await waitForMovement()
@@ -250,26 +372,31 @@ final class KickrProbe: NSObject {
             before: before,
             after: after,
             changedAt: changedAt,
-            known: known
+            known: known,
+            keptMessage: keptMessage,
+            lostMessage: lostMessage
         )
     }
 
+    /// Waits for the pedals to turn for as long as it takes. The person doing
+    /// this has to walk to the bike, so a deadline only makes them race the
+    /// tool; the trainer is happy to sit connected in the meantime.
     private func waitForMovement() async throws {
         var reported = 0
-        for tick in 0..<240 {
+        for tick in 0..<1800 {
             if let latest = speedSamples.last?.kilometersPerHour, latest > 1 {
                 say("Movement detected at \(String(format: "%.1f", latest)) km/h.")
                 return
             }
-            if tick % 10 == 9, speedSamples.count != reported {
+            if tick % 40 == 39, speedSamples.count != reported {
                 reported = speedSamples.count
                 let latest = speedSamples.last?.kilometersPerHour ?? 0
                 say(
-                    "Still waiting. \(reported) speed readings so far, "
-                        + "latest \(String(format: "%.1f", latest)) km/h."
+                    "Still waiting, take your time. \(reported) speed readings "
+                        + "so far, latest \(String(format: "%.1f", latest)) km/h."
                 )
-            } else if tick % 10 == 9 {
-                say("Still waiting. The trainer has not reported any speed yet.")
+            } else if tick % 40 == 39 {
+                say("Still waiting, take your time. Spin whenever you are ready.")
             }
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
@@ -291,7 +418,9 @@ final class KickrProbe: NSObject {
         before: [(at: Date, kilometersPerHour: Double)],
         after: [(at: Date, kilometersPerHour: Double)],
         changedAt: Date,
-        known: Double
+        known: Double,
+        keptMessage: String,
+        lostMessage: String
     ) {
         say("\n== What wheel size was the trainer using? ==")
         // A hand spin slows down all the while, so only the samples either side
@@ -312,18 +441,9 @@ final class KickrProbe: NSObject {
         )
         say("So it had been using roughly \(Int(estimate.rounded())) mm.")
         if abs(estimate - known) < 150 {
-            say(
-                "That is about the same as the known size, so the trainer did "
-                    + "not keep the odd size across the power cut. Putting the "
-                    + "wheel size right after a crash matters less than feared, "
-                    + "though it still matters while the trainer stays on."
-            )
+            say(lostMessage)
         } else {
-            say(
-                "That is clearly not the default, so the trainer kept the odd "
-                    + "size across the power cut. Putting the wheel size right "
-                    + "after a crash genuinely matters: nothing else will."
-            )
+            say(keptMessage)
         }
         say(
             "The trainer is now on \(Int(known)) mm, which is where it should be."
@@ -748,6 +868,13 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
     ) {
         for characteristic in service.characteristics ?? [] {
             characteristics[characteristic.uuid] = characteristic
+            if case .tree = mode {
+                treeFindings[service.uuid.uuidString, default: []].append(
+                    "\(characteristic.uuid.uuidString)  "
+                        + propertyNames(characteristic.properties)
+                )
+                continue
+            }
             if [controlUUID, statusUUID, wahooUUID, bikeDataUUID]
                 .contains(characteristic.uuid) {
                 say("Found the \(label(characteristic.uuid)) channel.")
@@ -755,6 +882,21 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
             }
         }
         startWhenSettled()
+    }
+
+    /// The properties a riding app checks before it will use a channel.
+    private func propertyNames(_ properties: CBCharacteristicProperties)
+        -> String
+    {
+        var names: [String] = []
+        if properties.contains(.read) { names.append("read") }
+        if properties.contains(.write) { names.append("write") }
+        if properties.contains(.writeWithoutResponse) {
+            names.append("write without response")
+        }
+        if properties.contains(.notify) { names.append("notify") }
+        if properties.contains(.indicate) { names.append("indicate") }
+        return names.isEmpty ? "none" : names.joined(separator: ", ")
     }
 
     private func label(_ uuid: CBUUID) -> String {
@@ -770,6 +912,12 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
     /// Discovery arrives in pieces, so this waits for a quiet moment rather
     /// than guessing which channel reports itself last.
     private func startWhenSettled() {
+        // Once the experiment is under way this must not fire again. It runs
+        // inside settleTask, so cancelling that here would cancel the
+        // experiment itself — and a cancelled task's sleeps return at once,
+        // which silently collapses every wait the experiment depends on.
+        // Subscribing to the speed channel mid-run is enough to trigger it.
+        guard !hasStarted else { return }
         settleTask?.cancel()
         settleTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 1_500_000_000)

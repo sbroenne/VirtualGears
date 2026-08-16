@@ -26,10 +26,15 @@ log.clear()
 private func say(_ text: String) { log.say(text) }
 
 private let arguments = CommandLine.arguments
+/// Never "Virtual Gears" by default. The phone is usually advertising that very
+/// name a few feet away, and a riding app that picks the phone instead looks
+/// exactly like a tap that sees nothing: connected on one screen, silent on the
+/// other. Pass --name to check a riding app's behaviour against the real name,
+/// which for RealVelo changed nothing.
 private let advertisedName: String = {
     guard let index = arguments.firstIndex(of: "--name"),
         index + 1 < arguments.count
-    else { return "Virtual Gears" }
+    else { return "AppTap" }
     return arguments[index + 1]
 }()
 private let runMinutes: Int = {
@@ -43,6 +48,9 @@ private let runMinutes: Int = {
 /// give up, retry, or carry on regardless, and which of those it does decides
 /// whether refusing is a safe thing for the app to do.
 private let refuseWheelSize = arguments.contains("--refuse-wheel-size")
+private let publishPowerService = !arguments.contains("--no-power-service")
+private let advertisePowerService =
+    !arguments.contains("--advertise-ftms-only")
 
 @MainActor
 final class TrainerTap: NSObject {
@@ -59,6 +67,18 @@ final class TrainerTap: NSObject {
     )
     private let powerRangeUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
+    private let trainingStatusUUID = CBUUID(string: FTMSUUID.trainingStatus)
+
+    // The Cycling Power Service. Virtual Gears reads this from the KICKR but has
+    // never published one of its own, and MyWhoosh reads nothing from the FTMS
+    // bike data. Publishing it here is how that idea gets tested rather than
+    // written down as a guess. `--no-power-service` leaves it out again.
+    private let cyclingPowerServiceUUID = CBUUID(string: "1818")
+    private let powerMeasurementUUID = CBUUID(string: "2A63")
+    private let powerFeatureUUID = CBUUID(string: "2A65")
+    private let sensorLocationUUID = CBUUID(string: "2A5D")
+
+    private var powerMeasurementCharacteristic: CBMutableCharacteristic!
 
     private var featureCharacteristic: CBMutableCharacteristic!
     private var bikeDataCharacteristic: CBMutableCharacteristic!
@@ -66,9 +86,16 @@ final class TrainerTap: NSObject {
     private var controlCharacteristic: CBMutableCharacteristic!
     private var powerRangeCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
+    private var trainingStatusCharacteristic: CBMutableCharacteristic!
+    /// The fitness machine and, unless it is switched off, the cycling power
+    /// service.
+    private var servicesWanted = 2
+    private var servicesAdded = 0
 
     private var published = false
     private var elapsedSeconds: UInt16 = 0
+    private var rideDataSent = 0
+    private var rideDataDropped = 0
     private var dataTimer: Timer?
     /// Which characteristics each connected app is listening to. Tracked so the
     /// tool can tell that the riding app has gone away and report by itself:
@@ -90,6 +117,33 @@ final class TrainerTap: NSObject {
     private var lastStartSeconds: TimeInterval?
     private var simulationCount = 0
     private var lastSimulationReport = 0
+
+    /// Anything the riding app did that is worth knowing about afterwards.
+    ///
+    /// The tap can run for half an hour, and a single odd line in the middle of
+    /// that is easy to miss. Notable things are collected here and repeated at
+    /// the end, so the summary is the only thing anyone has to read.
+    private var oddities: [(seconds: TimeInterval, note: String)] = []
+    /// Whether the riding app has asked for control. The spec says it must
+    /// before it sends anything else.
+    private var hasControl = false
+    private var controlRequests = 0
+    /// True between a stop or pause and the next start or resume.
+    private var isPaused = false
+    private var lastWheelSizeMillimetres: Double?
+    /// Writes to anything other than the control point, which a riding app has
+    /// no reason to send.
+    private var strayWrites: [CBUUID: Int] = [:]
+
+    /// The range a wheel size has to fall in to be a real bicycle wheel. A
+    /// riding app sending something outside this is either using different
+    /// units or has a bug, and either way Virtual Gears needs to know.
+    private static let plausibleWheelSizeMillimetres = 1_000.0...3_000.0
+
+    private func noteOddity(_ note: String) {
+        oddities.append((secondsIntoRide(), note))
+        say("\(stamp())  ! \(note)")
+    }
 
     func start() {
         manager = CBPeripheralManager(delegate: self, queue: .main)
@@ -123,9 +177,9 @@ final class TrainerTap: NSObject {
         )
         bikeDataCharacteristic = CBMutableCharacteristic(
             type: bikeDataUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         controlCharacteristic = CBMutableCharacteristic(
             type: controlUUID,
@@ -140,8 +194,15 @@ final class TrainerTap: NSObject {
             permissions: []
         )
 
+        trainingStatusCharacteristic = CBMutableCharacteristic(
+            type: trainingStatusUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [
+            trainingStatusCharacteristic,
             featureCharacteristic,
             bikeDataCharacteristic,
             resistanceCharacteristic,
@@ -150,14 +211,85 @@ final class TrainerTap: NSObject {
             statusCharacteristic,
         ]
         manager.add(service)
+
+        servicesWanted = publishPowerService ? 2 : 1
+        guard publishPowerService else { return }
+        powerMeasurementCharacteristic = CBMutableCharacteristic(
+            type: powerMeasurementUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
+        // Bit 3 says crank revolution data is present, which is what a riding
+        // app needs before it will read cadence from here.
+        var featureBits = Data()
+        featureBits.append(contentsOf: [0x08, 0x00, 0x00, 0x00])
+        let powerService = CBMutableService(
+            type: cyclingPowerServiceUUID,
+            primary: true
+        )
+        powerService.characteristics = [
+            powerMeasurementCharacteristic!,
+            CBMutableCharacteristic(
+                type: powerFeatureUUID,
+                properties: [.read],
+                value: featureBits,
+                permissions: [.readable]
+            ),
+            // 12 is "rear hub", the honest answer for a trainer.
+            CBMutableCharacteristic(
+                type: sensorLocationUUID,
+                properties: [.read],
+                value: Data([12]),
+                permissions: [.readable]
+            ),
+        ]
+        manager.add(powerService)
+    }
+
+    /// A Cycling Power Measurement carrying the same 200 W and 85 rpm as the
+    /// FTMS bike data, so the two can be compared directly.
+    private func powerMeasurementBytes() -> Data {
+        var data = Data()
+        // Flags: bit 5, crank revolution data present.
+        data.append(contentsOf: [0x20, 0x00])
+        let watts = Int16(200)
+        data.append(UInt8(truncatingIfNeeded: watts))
+        data.append(UInt8(truncatingIfNeeded: watts >> 8))
+        let revolutions = UInt16(
+            truncatingIfNeeded: Int(Double(elapsedSeconds) * 85.0 / 60.0)
+        )
+        // Crank event time counts in 1024ths of a second, and one revolution at
+        // 85 rpm takes 723 of them.
+        let eventTime = UInt16(truncatingIfNeeded: Int(revolutions) &* 723)
+        data.append(UInt8(truncatingIfNeeded: revolutions))
+        data.append(UInt8(truncatingIfNeeded: revolutions >> 8))
+        data.append(UInt8(truncatingIfNeeded: eventTime))
+        data.append(UInt8(truncatingIfNeeded: eventTime >> 8))
+        return data
     }
 
     private func advertise() {
+        // The shipping app advertises both services. FulGaz on Windows requires
+        // this together with readable live measurement characteristics.
+        var services = [serviceUUID]
+        if publishPowerService && advertisePowerService {
+            services.append(cyclingPowerServiceUUID)
+        }
         manager.startAdvertising([
             CBAdvertisementDataLocalNameKey: advertisedName,
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
+            CBAdvertisementDataServiceUUIDsKey: services,
         ])
         say("Pretending to be a trainer called \"\(advertisedName)\".")
+        if publishPowerService {
+            say(
+                "Publishing a Cycling Power service as well as FTMS, and"
+                    + (advertisePowerService
+                        ? " advertising both." : " advertising FTMS only.")
+            )
+        } else {
+            say("Publishing FTMS only, with no Cycling Power service.")
+        }
         say("Pair this Mac in your riding app, then ride for a few minutes.")
         if refuseWheelSize {
             say("Wheel-size commands will be refused, to see how the app reacts.")
@@ -183,19 +315,38 @@ final class TrainerTap: NSObject {
 
     private func sendRideData() {
         elapsedSeconds &+= 1
-        let data = IndoorBikeData(
+        let data = bikeDataBytes()
+        let accepted = manager.updateValue(
+            data,
+            for: bikeDataCharacteristic,
+            onSubscribedCentrals: nil
+        )
+        if accepted { rideDataSent &+= 1 } else { rideDataDropped &+= 1 }
+        if let powerMeasurementCharacteristic {
+            _ = manager.updateValue(
+                powerMeasurementBytes(),
+                for: powerMeasurementCharacteristic,
+                onSubscribedCentrals: nil
+            )
+        }
+        // Only the first few, so a long ride does not bury the interesting part.
+        if rideDataSent + rideDataDropped <= 3 {
+            say(
+                "\(stamp())  sent 30 km/h, 85 rpm, 200 W"
+                    + (accepted ? "" : " (Bluetooth was busy, it did not go)")
+            )
+        }
+    }
+
+    private func bikeDataBytes() -> Data {
+        IndoorBikeData(
             instantaneousSpeedHundredths: 3_000,
             instantaneousCadenceHalfRPM: 170,
             resistanceLevel: nil,
             instantaneousPowerWatts: 200,
             heartRateBPM: nil,
             elapsedTimeSeconds: elapsedSeconds
-        )
-        _ = manager.updateValue(
-            data.encode(),
-            for: bikeDataCharacteristic,
-            onSubscribedCentrals: nil
-        )
+        ).encode()
     }
 
     private func secondsIntoRide() -> TimeInterval {
@@ -211,6 +362,21 @@ final class TrainerTap: NSObject {
         commandCount[request.opcode, default: 0] += 1
         let opcode = "0x" + String(format: "%02X", request.opcode)
 
+        // The spec says a riding app asks for control before it sends
+        // anything else. Plenty of them do not, and Virtual Gears has to cope
+        // either way, so it is worth knowing which ones skip it.
+        if case .requestControl = request {} else if !hasControl {
+            noteOddity(
+                "sent \(opcode) without asking for control first."
+            )
+        }
+        if isPaused, case .startOrResume = request {} else if isPaused {
+            noteOddity(
+                "sent \(opcode) after saying stop or pause, without starting "
+                    + "again first."
+            )
+        }
+
         switch request {
         case let .setWheelCircumference(tenths):
             let millimetres = Double(tenths) / 10
@@ -222,18 +388,48 @@ final class TrainerTap: NSObject {
                 "\(stamp())  \(opcode) SET WHEEL SIZE \(millimetres) mm"
                     + "   <- this is the one that matters"
             )
+            if !Self.plausibleWheelSizeMillimetres.contains(millimetres) {
+                noteOddity(
+                    "that wheel size, \(millimetres) mm, is not a bicycle "
+                        + "wheel. The app may be using different units."
+                )
+            }
+            if let previous = lastWheelSizeMillimetres, previous != millimetres {
+                noteOddity(
+                    "it changed the wheel size from \(previous) mm to "
+                        + "\(millimetres) mm. Virtual Gears has to rebuild its "
+                        + "gears around the new size."
+                )
+            }
+            lastWheelSizeMillimetres = millimetres
         case .requestControl:
+            controlRequests += 1
+            hasControl = true
             say("\(stamp())  \(opcode) request control")
+            if controlRequests > 1 {
+                noteOddity(
+                    "asked for control again, \(controlRequests) times in all. "
+                        + "A trainer that refuses a repeat request can lock the "
+                        + "riding app out for the rest of the ride."
+                )
+            }
         case .reset:
             say("\(stamp())  \(opcode) reset")
+            hasControl = false
+            noteOddity(
+                "sent a reset, which puts a trainer back to its defaults - "
+                    + "including the wheel size Virtual Gears shifts with."
+            )
         case let .setTargetResistanceLevel(value):
             say("\(stamp())  \(opcode) set resistance \(value)")
         case let .setTargetPower(watts):
             say("\(stamp())  \(opcode) set target power \(watts) W")
         case .startOrResume:
             lastStartSeconds = secondsIntoRide()
+            isPaused = false
             say("\(stamp())  \(opcode) start or resume")
         case let .stopOrPause(value):
+            isPaused = true
             say("\(stamp())  \(opcode) stop or pause \(value)")
         case .setIndoorBikeSimulationParameters:
             // These arrive several times a second on a hilly course and would
@@ -261,9 +457,16 @@ final class TrainerTap: NSObject {
         guard rideStart != nil else {
             say("No riding app ever subscribed, so nothing was learned.")
             say("Check the app was searching for a trainer while this ran.")
+            reportOddities()
             return
         }
         say(String(format: "Watched for %.0f seconds.", secondsIntoRide()))
+        say(
+            "Sent \(rideDataSent) updates of speed, cadence and power"
+                + (rideDataDropped > 0
+                    ? "; \(rideDataDropped) did not go out because Bluetooth "
+                        + "was busy." : ".")
+        )
         say("")
         for (opcode, count) in commandCount.sorted(by: { $0.key < $1.key }) {
             let name = "0x" + String(format: "%02X", opcode)
@@ -276,6 +479,7 @@ final class TrainerTap: NSObject {
                 "So the machinery for a wheel size changing mid-ride was not "
                     + "needed here."
             )
+            reportOddities()
             return
         }
         say("Wheel size was set \(wheelSizeMoments.count) time(s):")
@@ -324,6 +528,32 @@ final class TrainerTap: NSObject {
                     + "really does change the wheel size during a ride."
             )
         }
+        reportOddities()
+    }
+
+    /// Everything odd, repeated at the end so nobody has to read the whole log.
+    private func reportOddities() {
+        say("")
+        say("=== Anything unusual ===")
+        guard !oddities.isEmpty else {
+            say("Nothing unusual. It behaved the way the spec describes.")
+            return
+        }
+        for oddity in oddities {
+            say(String(format: "  at %.1fs: ", oddity.seconds) + oddity.note)
+        }
+        if !strayWrites.isEmpty {
+            say("")
+            for (uuid, count) in strayWrites.sorted(by: {
+                $0.key.uuidString < $1.key.uuidString
+            }) {
+                say("  wrote to \(uuid) \(count) time(s)")
+            }
+        }
+        if !hasControl {
+            say("")
+            say("It never successfully asked for control.")
+        }
     }
 }
 
@@ -351,6 +581,9 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
             say("Could not publish the trainer: \(error.localizedDescription)")
             finish(sentinel: "app-tap finished", code: 1, say: say)
         }
+        say("Published service \(service.uuid.uuidString).")
+        servicesAdded += 1
+        guard servicesAdded == servicesWanted else { return }
         advertise()
     }
 
@@ -366,8 +599,25 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         farewellTask?.cancel()
         farewellTask = nil
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
-        if characteristic.uuid == bikeDataUUID {
+        say("\(stamp())  listening to \(channelName(characteristic.uuid))")
+        if characteristic.uuid == bikeDataUUID
+            || characteristic.uuid == powerMeasurementUUID
+        {
             startSendingRideData()
+        }
+    }
+
+    /// Which channels a riding app listens to says as much as what it writes. An
+    /// app that never subscribes to the bike data is not reading speed, cadence
+    /// or power from this trainer at all, however connected it looks on screen.
+    private func channelName(_ uuid: CBUUID) -> String {
+        switch uuid {
+        case controlUUID: return "the control point, where commands arrive"
+        case bikeDataUUID: return "the bike data: speed, cadence and power"
+        case statusUUID: return "the status channel"
+        case powerMeasurementUUID:
+            return "the Cycling Power service   <- not FTMS"
+        default: return uuid.uuidString
         }
     }
 
@@ -402,6 +652,17 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
                 let value = request.value
             else {
                 peripheral.respond(to: request, withResult: .success)
+                // A riding app has no reason to write anywhere but the control
+                // point. Counted rather than listed, in case one of them does
+                // it constantly.
+                let uuid = request.characteristic.uuid
+                strayWrites[uuid, default: 0] += 1
+                if strayWrites[uuid] == 1 {
+                    noteOddity(
+                        "wrote to \(uuid), which is not the control point."
+                    )
+                }
+
                 continue
             }
             peripheral.respond(to: request, withResult: .success)
@@ -410,7 +671,7 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
             else {
                 let bytes = value.map { String(format: "%02X", $0) }
                     .joined(separator: " ")
-                say("        an unrecognised command arrived: \(bytes)")
+                noteOddity("sent a command nobody recognises: \(bytes)")
                 continue
             }
             record(decoded)
@@ -425,6 +686,28 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
                 onSubscribedCentrals: nil
             )
         }
+    }
+
+    func peripheralManager(
+        _ peripheral: CBPeripheralManager,
+        didReceiveRead request: CBATTRequest
+    ) {
+        let value: Data?
+        switch request.characteristic.uuid {
+        case bikeDataUUID: value = bikeDataBytes()
+        case powerMeasurementUUID: value = powerMeasurementBytes()
+        default: value = nil
+        }
+        guard let value else {
+            peripheral.respond(to: request, withResult: .readNotPermitted)
+            return
+        }
+        guard request.offset >= 0, request.offset <= value.count else {
+            peripheral.respond(to: request, withResult: .invalidOffset)
+            return
+        }
+        request.value = value.subdata(in: request.offset..<value.count)
+        peripheral.respond(to: request, withResult: .success)
     }
 }
 

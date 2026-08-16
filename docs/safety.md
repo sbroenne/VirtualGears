@@ -88,13 +88,14 @@ exactly what the safety check judged.
 ## If you set a custom wheel circumference
 
 The KICKR does not expose its current wheel circumference through FTMS, so
-Virtual Gears cannot read that setting when it connects. It starts from a
-2070 mm reference unless the riding app supplies a different wheel size.
+Virtual Gears cannot read that setting when it connects. It uses the **Normal
+wheel circumference** saved in Settings, 2070 mm by default, unless the riding
+app supplies a different wheel size.
 
-That means Virtual Gears overwrites a custom circumference set through the
-Wahoo app and cannot put that unknown value back automatically. If you use a
-custom value, write it down and set it again in the Wahoo app after using
-Virtual Gears. Most riders never change this setting.
+If you use a custom value in the Wahoo app, enter the same value in Virtual
+Gears before shifting. Values from 1800 to 2400 mm are supported. Stopping
+shifting restores that saved normal value, or the latest value supplied by the
+riding app, while keeping the riding app connected.
 
 ## What it is not
 

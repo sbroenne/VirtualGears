@@ -49,11 +49,17 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     private func makeConfiguration(
-        virtualGears: Bool = true
+        virtualGears: Bool = true,
+        normalWheelSize: Int = 2_070
     ) -> AppConfiguration {
         var configuration = AppConfiguration()
         configuration.rememberKickr(named: "KICKR", id: trainer.selectedID!)
         configuration.usesVirtualGears = virtualGears
+        XCTAssertTrue(
+            configuration.setNormalWheelCircumference(
+                millimeters: normalWheelSize
+            )
+        )
         return configuration
     }
 
@@ -84,6 +90,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         coordinator.makeTrainerProxyAvailable()
 
         XCTAssertTrue(ridingApp.isAdvertising)
+        XCTAssertTrue(screen.keepAwake)
         XCTAssertEqual(coordinator.state, .idle)
         XCTAssertNil(coordinator.displayedGear)
 
@@ -92,6 +99,62 @@ final class ProxyCoordinatorTests: XCTestCase {
     }
 
     // MARK: - What the trainer is left on
+
+    func testOpeningTheProxyAdvertisesBeforeShiftingStarts() {
+        coordinator.makeTrainerProxyAvailable()
+
+        XCTAssertTrue(ridingApp.isAdvertising)
+        XCTAssertEqual(coordinator.state, .idle)
+        XCTAssertNil(coordinator.wheelSizeGearsAreBuiltAround)
+    }
+
+    func testInterruptedGearIsResetBeforeTheProxyAdvertises() async throws {
+        defaults.set(
+            2_105.0,
+            forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+        )
+
+        coordinator.makeTrainerProxyAvailable()
+        XCTAssertFalse(ridingApp.isAdvertising)
+
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        try await settle {
+            self.trainer.currentWheelSizeMillimeters == 2_105
+                && self.ridingApp.isAdvertising
+        }
+
+        XCTAssertNil(
+            defaults.object(
+                forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+            )
+        )
+    }
+
+    func testConfiguredNormalWheelSizeIsUsedWhenTheRidingAppSendsNone()
+        async throws
+    {
+        coordinator.startShifting(
+            configuration: makeConfiguration(normalWheelSize: 2_105)
+        )
+        try await settle { self.coordinator.state == .active }
+
+        await coordinator.stopShifting()
+
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
+    }
+
+    func testChangingTheNormalWheelSizeAffectsTheNextStart() async throws {
+        try await startShifting()
+        await coordinator.stopShifting()
+
+        coordinator.startShifting(
+            configuration: makeConfiguration(normalWheelSize: 2_105)
+        )
+        try await settle { self.coordinator.state == .active }
+        await coordinator.stopShifting()
+
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
+    }
 
     func testStoppingPutsTheTrainerBackOnTheSizeItStartedWith() async throws {
         try await startShifting()
@@ -415,12 +478,14 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertTrue(ridingApp.isAdvertising)
     }
 
-    func testTheScreenIsKeptAwakeWhileRidingAndReleasedAfterwards() async throws {
+    func testTheScreenStaysAwakeWhileTheTrainerProxyIsAvailable() async throws {
         try await startShifting()
         XCTAssertTrue(screen.keepAwake)
 
         await coordinator.stopShifting()
+        XCTAssertTrue(screen.keepAwake)
 
+        await coordinator.shutdown()
         XCTAssertFalse(screen.keepAwake)
     }
 
@@ -634,14 +699,15 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertTrue(shifter.didDisconnect)
     }
 
-    func testFullShutdownDisconnectsOwnedEquipmentButNotTheRidingApp() async throws {
+    func testFullShutdownRemovesTheUnavailableTrainerProxy() async throws {
         try await startShifting()
 
         await coordinator.shutdown()
 
-        XCTAssertTrue(ridingApp.isAdvertising)
-        XCTAssertTrue(ridingApp.acceptingCommands)
-        XCTAssertEqual(ridingApp.advertisingStopCount, 0)
+        XCTAssertFalse(ridingApp.isAdvertising)
+        XCTAssertFalse(ridingApp.acceptingCommands)
+        XCTAssertFalse(screen.keepAwake)
+        XCTAssertEqual(ridingApp.advertisingStopCount, 1)
         XCTAssertTrue(trainer.didDisconnect)
         XCTAssertTrue(shifter.didDisconnect)
     }

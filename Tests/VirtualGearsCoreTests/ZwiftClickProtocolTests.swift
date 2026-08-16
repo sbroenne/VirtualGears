@@ -29,6 +29,9 @@ final class ZwiftClickProtocolTests: XCTestCase {
 
     func testEdgeTrackerIgnoresDuplicatePackets() {
         var tracker = ZwiftClickEdgeTracker()
+        // The first report is only a baseline, so an idle one is needed before
+        // a press counts as a press.
+        XCTAssertEqual(tracker.update(plus: false, minus: false), [])
 
         XCTAssertEqual(
             tracker.update(plus: true, minus: false),
@@ -38,6 +41,26 @@ final class ZwiftClickProtocolTests: XCTestCase {
         XCTAssertEqual(
             tracker.update(plus: false, minus: false),
             [.released(.plus)]
+        )
+    }
+
+    /// A Click has to be woken with a button press before it advertises, so it
+    /// often connects with that button still down. Shifting on it means waking
+    /// the device moves the rider's gears, and the hold that follows keeps
+    /// moving them until they let go.
+    func testEdgeTrackerDoesNotShiftOnTheButtonThatWokeTheClick() {
+        var tracker = ZwiftClickEdgeTracker()
+
+        XCTAssertEqual(tracker.update(plus: true, minus: false), [])
+        XCTAssertEqual(tracker.update(plus: true, minus: false), [])
+        XCTAssertEqual(
+            tracker.update(plus: false, minus: false),
+            [.released(.plus)]
+        )
+        // Once it is let go, the next press is a real one.
+        XCTAssertEqual(
+            tracker.update(plus: true, minus: false),
+            [.pressed(.plus)]
         )
     }
 

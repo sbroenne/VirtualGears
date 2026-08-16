@@ -21,11 +21,11 @@ public final class ProxyCoordinator {
     ///
     /// That is not because riding apps change the wheel size part-way through a
     /// ride. FulGaz was watched for five minutes and sent it only as part of
-    /// starting shifting, twice, never in between; the capture is
+    /// starting its ride, twice, never in between; the capture is
     /// docs/fulgaz-app-tap-run.log. It is because a riding app sends it when
-    /// *its* ride starts, and that need not line up with ours: a rider who
-    /// starts Virtual Gears first and then starts a course gets a new wheel
-    /// size with the gears already engaged.
+    /// *its* ride starts, and that need not line up with shifting: a rider who
+    /// enables gears first and then starts a course gets a new wheel size with
+    /// those gears already engaged.
     /// The wheel size the trainer sits at with no virtual gear applied, and
     /// the size every gear is scaled away from.
     ///
@@ -81,6 +81,10 @@ public final class ProxyCoordinator {
     private var wheelSizeUpdateInProgress = false
     private var wheelSizeResetTask: Task<Void, Never>?
     private var wheelSizeResetGeneration: UUID?
+    /// Opening the app asks for a transparent trainer proxy. This stays true
+    /// while shifting is off, because Start and Stop own gears, not the riding
+    /// app's trainer connection.
+    private var proxyWanted = false
     /// A normal Stop has to reset Virtual Gears' current gear without racing
     /// the riding app's command queue. Commands already executing finish first;
     /// new ones wait and continue transparently after the reset.
@@ -126,8 +130,13 @@ public final class ProxyCoordinator {
     /// data and commands through as soon as the KICKR is usable, while the rider
     /// separately decides when to apply virtual shifting.
     public func makeTrainerProxyAvailable() {
-        guard kickr.isReady else { return }
-        peripheral.startAdvertising()
+        proxyWanted = true
+        // A locked iPhone moves peripheral advertisements into an iOS-only
+        // overflow area. Keep the app visible so riding apps on computers can
+        // discover and connect to the trainer proxy.
+        screen.keepAwake = true
+        kickr.resumeSavedConnection()
+        startProxyIfSafe()
     }
 
     public init(
@@ -158,6 +167,18 @@ public final class ProxyCoordinator {
         click.shiftHandler = { [weak self] request in
             self?.handleShiftRequest(request)
         }
+    }
+
+    /// A record from an interrupted shifting session means the KICKR may still
+    /// be carrying a virtual gear. Do not expose it as a normal trainer until
+    /// recovery has restored the recorded baseline. A live shifting session
+    /// owns its own record and may advertise.
+    private func startProxyIfSafe() {
+        guard proxyWanted, kickr.isReady, !peripheral.isAdvertising else { return }
+        let hasUnfinishedShifting =
+            defaults.object(forKey: interruptedShiftingKey) != nil
+        guard !hasUnfinishedShifting || lifecycle.shiftingID != nil else { return }
+        peripheral.startAdvertising()
     }
 
     /// Resets the wheel size after shifting that never got to stop.
@@ -203,6 +224,7 @@ public final class ProxyCoordinator {
         guard wheelSize > 0 else {
             defaults.removeObject(forKey: interruptedShiftingKey)
             trainerWheelSizeMillimeters = wheelSize
+            startProxyIfSafe()
             return
         }
         for _ in 0..<100 {
@@ -229,6 +251,7 @@ public final class ProxyCoordinator {
             guard isStillWanted(token) else { return }
             defaults.removeObject(forKey: interruptedShiftingKey)
             log("Reset the wheel size after interrupted shifting")
+            startProxyIfSafe()
         } catch {
             log(
                 "Could not yet reset the wheel size after interrupted shifting: "
@@ -271,13 +294,13 @@ public final class ProxyCoordinator {
                 self.reopenPCCommandGate()
                 return
             }
-            await self.runRide(configuration: configuration, shiftingID: id)
+            await self.runShifting(configuration: configuration, shiftingID: id)
             self.reopenPCCommandGate()
             self.startTask = nil
         }
     }
 
-    private func runRide(
+    private func runShifting(
         configuration: AppConfiguration,
         shiftingID id: UUID
     ) async {
@@ -291,16 +314,21 @@ public final class ProxyCoordinator {
             let reference = Double(
                 configuration.neutralCircumferenceMillimeters
             )
-            // A wheel size the riding app parked between runs is only usable
+            // A wheel size the riding app left while shifting was off is only usable
             // if the gears still fit around it. Falling back to the reference
             // keeps Start working instead of failing for the whole launch.
-            var wheelSize = trainerWheelSizeMillimeters ?? reference
+            // A riding app's explicit value survives between shifting sessions.
+            // Our own old fallback does not: changing Normal wheel circumference
+            // in Settings must affect the next Start.
+            var wheelSize = wheelSizeCameFromRidingApp
+                ? (trainerWheelSizeMillimeters ?? reference)
+                : reference
             if !canBuildGears(around: wheelSize, drivetrain: drivetrain) {
                 log(
                     "Your riding app left a \(Int(wheelSize.rounded())) mm wheel "
                         + "size. Gears built around it would reach outside the "
-                        + "range proven safe on this trainer, so this ride "
-                        + "starts from \(Int(reference.rounded())) mm instead.",
+                        + "range proven safe on this trainer, so shifting starts "
+                        + "from \(Int(reference.rounded())) mm instead.",
                     .warning
                 )
                 wheelSize = reference
@@ -353,7 +381,7 @@ public final class ProxyCoordinator {
             makeTrainerProxyAvailable()
             try await waitUntilPeripheralReady(shiftingID: id)
             lifecycle.markActive()
-            log("Ride session started")
+            log("Virtual shifting started")
         } catch {
             guard lifecycle.owns(id), !lifecycle.isStopping else { return }
             await abortStart(error)
@@ -373,7 +401,11 @@ public final class ProxyCoordinator {
     /// app's link is deliberately left alone; ending that app's session is the
     /// riding app's job.
     public func shutdown() async {
+        proxyWanted = false
         await stopShifting(disconnectWhenFinished: true)
+        peripheral.stopAcceptingCommands()
+        peripheral.stopAdvertising()
+        screen.keepAwake = false
     }
 
     private func stopShifting(disconnectWhenFinished: Bool) async {
@@ -455,7 +487,7 @@ public final class ProxyCoordinator {
         }
 
         if disconnectWhenFinished { disconnectOwnedEquipment() }
-        screen.keepAwake = false
+        screen.keepAwake = proxyWanted
         clearShiftingData()
         // The record is only removed once the trainer confirms the original
         // wheel size is back, so its presence is the honest answer to whether
@@ -467,7 +499,7 @@ public final class ProxyCoordinator {
             failures: failures,
             trainerNeedsWheelSizeReset: stillSet
         )
-        if failures.isEmpty { log("Ride session stopped") }
+        if failures.isEmpty { log("Virtual shifting stopped") }
     }
 
     private func disconnectOwnedEquipment() {
@@ -571,7 +603,7 @@ public final class ProxyCoordinator {
         defer { wheelSizeUpdateInProgress = false }
         heldDirection = nil
         guard let wheelSize = wheelSizeGearsAreBuiltAround else {
-            log("New gears were not applied: the ride had already ended", .warning)
+            log("New gears were not applied: shifting had already stopped", .warning)
             return false
         }
         do {
@@ -587,7 +619,7 @@ public final class ProxyCoordinator {
             guard stillShifting(id) else { return false }
             let response = try await kickr.executeWahoo(command)
             guard stillShifting(id) else {
-                log("New gears were dropped: the ride ended first", .warning)
+                log("New gears were dropped: shifting stopped first", .warning)
                 return false
             }
             guard response.confirmsSuccess(for: command) else {
@@ -856,6 +888,7 @@ public final class ProxyCoordinator {
     }
 
     private func handleKickrState(_ connectionState: ProductConnectionState) {
+        if connectionState == .ready { startProxyIfSafe() }
         guard lifecycle.canRecover else { return }
         if connectionState != .ready {
             beginRecovery(startImmediately: false)
@@ -1096,13 +1129,14 @@ public final class ProxyCoordinator {
         } else if wheelSizeGearsAreBuiltAround != nil {
             wheelSizeReset = false
         }
-        screen.keepAwake = false
+        screen.keepAwake = proxyWanted
         clearShiftingData()
         lifecycle.failStart(
             error.localizedDescription,
             trainerNeedsWheelSizeReset: !wheelSizeReset
         )
-        log("Ride start failed: \(error.localizedDescription)", .error)
+        startProxyIfSafe()
+        log("Virtual shifting could not start: \(error.localizedDescription)", .error)
     }
 
     private func log(

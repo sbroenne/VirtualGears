@@ -1,0 +1,31 @@
+Looking for a KICKR. Wake it, and close the phone app first.
+Found Wahoo KICKR 2A93 at -65 dBm. Connecting.
+Found the standard control channel.
+Found the status channel.
+Found the speed channel.
+Found the Wahoo gear channel.
+Connected and listening.
+Trainer handed over control.
+
+== Does a riding app's reset wipe the gears? ==
+Wheel size set to 4000 mm, which is nothing like any default.
+Sent the standard FTMS reset, and the trainer accepted it.
+Control was handed back after the reset.
+Sent start, the same as a riding app does after its reset.
+Asked the trainer for no resistance, so it turns easily.
+
+Now turn the pedals by hand and keep them going. It should be light.
+Stop straight away if it is not. Waiting for movement.
+Still waiting, take your time. 23 speed readings so far, latest 0.0 km/h.
+Movement detected at 13.2 km/h.
+Wheel size set to the known 2070 mm. Keep spinning.
+
+== What wheel size was the trainer using? ==
+Speed went from 21.6 to 13.8 km/h the moment the wheel size changed.
+So it had been using roughly 3230 mm.
+That is still the odd size, so the reset did NOT touch the wheel size. Passing a riding app's reset through to the trainer does not break the gears.
+The trainer is now on 2070 mm, which is where it should be.
+You can stop turning the pedals.
+
+Done. Full log in /tmp/kickr-probe.log
+kickr-probe finished.

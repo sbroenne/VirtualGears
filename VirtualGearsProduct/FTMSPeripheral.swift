@@ -29,6 +29,19 @@ final class FTMSPeripheral: NSObject {
     )
     private let powerRangeUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
+    private let trainingStatusUUID = CBUUID(string: FTMSUUID.trainingStatus)
+
+    // Published alongside FTMS because some riding apps read nothing from the
+    // Indoor Bike Data. MyWhoosh pairs, takes control and steers the trainer,
+    // then shows 0 W and 0 rpm until this service is there. Proven on hardware.
+    private let powerServiceUUID = CBUUID(string: CyclingPowerUUID.service)
+    private let powerMeasurementUUID = CBUUID(
+        string: CyclingPowerUUID.measurement
+    )
+    private let powerFeatureUUID = CBUUID(string: CyclingPowerUUID.feature)
+    private let sensorLocationUUID = CBUUID(
+        string: CyclingPowerUUID.sensorLocation
+    )
 
     private var manager: CBPeripheralManager!
     private var featureCharacteristic: CBMutableCharacteristic!
@@ -37,12 +50,20 @@ final class FTMSPeripheral: NSObject {
     private var controlCharacteristic: CBMutableCharacteristic!
     private var powerRangeCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
+    private var trainingStatusCharacteristic: CBMutableCharacteristic!
+    private var powerMeasurementCharacteristic: CBMutableCharacteristic!
+    private var powerBroadcast = CyclingPowerBroadcast()
     private var startRequested = false
     /// Whether a ride still wants the phone advertising as a trainer. Kept
     /// separate from `startRequested` so a Bluetooth reset can tear the service
     /// down and put it back, while a deliberate stop stays stopped.
     private var wantsAdvertising = false
     private var servicePublished = false
+    /// The fitness machine and the cycling power service.
+    private let servicesToPublish = 2
+    private var servicesPublished = 0
+    /// What the trainer is doing, as far as a riding app is told.
+    private var trainingStatus = FTMSTrainingStatus.idle
     private var acceptingCommands = false
     private var subscriptions: [UUID: Set<CBUUID>] = [:]
     private var controlSubscriptionIDs: [UUID: UUID] = [:]
@@ -68,7 +89,6 @@ final class FTMSPeripheral: NSObject {
     private lazy var featureData = VirtualTrainerFTMSProfile.feature.encode()
 
     @ObservationIgnored
-    @ObservationIgnored
     private lazy var powerRangeData =
         VirtualTrainerFTMSProfile.powerRange.encode()
 
@@ -78,6 +98,12 @@ final class FTMSPeripheral: NSObject {
         maximumTenths: 1_000,
         incrementTenths: 5
     ).encode()
+
+    @ObservationIgnored
+    private var latestIndoorBikeData = Data([0, 0, 0, 0])
+
+    @ObservationIgnored
+    private var latestCyclingPowerData = Data([0, 0, 0, 0])
 
     override init() {
         super.init()
@@ -140,6 +166,8 @@ final class FTMSPeripheral: NSObject {
         manager.stopAdvertising()
         manager.removeAllServices()
         servicePublished = false
+        servicesPublished = 0
+        trainingStatus = .idle
         isAdvertising = false
         subscriptions.removeAll()
         controlSubscriptionIDs.removeAll()
@@ -166,8 +194,40 @@ final class FTMSPeripheral: NSObject {
     /// Sent to every subscribed app. A riding app that only reads ride data,
     /// without ever asking to steer, still gets the full stream.
     func relayIndoorBikeData(_ data: Data) {
+        latestIndoorBikeData = data
+        setTrainingStatus(.manualMode)
         for id in subscribers(of: bikeDataUUID) {
             send(data, on: bikeDataCharacteristic, to: id)
+        }
+        relayCyclingPower(from: data)
+    }
+
+    /// The same trainer readings again, on the Cycling Power service, for the
+    /// riding apps that read nothing from FTMS. Only apps that subscribed to it
+    /// are sent anything, so nothing changes for the apps that already work.
+    private func relayCyclingPower(from bikeData: Data) {
+        let listeners = subscribers(of: powerMeasurementUUID)
+        guard let decoded = try? IndoorBikeData.decode(bikeData),
+            let watts = decoded.instantaneousPowerWatts
+        else { return }
+        let measurement = powerBroadcast.encode(
+            powerWatts: watts,
+            cadenceRPM: decoded.instantaneousCadenceRPM,
+            at: Date().timeIntervalSinceReferenceDate
+        )
+        latestCyclingPowerData = measurement
+        for id in listeners {
+            send(measurement, on: powerMeasurementCharacteristic, to: id)
+        }
+    }
+
+    /// Riding apps that watch this channel are told the moment the trainer
+    /// starts sending, so they can stop waiting for it.
+    private func setTrainingStatus(_ status: FTMSTrainingStatus) {
+        guard status != trainingStatus else { return }
+        trainingStatus = status
+        for id in subscribers(of: trainingStatusUUID) {
+            send(status.encode(), on: trainingStatusCharacteristic, to: id)
         }
     }
 
@@ -199,9 +259,9 @@ final class FTMSPeripheral: NSObject {
         )
         bikeDataCharacteristic = CBMutableCharacteristic(
             type: bikeDataUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         resistanceCharacteristic = CBMutableCharacteristic(
             type: resistanceUUID,
@@ -227,18 +287,54 @@ final class FTMSPeripheral: NSObject {
             value: nil,
             permissions: []
         )
+        trainingStatusCharacteristic = CBMutableCharacteristic(
+            type: trainingStatusUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [
             featureCharacteristic, bikeDataCharacteristic,
             resistanceCharacteristic, powerRangeCharacteristic,
             controlCharacteristic, statusCharacteristic,
+            trainingStatusCharacteristic,
         ]
         manager.add(service)
+
+        powerMeasurementCharacteristic = CBMutableCharacteristic(
+            type: powerMeasurementUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
+        let powerService = CBMutableService(
+            type: powerServiceUUID,
+            primary: true
+        )
+        powerService.characteristics = [
+            powerMeasurementCharacteristic,
+            CBMutableCharacteristic(
+                type: powerFeatureUUID,
+                properties: [.read],
+                value: CyclingPowerUUID.featureValue,
+                permissions: [.readable]
+            ),
+            CBMutableCharacteristic(
+                type: sensorLocationUUID,
+                properties: [.read],
+                value: CyclingPowerUUID.sensorLocationValue,
+                permissions: [.readable]
+            ),
+        ]
+        manager.add(powerService)
     }
 
     private func advertise() {
+        // FulGaz on Windows requires the advertised services and readable
+        // measurement surface to agree. Either half by itself still fails.
         manager.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
+            CBAdvertisementDataServiceUUIDsKey: [serviceUUID, powerServiceUUID],
             CBAdvertisementDataLocalNameKey: "Virtual Gears",
         ])
     }
@@ -384,6 +480,9 @@ final class FTMSPeripheral: NSObject {
         case featureUUID: featureData
         case resistanceUUID: resistanceData
         case powerRangeUUID: powerRangeData
+        case bikeDataUUID: latestIndoorBikeData
+        case powerMeasurementUUID: latestCyclingPowerData
+        case trainingStatusUUID: trainingStatus.encode()
         default: nil
         }
     }
@@ -438,6 +537,10 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
             fail(error!.localizedDescription)
             return
         }
+        // Every service has to be in place before advertising, or a riding app
+        // can connect during the gap and find only half the trainer.
+        servicesPublished += 1
+        guard servicesPublished == servicesToPublish else { return }
         servicePublished = true
         if startRequested { advertise() }
     }
@@ -446,9 +549,9 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         _ peripheral: CBPeripheralManager,
         error: Error?
     ) {
-        guard error == nil else {
+        if let error {
             startRequested = false
-            fail(error!.localizedDescription)
+            fail(error.localizedDescription)
             return
         }
         isAdvertising = true

@@ -97,16 +97,21 @@ switching to another fan.
   <img src="screenshots/headwind-control-landscape.png" width="60%" alt="Headwind manual fan control at 50 percent in landscape">
 </p>
 
-### Nothing to set up
+### A trainer proxy, with shifting when you want it
 
 Open the app. It looks for your trainer, connects to it and appears to your
-riding app. When the trainer is ready, tap **Start Shifting** to put your gears
-on. The riding app owns the ride; this button only controls Virtual Gears.
+riding app on its own. There is no setup ritual. **Start Shifting** engages the
+gears; **Stop Shifting** removes them without stopping or disconnecting the ride
+in your riding app.
 
 The only question it asks is which device, and only when it finds more than one
 trainer, Click or Headwind. A single device is simply used. Bluetooth signal
 strength does not measure distance reliably, so multiple devices are listed by
 name rather than ranked or guessed.
+
+The normal wheel circumference is 2070 mm by default and can be changed in
+Settings from 1800 to 2400 mm. Virtual Gears uses it when the riding app sends no
+wheel size; a size from the riding app takes precedence.
 
 If no trainer is available, **Try Demo** opens a clearly marked simulated ride.
 It includes the ride screen, shifting, gear choices, Settings and example Click,

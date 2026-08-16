@@ -39,6 +39,10 @@ final class ConfigurationStore {
         configuration.cassetteID = option.id
     }
 
+    func setNormalWheelCircumference(millimeters: Int) {
+        configuration.setNormalWheelCircumference(millimeters: millimeters)
+    }
+
     private func save() {
         guard let defaults else { return }
         guard let data = try? JSONEncoder().encode(configuration) else { return }

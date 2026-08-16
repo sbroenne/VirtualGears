@@ -12,12 +12,21 @@ never fight.
 Virtual Gears chooses and displays the gear on the iPhone. The riding app sees an
 ordinary FTMS trainer and does not need a virtual-shifting feature of its own.
 
+Opening Virtual Gears connects this transparent trainer proxy. **Start Shifting**
+adds the gears; **Stop Shifting** removes the virtual gear and restores the
+normal wheel circumference. Neither button starts or stops the ride in the
+riding app, and stopping shifting leaves that app connected.
+
+The iPhone screen stays awake for as long as this trainer proxy is available.
+iOS changes Bluetooth advertising after the phone locks, which can make a
+waiting trainer disappear from riding apps on Windows and other computers.
+
 ## Where the gears sit
 
-Every gear is scaled away from a 2070 mm reference. The default ladder reaches
-about four times easier and 2.3 times harder while keeping gear 12 as the
-starting point. A drivetrain too wide to fit is refused at setup rather than
-mid-ride.
+Every gear is scaled away from the **Normal wheel circumference** in Settings,
+2070 mm by default. The default ladder reaches about four times easier and 2.3
+times harder while keeping gear 12 as the starting point. A drivetrain too wide
+to fit is refused at setup rather than mid-ride.
 
 ## When the riding app has its own idea
 
@@ -27,6 +36,9 @@ reference and every gear is rebuilt around it, so the gear you are in keeps
 feeling the way it did. Virtual Gears supports wheel sizes from 1800 mm to
 2400 mm, which covers every real bicycle wheel; anything outside that is
 declined and the ride carries on at the size it already had.
+
+If the riding app sends no size, the saved normal circumference is used. If it
+does send one, its value takes precedence and is restored when shifting stops.
 
 ## Shifting waits for the trainer
 
