@@ -102,6 +102,32 @@ final class AppConfigurationTests: XCTestCase {
         )
     }
 
+    func testNormalWheelSizeDefaultsTo2070Millimeters() {
+        let configuration = AppConfiguration()
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+    }
+
+    func testNormalWheelSizeCanBeChangedInsideTheSupportedRange() {
+        var configuration = AppConfiguration()
+
+        XCTAssertTrue(
+            configuration.setNormalWheelCircumference(millimeters: 2_105)
+        )
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
+    }
+
+    func testNormalWheelSizeRefusesValuesOutsideTheSupportedRange() {
+        var configuration = AppConfiguration()
+
+        XCTAssertFalse(
+            configuration.setNormalWheelCircumference(millimeters: 1_799)
+        )
+        XCTAssertFalse(
+            configuration.setNormalWheelCircumference(millimeters: 2_401)
+        )
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+    }
+
     /// Gears wider than the trainer can copy must block a ride rather than be
     /// sent to it, since the trainer works out speed from the wheel size.
     func testGearsTooWideForTheTrainerCannotStartARide() {
@@ -201,6 +227,7 @@ final class AppConfigurationTests: XCTestCase {
         var configuration = trainerReady()
         configuration.rememberClick(named: "Zwift Click", id: UUID())
         configuration.rememberHeadwind(named: "HEADWIND 9267", id: UUID())
+        configuration.setNormalWheelCircumference(millimeters: 2_105)
         let restored = try JSONDecoder().decode(
             AppConfiguration.self,
             from: JSONEncoder().encode(configuration)
@@ -209,6 +236,7 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(restored.canFinishSetup)
         XCTAssertTrue(restored.usesClick)
         XCTAssertTrue(restored.usesHeadwind)
+        XCTAssertEqual(restored.neutralCircumferenceMillimeters, 2_105)
     }
 
     func testAConfigurationFromBeforeHeadwindSupportStillLoads() throws {
@@ -234,5 +262,6 @@ final class AppConfigurationTests: XCTestCase {
 
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertFalse(configuration.usesHeadwind)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
     }
 }

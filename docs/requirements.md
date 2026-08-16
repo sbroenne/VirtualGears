@@ -29,10 +29,12 @@ cannot work with, rather than leaving you to wonder why nothing happens.
 ### If you set a custom wheel circumference
 
 Virtual Gears cannot read the wheel circumference previously set through the
-Wahoo app. It replaces that value while making gears and uses 2070 mm as its
-reference unless the riding app supplies another size. If you use a custom
-value, write it down and set it again in the Wahoo app after using Virtual
-Gears. Most riders never change this setting.
+Wahoo app. Set **Normal wheel circumference** in Virtual Gears Settings to the
+same value before shifting. The default is 2070 mm and the available range is
+1800–2400 mm. A wheel size supplied by the riding app takes precedence.
+
+Stopping shifting restores that normal value, or the latest value from the
+riding app, without disconnecting the riding app from Virtual Gears.
 
 ### If your KICKR is not the V5
 
@@ -105,15 +107,16 @@ something you can work around.
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.
 2. Open Virtual Gears on your iPhone. It finds the trainer and connects on its
-   own. If it finds more than one trainer, it asks you which one.
+   own, then appears as a trainer. If it finds more than one trainer, it asks
+   you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
    That will be your iPhone, appearing as a trainer.
-4. Tap **Start Shifting**, then ride and shift with the two large buttons on the
-   phone.
+4. Tap **Start Shifting** when you want gears. Shift with the two large buttons
+   on the phone.
 
-There is no setup screen to complete first. The app connects to the trainer and
-makes it available to the riding app automatically; **Start Shifting** only
-applies the virtual gears.
+There is no setup screen to complete first. Start and Stop control only virtual
+shifting. Virtual Gears remains connected as a transparent trainer proxy, so
+stopping shifting does not pause, stop or disconnect the ride in your riding app.
 
 You can explore the app without any equipment by tapping **Try Demo** while it
 looks for a trainer. The simulated ride does not use Bluetooth or control

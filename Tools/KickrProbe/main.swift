@@ -55,6 +55,9 @@ enum ProbeMode {
     /// Ask the trainer what it claims to support, and find out whether it
     /// accepts the *standard* wheel-size command as well as Wahoo's own.
     case features
+    /// Print everything the trainer offers, service by service, so what a real
+    /// trainer looks like can be held up against what Virtual Gears publishes.
+    case tree
 }
 
 let mode: ProbeMode = {
@@ -78,6 +81,8 @@ let mode: ProbeMode = {
         return .resetTest
     case "features":
         return .features
+    case "tree":
+        return .tree
     default:
         return .measure
     }
@@ -94,6 +99,8 @@ final class KickrProbe: NSObject {
     private var central: CBCentralManager!
     private var kickr: CBPeripheral? { finder.peripheral }
     private var characteristics: [CBUUID: CBCharacteristic] = [:]
+    /// Service UUID to the characteristics under it, for `tree` mode.
+    private var treeFindings: [String: [String]] = [:]
     private var subscribed = Set<CBUUID>()
     private var hasStarted = false
     private var ignored = Set<String>()
@@ -112,7 +119,10 @@ final class KickrProbe: NSObject {
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
 
     private lazy var finder = PeripheralFinder(
-        scanServices: [ftmsService], discoveryServices: [ftmsService, powerService],
+        scanServices: [ftmsService],
+        // Everything, in tree mode: the point is to see what is there.
+        discoveryServices: { if case .tree = mode { return nil }
+            return [ftmsService, powerService] }(),
         say: say,
         matches: { [weak self] discovery in
             let name = discovery.peripheralName ?? ""
@@ -159,6 +169,14 @@ final class KickrProbe: NSObject {
     // MARK: - The experiment
 
     private func run() async {
+        // Listing what the trainer offers needs no control of it, and in this
+        // mode the probe never subscribes, so asking would only time out.
+        if case .tree = mode {
+            reportTree()
+            say("\nDone. Full log in \(logPath)")
+            finish(0)
+            return
+        }
         do {
             _ = try await sendFTMS(.requestControl)
             say("Trainer handed over control.")
@@ -178,16 +196,35 @@ final class KickrProbe: NSObject {
                 try await runResetTest()
             case .features:
                 try await surveyFeatures()
+            case .tree:
+                break
             }
         } catch {
             say("\nThe probe stopped early: \(error)")
             if case .read = mode {} else if case .set = mode {}
-            else if case .features = mode {} else {
+            else if case .features = mode {} else if case .tree = mode {}
+            else {
                 await restoreNeutral()
             }
         }
         say("\nDone. Full log in \(logPath)")
         finish(0)
+    }
+
+    /// Everything the trainer offers, to hold against what Virtual Gears
+    /// publishes to a riding app.
+    private func reportTree() {
+        say("")
+        say("=== What the trainer offers ===")
+        for service in treeFindings.keys.sorted() {
+            say("")
+            say("Service \(service)")
+            for line in treeFindings[service]!.sorted() {
+                say("  \(line)")
+            }
+        }
+        say("")
+        say("Virtual Gears publishes 1826 and 1818, plus what iOS adds itself.")
     }
 
     /// Sets a wheel size no trainer uses by default, sends the standard FTMS
@@ -218,6 +255,14 @@ final class KickrProbe: NSObject {
         // A reset drops control by the FTMS rules, and the read needs control
         // to ask for no resistance. Asking again here is exactly what a riding
         // app does, so a refusal is itself worth knowing about.
+        // Listing what the trainer offers needs no control of it, and in this
+        // mode the probe never subscribes, so asking would only time out.
+        if case .tree = mode {
+            reportTree()
+            say("\nDone. Full log in \(logPath)")
+            finish(0)
+            return
+        }
         do {
             _ = try await sendFTMS(.requestControl)
             say("Control was handed back after the reset.")
@@ -823,6 +868,13 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
     ) {
         for characteristic in service.characteristics ?? [] {
             characteristics[characteristic.uuid] = characteristic
+            if case .tree = mode {
+                treeFindings[service.uuid.uuidString, default: []].append(
+                    "\(characteristic.uuid.uuidString)  "
+                        + propertyNames(characteristic.properties)
+                )
+                continue
+            }
             if [controlUUID, statusUUID, wahooUUID, bikeDataUUID]
                 .contains(characteristic.uuid) {
                 say("Found the \(label(characteristic.uuid)) channel.")
@@ -830,6 +882,21 @@ extension KickrProbe: @preconcurrency CBPeripheralDelegate {
             }
         }
         startWhenSettled()
+    }
+
+    /// The properties a riding app checks before it will use a channel.
+    private func propertyNames(_ properties: CBCharacteristicProperties)
+        -> String
+    {
+        var names: [String] = []
+        if properties.contains(.read) { names.append("read") }
+        if properties.contains(.write) { names.append("write") }
+        if properties.contains(.writeWithoutResponse) {
+            names.append("write without response")
+        }
+        if properties.contains(.notify) { names.append("notify") }
+        if properties.contains(.indicate) { names.append("indicate") }
+        return names.isEmpty ? "none" : names.joined(separator: ", ")
     }
 
     private func label(_ uuid: CBUUID) -> String {

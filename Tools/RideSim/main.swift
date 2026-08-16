@@ -68,9 +68,10 @@ final class RideSim: NSObject {
     private let bikeDataUUID = CBUUID(string: FTMSUUID.indoorBikeData)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
+    private let trainingStatusUUID = CBUUID(string: FTMSUUID.trainingStatus)
 
     private lazy var finder = PeripheralFinder(
-        scanServices: [serviceUUID], discoveryServices: [serviceUUID], say: say,
+        scanServices: [serviceUUID], discoveryServices: nil, say: say,
         matches: { [weak self] in $0.advertisedName().localizedCaseInsensitiveContains(self?.name ?? "") },
         foundMessage: { "Found \"\($0.advertisedName())\" at \($0.rssi) dBm. Connecting." }
     )
@@ -79,6 +80,8 @@ final class RideSim: NSObject {
     private var bikeData: CBCharacteristic?
     private var status: CBCharacteristic?
     private var feature: CBCharacteristic?
+    private var trainingStatus: CBCharacteristic?
+    private var trainingStatusSeen: [String] = []
 
     private var checks: [Check] = []
     private var bikeDataArrivals: [Date] = []
@@ -301,6 +304,16 @@ final class RideSim: NSObject {
                 : "answered \(response.result): the trainer is held by a "
                     + "connection that no longer exists"
         )
+
+        // A real KICKR publishes this, and a riding app may read it before it
+        // believes the trainer is ready. 0x0D is riding, 0x01 is idle.
+        record(
+            "The trainer says whether it is idle or riding",
+            trainingStatusSeen.contains("0x0D"),
+            trainingStatusSeen.isEmpty
+                ? "no training status channel"
+                : trainingStatusSeen.joined(separator: ", ")
+        )
     }
 
     // MARK: - Talking to the control point
@@ -417,6 +430,18 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
+        // Everything the phone offers, not just the fitness machine, because
+        // "is the right build on the phone?" is otherwise unanswerable from
+        // here. The cycling power service is the one added most recently.
+        let offered = (peripheral.services ?? []).map(\.uuid.uuidString)
+        say("The phone offers: \(offered.joined(separator: ", "))")
+        record(
+            "The phone publishes a cycling power service",
+            offered.contains { $0.caseInsensitiveCompare(
+                CyclingPowerUUID.service
+            ) == .orderedSame },
+            offered.isEmpty ? "nothing found" : offered.joined(separator: ", ")
+        )
         guard let service = peripheral.services?.first(where: {
             $0.uuid == serviceUUID
         }) else {
@@ -442,6 +467,10 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
             case bikeDataUUID: bikeData = characteristic
             case statusUUID: status = characteristic
             case featureUUID: feature = characteristic
+            case trainingStatusUUID:
+                trainingStatus = characteristic
+                peripheral.readValue(for: characteristic)
+                peripheral.setNotifyValue(true, for: characteristic)
             default: break
             }
         }
@@ -474,6 +503,10 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
             }
         case bikeDataUUID:
             bikeDataArrivals.append(Date())
+        case trainingStatusUUID:
+            trainingStatusSeen.append(
+                data.count > 1 ? String(format: "0x%02X", data[1]) : "empty"
+            )
         case statusUUID:
             if let first = data.first {
                 statusMessages.append(String(format: "opcode 0x%02X", first))

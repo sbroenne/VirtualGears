@@ -80,9 +80,10 @@ the iPhone and when advertising itself as a trainer.
     spaced gears with an extra-low climbing range or an exact copy of the gears on
     your real bike.
 
-    NOTHING TO SET UP
-    Open the app and it finds your trainer, connects to it and appears to your
-    riding app. Tap Start Shifting when you want it to put your gears on. Optional original Zwift Click and
+    A TRAINER PROXY, WITH SHIFTING WHEN YOU WANT IT
+    Open the app and it finds your trainer, connects to it and appears to your riding
+    app on its own. Tap Start Shifting to engage the gears and Stop Shifting to remove
+    them without disconnecting or stopping the ride in your riding app. Optional original Zwift Click and
     Wahoo Headwind accessories are found and remembered automatically too. If more than
     one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
     identical names, pressing a button identifies the one you want.
@@ -114,7 +115,8 @@ the iPhone and when advertising itself as a trainer.
     Virtual Gears appears as an ordinary FTMS indoor trainer. That adds virtual shifting
     to compatible apps that have none of their own, without requiring a plugin or
     account. Apps that set their own wheel size are honoured — the gears are rebuilt
-    around whatever size the app asks for.
+    around whatever size the app asks for. If an app sends no size, Virtual Gears uses
+    the Normal wheel circumference saved in Settings, 2070 mm by default.
 
     OPTIONAL SHIFT BUTTONS
     Wake an original Zwift Click before opening Virtual Gears and it connects
@@ -135,9 +137,10 @@ the iPhone and when advertising itself as a trainer.
     gear feels, not your wattage.
 
     NOTE ON WHEEL CIRCUMFERENCE
-    Making gears overwrites any custom wheel circumference you set in the Wahoo app.
-    Virtual Gears cannot read that value back, so write it down and set it again
-    afterwards if you use one. Most riders never change this setting.
+    Virtual Gears cannot read a wheel circumference previously set in the Wahoo app.
+    If you use a custom value, enter the same value as Normal wheel circumference in
+    Virtual Gears Settings before shifting. Values from 1800 to 2400 mm are supported.
+    A value sent by the riding app takes precedence.
 
     NO ACCOUNTS, NO INTERNET, NO TRACKING
     The app has no networking code in it at all. Nothing about your ride leaves your

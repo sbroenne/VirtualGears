@@ -84,9 +84,9 @@ without code signing.
 
 | Path | Purpose |
 |---|---|
-| `Sources/VirtualGearsCore` | Gear calculations, trainer commands, ride coordination and other hardware-independent logic |
+| `Sources/VirtualGearsCore` | Gear calculations, trainer commands, proxy/shifting coordination and other hardware-independent logic |
 | `VirtualGearsProduct` | SwiftUI screens and the real Bluetooth services |
-| `Tests/VirtualGearsCoreTests` | Hardware-independent unit and ride-lifecycle tests |
+| `Tests/VirtualGearsCoreTests` | Hardware-independent unit, proxy and shifting-lifecycle tests |
 | `VirtualGearsUITests` | Simulator UI, navigation, accessibility and layout regression tests |
 | `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
 | `docs` | MkDocs website, screenshots and hardware findings |
@@ -96,6 +96,20 @@ without code signing.
 Bluetooth safety still depends on keeping Demo Mode outside `ProxyCoordinator`
 and the CoreBluetooth services; do not replace its local state with staged
 production services.
+
+The proxy and shifting have deliberately separate lifecycles. Once the saved
+KICKR is ready, `ProxyCoordinator.makeProxyAvailable()` publishes the FTMS
+trainer and transparently forwards data and supported commands. `startShifting`
+adds the virtual gear; `stopShifting` restores the configured normal wheel size,
+or the latest size supplied by the riding app, without removing the FTMS service.
+Only a full shutdown removes that service. Tests cover advertising before the
+first Start, command forwarding while shifting is off and keeping the riding app
+connected across Stop.
+
+`AppConfiguration.normalWheelCircumferenceMillimeters` is optional on disk so
+configurations saved by older builds still decode. Its effective value defaults
+to 2070 mm and accepts 1800–2400 mm. A standard wheel-size command from the
+riding app always takes precedence.
 
 ## Documentation website
 

@@ -53,14 +53,17 @@ to work but have not been tested.
 ## Your first ride
 
 1. Wake the KICKR by turning the pedals.
-2. Open Virtual Gears on the iPhone. It finds and connects to the trainer.
+2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
+   available to your riding app.
 3. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
    may show the iPhone's name instead.
-4. Ride and shift with the large **Easier** and **Harder** buttons.
+4. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
+   buttons.
 
-There is no setup wizard. Once the trainer is connected, tap **Start Shifting**
-when you want Virtual Gears to apply its gears. If it finds more than one
-trainer, it asks you to choose yours by name.
+There is no setup wizard. Virtual Gears is a transparent trainer connection as
+soon as the KICKR is ready. **Start Shifting** engages the gears; **Stop Shifting**
+removes them without disconnecting or stopping the ride in your riding app. If it
+finds more than one trainer, it asks you to choose yours by name.
 
 The same rule applies to optional equipment: one Click or Headwind is used
 automatically; if several are found, Virtual Gears asks instead of guessing.
@@ -149,10 +152,10 @@ Every gear change waits for confirmation from the trainer.
   message for reporting it, so the gear is shown on the iPhone.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app. Virtual Gears supplies and displays the gears itself.
-- **A custom wheel circumference is overwritten.** Virtual Gears cannot read the
-  trainer's current wheel size — FTMS has no read command — so it works from a
-  2070 mm reference. If you set a custom value in the Wahoo app, write it down
-  and set it again afterwards.
+- **Virtual Gears cannot read the trainer's current wheel circumference.** It
+  uses the **Normal wheel circumference** saved in Settings, 2070 mm by default,
+  unless the riding app supplies another size. If you use a custom value in the
+  Wahoo app, enter the same value in Virtual Gears before shifting.
 
 ## Support
 

@@ -48,6 +48,10 @@ private let runMinutes: Int = {
 /// give up, retry, or carry on regardless, and which of those it does decides
 /// whether refusing is a safe thing for the app to do.
 private let refuseWheelSize = arguments.contains("--refuse-wheel-size")
+private let publishPowerService = !arguments.contains("--no-power-service")
+private let advertisePowerService = arguments.contains(
+    "--advertise-power-service"
+)
 
 @MainActor
 final class TrainerTap: NSObject {
@@ -64,6 +68,18 @@ final class TrainerTap: NSObject {
     )
     private let powerRangeUUID = CBUUID(string: FTMSUUID.supportedPowerRange)
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
+    private let trainingStatusUUID = CBUUID(string: FTMSUUID.trainingStatus)
+
+    // The Cycling Power Service. Virtual Gears reads this from the KICKR but has
+    // never published one of its own, and MyWhoosh reads nothing from the FTMS
+    // bike data. Publishing it here is how that idea gets tested rather than
+    // written down as a guess. `--no-power-service` leaves it out again.
+    private let cyclingPowerServiceUUID = CBUUID(string: "1818")
+    private let powerMeasurementUUID = CBUUID(string: "2A63")
+    private let powerFeatureUUID = CBUUID(string: "2A65")
+    private let sensorLocationUUID = CBUUID(string: "2A5D")
+
+    private var powerMeasurementCharacteristic: CBMutableCharacteristic!
 
     private var featureCharacteristic: CBMutableCharacteristic!
     private var bikeDataCharacteristic: CBMutableCharacteristic!
@@ -71,6 +87,11 @@ final class TrainerTap: NSObject {
     private var controlCharacteristic: CBMutableCharacteristic!
     private var powerRangeCharacteristic: CBMutableCharacteristic!
     private var statusCharacteristic: CBMutableCharacteristic!
+    private var trainingStatusCharacteristic: CBMutableCharacteristic!
+    /// The fitness machine and, unless it is switched off, the cycling power
+    /// service.
+    private var servicesWanted = 2
+    private var servicesAdded = 0
 
     private var published = false
     private var elapsedSeconds: UInt16 = 0
@@ -174,8 +195,15 @@ final class TrainerTap: NSObject {
             permissions: []
         )
 
+        trainingStatusCharacteristic = CBMutableCharacteristic(
+            type: trainingStatusUUID,
+            properties: [.read, .notify],
+            value: nil,
+            permissions: [.readable]
+        )
         let service = CBMutableService(type: serviceUUID, primary: true)
         service.characteristics = [
+            trainingStatusCharacteristic,
             featureCharacteristic,
             bikeDataCharacteristic,
             resistanceCharacteristic,
@@ -184,14 +212,86 @@ final class TrainerTap: NSObject {
             statusCharacteristic,
         ]
         manager.add(service)
+
+        servicesWanted = publishPowerService ? 2 : 1
+        guard publishPowerService else { return }
+        powerMeasurementCharacteristic = CBMutableCharacteristic(
+            type: powerMeasurementUUID,
+            properties: [.notify],
+            value: nil,
+            permissions: []
+        )
+        // Bit 3 says crank revolution data is present, which is what a riding
+        // app needs before it will read cadence from here.
+        var featureBits = Data()
+        featureBits.append(contentsOf: [0x08, 0x00, 0x00, 0x00])
+        let powerService = CBMutableService(
+            type: cyclingPowerServiceUUID,
+            primary: true
+        )
+        powerService.characteristics = [
+            powerMeasurementCharacteristic!,
+            CBMutableCharacteristic(
+                type: powerFeatureUUID,
+                properties: [.read],
+                value: featureBits,
+                permissions: [.readable]
+            ),
+            // 12 is "rear hub", the honest answer for a trainer.
+            CBMutableCharacteristic(
+                type: sensorLocationUUID,
+                properties: [.read],
+                value: Data([12]),
+                permissions: [.readable]
+            ),
+        ]
+        manager.add(powerService)
+    }
+
+    /// A Cycling Power Measurement carrying the same 200 W and 85 rpm as the
+    /// FTMS bike data, so the two can be compared directly.
+    private func powerMeasurementBytes() -> Data {
+        var data = Data()
+        // Flags: bit 5, crank revolution data present.
+        data.append(contentsOf: [0x20, 0x00])
+        let watts = Int16(200)
+        data.append(UInt8(truncatingIfNeeded: watts))
+        data.append(UInt8(truncatingIfNeeded: watts >> 8))
+        let revolutions = UInt16(
+            truncatingIfNeeded: Int(Double(elapsedSeconds) * 85.0 / 60.0)
+        )
+        // Crank event time counts in 1024ths of a second, and one revolution at
+        // 85 rpm takes 723 of them.
+        let eventTime = UInt16(truncatingIfNeeded: Int(revolutions) &* 723)
+        data.append(UInt8(truncatingIfNeeded: revolutions))
+        data.append(UInt8(truncatingIfNeeded: revolutions >> 8))
+        data.append(UInt8(truncatingIfNeeded: eventTime))
+        data.append(UInt8(truncatingIfNeeded: eventTime >> 8))
+        return data
     }
 
     private func advertise() {
+        // Advertising two service UUIDs is what the app tried first, and FulGaz
+        // then failed to connect. Off by default so the tap matches the app;
+        // `--advertise-power-service` puts it back to reproduce that.
+        var services = [serviceUUID]
+        if publishPowerService && advertisePowerService {
+            services.append(cyclingPowerServiceUUID)
+        }
         manager.startAdvertising([
             CBAdvertisementDataLocalNameKey: advertisedName,
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
+            CBAdvertisementDataServiceUUIDsKey: services,
         ])
         say("Pretending to be a trainer called \"\(advertisedName)\".")
+        if publishPowerService {
+            say(
+                "Publishing a Cycling Power service as well as FTMS, and"
+                    + (advertisePowerService
+                        ? " advertising both." : " advertising FTMS only.")
+            )
+        } else {
+            say("Publishing FTMS only, with no Cycling Power service.")
+        }
         say("Pair this Mac in your riding app, then ride for a few minutes.")
         if refuseWheelSize {
             say("Wheel-size commands will be refused, to see how the app reacts.")
@@ -231,6 +331,13 @@ final class TrainerTap: NSObject {
             onSubscribedCentrals: nil
         )
         if accepted { rideDataSent &+= 1 } else { rideDataDropped &+= 1 }
+        if let powerMeasurementCharacteristic {
+            _ = manager.updateValue(
+                powerMeasurementBytes(),
+                for: powerMeasurementCharacteristic,
+                onSubscribedCentrals: nil
+            )
+        }
         // Only the first few, so a long ride does not bury the interesting part.
         if rideDataSent + rideDataDropped <= 3 {
             say(
@@ -471,7 +578,11 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         if let error {
             say("Could not publish the trainer: \(error.localizedDescription)")
             finish(sentinel: "app-tap finished", code: 1, say: say)
+            return
         }
+        say("Published service \(service.uuid.uuidString).")
+        servicesAdded += 1
+        guard servicesAdded == servicesWanted else { return }
         advertise()
     }
 
@@ -488,7 +599,9 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         farewellTask = nil
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
         say("\(stamp())  listening to \(channelName(characteristic.uuid))")
-        if characteristic.uuid == bikeDataUUID {
+        if characteristic.uuid == bikeDataUUID
+            || characteristic.uuid == powerMeasurementUUID
+        {
             startSendingRideData()
         }
     }
@@ -501,6 +614,8 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         case controlUUID: return "the control point, where commands arrive"
         case bikeDataUUID: return "the bike data: speed, cadence and power"
         case statusUUID: return "the status channel"
+        case powerMeasurementUUID:
+            return "the Cycling Power service   <- not FTMS"
         default: return uuid.uuidString
         }
     }

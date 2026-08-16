@@ -81,7 +81,7 @@ No pedalling needed. The trainer acknowledges each gear either way.
 | 5 | Tap Easier back down again | "And back down. My chain hasn't moved once." |
 | 6 | With a Zwift Click: shift with the handlebar buttons, then hold one down | "The same gears from a shifter on the handlebar. Holding it sweeps through them." |
 | 7 | Camera shot of the bike: the chain, unmoving, in one gear | "The chain stays where it is. No shifting noise, no wear." |
-| 8 | Stop shifting | "Stopping puts the trainer's wheel size back where it was." |
+| 8 | Stop shifting | "Stopping removes the virtual gear and restores the normal wheel size. The riding app stays connected." |
 
 ### Act 3 — how a reviewer tests it with no hardware
 

@@ -4,6 +4,7 @@ public enum FTMSUUID {
     public static let fitnessMachineService = "1826"
     public static let fitnessMachineFeature = "2ACC"
     public static let indoorBikeData = "2AD2"
+    public static let trainingStatus = "2AD3"
     public static let supportedResistanceLevelRange = "2AD6"
     public static let supportedPowerRange = "2AD8"
     public static let fitnessMachineControlPoint = "2AD9"

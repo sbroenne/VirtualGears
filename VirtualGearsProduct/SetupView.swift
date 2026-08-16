@@ -16,6 +16,7 @@ struct SetupView: View {
     var body: some View {
         Form {
             equipmentSection
+            wheelSizeSection
             gearsSection
             chainLineSection
         }
@@ -124,6 +125,26 @@ struct SetupView: View {
         return name
     }
 
+    private var wheelSizeSection: some View {
+        Section {
+            NavigationLink {
+                NormalWheelSizeView(store: store)
+            } label: {
+                LabeledContent(
+                    "Normal wheel circumference",
+                    value: "\(store.configuration.neutralCircumferenceMillimeters) mm"
+                )
+            }
+        } header: {
+            Text("Trainer wheel size")
+        } footer: {
+            Text(
+                "Used when your riding app does not send a wheel circumference. "
+                    + "A value sent by the riding app takes precedence."
+            )
+        }
+    }
+
     private var gearsSection: some View {
         Section {
             NavigationLink {
@@ -176,6 +197,89 @@ struct SetupView: View {
         }
     }
 
+}
+
+private struct NormalWheelSizeView: View {
+    @Bindable var store: ConfigurationStore
+    @State private var enteredValue: String
+
+    init(store: ConfigurationStore) {
+        self.store = store
+        _enteredValue = State(
+            initialValue: String(
+                store.configuration.neutralCircumferenceMillimeters
+            )
+        )
+    }
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Millimetres", text: $enteredValue)
+                    .keyboardType(.numberPad)
+                    .onChange(of: enteredValue) { _, value in
+                        guard let millimeters = Int(value), isValid(millimeters)
+                        else { return }
+                        store.setNormalWheelCircumference(
+                            millimeters: millimeters
+                        )
+                    }
+
+                Stepper(
+                    value: wheelSize,
+                    in: lowerBound...upperBound,
+                    step: 1
+                ) {
+                    LabeledContent(
+                        "Selected size",
+                        value: "\(store.configuration.neutralCircumferenceMillimeters) mm"
+                    )
+                }
+            } header: {
+                Text("Normal wheel circumference")
+            } footer: {
+                Text(
+                    "Choose 1800–2400 mm. Virtual Gears uses 2070 mm by default. "
+                        + "This value is the base for the gears and the size restored "
+                        + "when shifting stops, unless your riding app supplies its own."
+                )
+            }
+
+            if let value = Int(enteredValue), !isValid(value) {
+                Section {
+                    Label(
+                        "Enter a value from \(lowerBound) to \(upperBound) mm.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.orange)
+                }
+            }
+        }
+        .navigationTitle("Normal wheel size")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var wheelSize: Binding<Int> {
+        Binding(
+            get: { store.configuration.neutralCircumferenceMillimeters },
+            set: { value in
+                store.setNormalWheelCircumference(millimeters: value)
+                enteredValue = String(value)
+            }
+        )
+    }
+
+    private var lowerBound: Int {
+        Int(TrainerSafety.supportedRidingAppCircumferenceMillimeters.lowerBound)
+    }
+
+    private var upperBound: Int {
+        Int(TrainerSafety.supportedRidingAppCircumferenceMillimeters.upperBound)
+    }
+
+    private func isValid(_ value: Int) -> Bool {
+        (lowerBound...upperBound).contains(value)
+    }
 }
 
 // MARK: - Trainer
