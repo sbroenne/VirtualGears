@@ -95,7 +95,7 @@ computer:
 | Riding app | Status |
 |---|---|
 | FulGaz on macOS | Works, including power and cadence |
-| FulGaz on Windows | Works, including power and cadence |
+| FulGaz on Windows | Intermittently sees Virtual Gears but currently fails to connect |
 | RealVelo on Windows | Works |
 | MyWhoosh on Windows | Works, including power and cadence |
 | Others | Expected to work, not tested |
@@ -103,6 +103,12 @@ computer:
 MyWhoosh ignored FTMS ride data in direct testing and read power and cadence
 from Cycling Power Service instead. Virtual Gears now publishes that service,
 and the complete iPhone-to-Windows path has been ridden end to end.
+
+TestFlight build 1.0 (11) passes all 17 RideSim checks, including advertising
+FTMS and Cycling Power together, readable and notifiable live measurements,
+control, telemetry, disconnect and reconnect. FulGaz on Windows remains an
+application-specific connection problem; the passing Bluetooth contract check
+does not make it compatible.
 
 ## Your first ride
 

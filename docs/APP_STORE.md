@@ -147,6 +147,12 @@ the iPhone and when advertising itself as a trainer.
     The app has no networking code in it at all. Nothing about your ride leaves your
     iPhone.
 
+    ON-DEVICE DIAGNOSTICS
+    Settings includes the installed app version and live trainer, proxy and riding-app
+    connection state. A concise support report can be copied only when you tap Copy
+    Diagnostics. It contains no user names, Bluetooth identifiers, trainer identifiers
+    or ride logs, and nothing is uploaded.
+
     Requires a compatible Wahoo KICKR. Built and physically tested with KICKR V5.
     Virtual Gears is not made by, endorsed by or affiliated with Wahoo Fitness.
 
@@ -232,7 +238,7 @@ Guideline 2.1:
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
     iPhone 17 Pro, iOS 26.6.
-    Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS and Windows, plus RealVelo and MyWhoosh on Windows.
+    Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS, plus RealVelo and MyWhoosh on Windows. FulGaz on Windows intermittently sees Virtual Gears but currently fails to connect; it is not claimed as compatible.
 
     EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)
     None. The app contains no networking code at all. There are no servers, accounts, analytics, adverts, tracking, payment processors, data providers or AI services. Everything happens on the device and over local Bluetooth. Nothing leaves the phone.
@@ -318,9 +324,12 @@ Virtual Gears appears as a trainer as soon as the KICKR is ready; **Start
 Shifting** applies the gears and **Stop Shifting** removes them without ending
 the riding app's ride. A saved normal wheel circumference supplies the fallback
 when the riding app sends none. Cycling Power Service adds the power and cadence
-path MyWhoosh actually reads. FulGaz on Windows is supported by the
-hardware-proven combination of advertising FTMS and Cycling Power together and
-making both live measurements readable and notifiable. The iPhone stays awake
+path MyWhoosh actually reads. The build advertises FTMS and Cycling Power
+together and makes both live measurements readable and notifiable. A fresh
+RideSim central passes all 17 checks against the installed TestFlight build,
+including control, telemetry, disconnect and reconnect. FulGaz on Windows still
+intermittently sees Virtual Gears and fails to connect, so it is not claimed as
+compatible. The iPhone stays awake
 while the trainer proxy is available so computer riding apps can discover it
 before connecting.
 

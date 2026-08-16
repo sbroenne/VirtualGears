@@ -242,7 +242,16 @@ final class VirtualGearsUITests: XCTestCase {
         launch("-shotSettings")
 
         assertVisible("screen.settings")
-        for destination in ["Trainer", "Zwift Click", "Wahoo Headwind", "Gears"] {
+        for destination in [
+            "Trainer",
+            "Zwift Click",
+            "Wahoo Headwind",
+            "Gears",
+            "About & Diagnostics",
+        ] {
+            if destination == "About & Diagnostics" {
+                app.swipeUp()
+            }
             let row = app.staticTexts[destination].firstMatch
             assertVisibleElement(row)
             row.tap()
@@ -250,6 +259,19 @@ final class VirtualGearsUITests: XCTestCase {
                 app.navigationBars[destination].waitForExistence(timeout: 2),
                 "\(destination) screen did not open"
             )
+            if destination == "About & Diagnostics" {
+                assertVisibleElement(
+                    app.staticTexts.matching(
+                        NSPredicate(format: "label BEGINSWITH %@", "Version ")
+                    ).firstMatch
+                )
+                app.swipeUp()
+                app.swipeUp()
+                let copy = app.buttons["Copy Diagnostics"]
+                assertVisibleElement(copy)
+                copy.tap()
+                assertVisibleElement(app.staticTexts["Diagnostics copied"])
+            }
             app.navigationBars.buttons.firstMatch.tap()
         }
     }

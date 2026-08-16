@@ -41,6 +41,11 @@ The more of this you can give, the better the odds of a fix:
 - Whether the app showed an error, and its exact wording
 - Whether a Zwift Click or Headwind was connected
 
+In Virtual Gears, open **Settings → About & Diagnostics** and tap **Copy
+Diagnostics**. Paste that report into the issue. It includes the app version and
+live connection state, but no trainer identifier, riding-app identifier, user
+name or ride log.
+
 ## What to expect
 
 This is a spare-time project, so there is no guaranteed response time. Bugs that

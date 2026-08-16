@@ -476,11 +476,8 @@ resistance commands — it sent exactly one of those, at startup.
 
 The CPS-enabled iPhone build was then tested directly on 2026-08-16. FulGaz on
 macOS connected to Virtual Gears and displayed live power and cadence. FulGaz on
-Windows saw the same phone but initially failed before subscribing to any
-app-owned characteristic. The same Windows installation connected to
-CPS-enabled AppTap, and RideSim on a Mac connected to the phone, discovered FTMS
-and CPS, exchanged control commands, received ride data, disconnected and
-reconnected with all 15 checks passing.
+Windows saw the same phone but failed before subscribing to any app-owned
+characteristic. The same Windows installation connected to CPS-enabled AppTap.
 
 [QZ (qdomyos-zwift)](https://github.com/cagnulein/qdomyos-zwift), an independent
 GPL-3.0 project, supplied the missing comparison through its publicly visible
@@ -497,10 +494,20 @@ independently and then proved with the four phone builds below:
 | FTMS only | Read + notify | Connection failed |
 | FTMS + CPS | Read + notify | Connected |
 
-The last build delivered live power and cadence. FulGaz on Windows therefore
-requires the advertised service list and readable measurement surface to agree;
-neither half fixes the connection by itself. The shipping peripheral now uses
-that proven combination, and RideSim checks both properties.
+That experiment showed one Windows connection using the full contract, but it
+did not establish reliable compatibility. With TestFlight build 1.0 (11)
+installed and verified, a fresh macOS RideSim central passes all 17 checks:
+advertised FTMS and CPS, readable and notifiable Indoor Bike Data and Cycling
+Power Measurement, control, telemetry, disconnect and reconnect. FulGaz on
+macOS works against the same build. RealVelo and MyWhoosh work on Windows.
+FulGaz on Windows remains intermittent: it can see Virtual Gears and still fail
+to connect. The shipping peripheral exposes the correct GATT contract, but that
+does not prove or fix FulGaz compatibility.
+
+The in-app About & Diagnostics screen reports this live contract and the
+existing trainer, proxy, subscriber, control and latest-event state. It reads
+the observable service state only and does not change Bluetooth behavior. Its
+copyable report omits user names, UUIDs, trainer identifiers and product logs.
 
 iOS also changes peripheral advertising when the phone locks. The app therefore
 keeps the screen awake from the moment the trainer proxy is made available, not

@@ -197,6 +197,7 @@ struct StartupView: View {
                         kickr: kickr,
                         click: click,
                         headwind: headwind,
+                        coordinator: coordinator,
                         onFinish: { showsSettings = false }
                     )
                 }
@@ -1195,6 +1196,7 @@ struct ShiftingView: View {
                     kickr: kickr,
                     click: click,
                     headwind: headwind,
+                    coordinator: coordinator,
                     onFinish: { showsSettings = false }
                 )
             }

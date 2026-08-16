@@ -163,8 +163,9 @@ video:
 > Full answers to your points 2 to 7 are in the App Review Information Notes
 > field, which has been updated. In short: tested on iPhone 17 Pro with iOS 26.6,
 > against a Wahoo KICKR V5 trainer, an original Zwift Click and a Wahoo KICKR
-> HEADWIND, driven end to end by FulGaz on macOS and Windows, plus RealVelo and
-> MyWhoosh on Windows. The app
+> HEADWIND, driven end to end by FulGaz on macOS, plus RealVelo and MyWhoosh on
+> Windows. FulGaz on Windows intermittently sees the trainer but currently fails
+> to connect, so it is not claimed as compatible. The app
 > uses no external services and contains no networking code. It behaves
 > identically in every region. It is not a regulated industry and includes no
 > protected third-party material; it speaks the public Bluetooth SIG Fitness

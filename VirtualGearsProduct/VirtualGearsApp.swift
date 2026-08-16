@@ -164,6 +164,7 @@ private struct ScreenshotFixtureView: View {
                         kickr: kickr,
                         click: click,
                         headwind: headwind,
+                        coordinator: coordinator,
                         autoConnectsOnAppear: false
                     )
                 }

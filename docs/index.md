@@ -123,6 +123,12 @@ During shifting, the trainer, Click, fan and riding app each keep their own
 status. A riding app that is still waiting to connect does not hide
 the equipment Virtual Gears already connected.
 
+Settings also contains **About & Diagnostics**. It shows the installed version
+and build, iPhone software, KICKR readiness, trainer-proxy advertising,
+subscriber and control state, the latest FTMS peripheral event, and the
+Bluetooth service contract exposed by the build. A concise report can be copied
+deliberately; it is generated on-device and is never uploaded.
+
 ### Everything changeable mid-ride
 
 Trainer, gears, Click and Headwind can all be changed from the ride screen.

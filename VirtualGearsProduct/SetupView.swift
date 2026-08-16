@@ -1,4 +1,6 @@
 import SwiftUI
+import UIKit
+import UniformTypeIdentifiers
 import VirtualGearsCore
 
 /// Setup follows the ordinary iOS Settings pattern: a short list of rows that
@@ -10,6 +12,7 @@ struct SetupView: View {
     @Bindable var kickr: KickrCentralService
     @Bindable var click: ClickCentralService
     @Bindable var headwind: HeadwindCentralService
+    @Bindable var coordinator: ProxyCoordinator
     var onFinish: (() -> Void)?
     var autoConnectsOnAppear = true
 
@@ -19,6 +22,7 @@ struct SetupView: View {
             wheelSizeSection
             gearsSection
             chainLineSection
+            aboutSection
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -184,6 +188,166 @@ struct SetupView: View {
             .font(.callout)
         } header: {
             Text("On the bike")
+        }
+    }
+
+    private var aboutSection: some View {
+        Section {
+            NavigationLink {
+                AboutDiagnosticsView(kickr: kickr, coordinator: coordinator)
+            } label: {
+                Label("About & Diagnostics", systemImage: "info.circle")
+            }
+        } footer: {
+            Text("Version information and live, on-device connection diagnostics.")
+        }
+    }
+
+    private struct AboutDiagnosticsView: View {
+        @Bindable var kickr: KickrCentralService
+        @Bindable var coordinator: ProxyCoordinator
+        @State private var showsCopiedConfirmation = false
+
+        private var app: AppIdentity {
+            AppIdentity(infoDictionary: Bundle.main.infoDictionary ?? [:])
+        }
+
+        private var state: DiagnosticsState {
+            DiagnosticsState(
+                trainerConnection: kickr.state,
+                isProxyAdvertising: coordinator.peripheral.isAdvertising,
+                subscriberCount: coordinator.peripheral.subscribedAppCount,
+                isControlledByRidingApp: coordinator.peripheral.controllingAppID != nil,
+                latestPeripheralEvent: coordinator.peripheral.latestEvent
+            )
+        }
+
+        var body: some View {
+            Form {
+                Section {
+                    VStack(spacing: 8) {
+                        Image(systemName: "bicycle")
+                            .font(.system(size: 40, weight: .semibold))
+                            .foregroundStyle(.tint)
+                            .accessibilityHidden(true)
+                        Text(app.displayName)
+                            .font(.title2.bold())
+                        Text("Version \(app.versionAndBuild)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .accessibilityElement(children: .combine)
+                }
+
+                Section("This iPhone") {
+                    LabeledContent("Device", value: UIDevice.current.model)
+                    LabeledContent(
+                        "Software",
+                        value: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)"
+                    )
+                }
+
+                Section("Live connections") {
+                    diagnosticRow(
+                        "KICKR",
+                        value: state.trainerSummary,
+                        ready: kickr.isReady
+                    )
+                    diagnosticRow(
+                        "Trainer proxy",
+                        value: state.advertisingSummary,
+                        ready: state.isProxyAdvertising
+                    )
+                    LabeledContent("Riding apps", value: state.subscribersSummary)
+                    LabeledContent("Control", value: state.controlSummary)
+                }
+
+                Section("Latest FTMS peripheral event") {
+                    Text(state.latestEventSummary)
+                        .textSelection(.enabled)
+                }
+
+                Section {
+                    Label(
+                        "Advertises FTMS 0x1826 and CPS 0x1818",
+                        systemImage: "antenna.radiowaves.left.and.right"
+                    )
+                    Label(
+                        "FTMS Indoor Bike Data is readable and notifiable",
+                        systemImage: "checkmark.circle"
+                    )
+                    Label(
+                        "Cycling Power Measurement is readable and notifiable",
+                        systemImage: "checkmark.circle"
+                    )
+                } header: {
+                    Text("Bluetooth service contract")
+                } footer: {
+                    Text(
+                        "These facts identify the trainer interface exposed by this "
+                            + "build. They do not test or change a riding app."
+                    )
+                }
+
+                Section {
+                    Button {
+                        UIPasteboard.general.setItems(
+                            [[UTType.plainText.identifier: report]],
+                            options: [
+                                .localOnly: true,
+                                .expirationDate: Date().addingTimeInterval(600),
+                            ]
+                        )
+                        showsCopiedConfirmation = true
+                    } label: {
+                        Label("Copy Diagnostics", systemImage: "doc.on.doc")
+                    }
+                    .accessibilityHint("Copies this on-device report to the clipboard")
+
+                    if showsCopiedConfirmation {
+                        Label("Diagnostics copied", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                } footer: {
+                    Text(
+                        "Diagnostics stay on this iPhone. Nothing is uploaded or sent. "
+                            + "Copying happens only when you tap Copy Diagnostics."
+                    )
+                }
+            }
+            .navigationTitle("About & Diagnostics")
+            .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("screen.about-diagnostics")
+        }
+
+        private var report: String {
+            DiagnosticsReport.make(
+                timestamp: Date(),
+                app: app,
+                operatingSystem:
+                    "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)",
+                device: UIDevice.current.model,
+                state: state
+            )
+        }
+
+        private func diagnosticRow(
+            _ title: LocalizedStringKey,
+            value: String,
+            ready: Bool
+        ) -> some View {
+            LabeledContent {
+                Text(value)
+            } label: {
+                Label(
+                    title,
+                    systemImage: ready ? "checkmark.circle.fill" : "circle.dashed"
+                )
+                .foregroundStyle(ready ? .green : .secondary)
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -1591,12 +1755,22 @@ private struct EquipmentSummary: View {
 }
 
 #Preview("Setup") {
+    let kickr = KickrCentralService()
+    let click = ClickCentralService()
+    let headwind = HeadwindCentralService()
+    let coordinator = ProxyCoordinator(
+        kickr: kickr,
+        click: click,
+        peripheral: FTMSPeripheral(),
+        screen: DeviceScreenWake()
+    )
     NavigationStack {
         SetupView(
             store: ConfigurationStore(defaults: UserDefaults(suiteName: "preview.setup")!),
-            kickr: KickrCentralService(),
-            click: ClickCentralService(),
-            headwind: HeadwindCentralService()
+            kickr: kickr,
+            click: click,
+            headwind: headwind,
+            coordinator: coordinator
         )
     }
 }
