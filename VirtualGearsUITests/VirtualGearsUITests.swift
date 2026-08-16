@@ -44,6 +44,20 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertEqual(ridingApp.label, "Riding app, Waiting for connection")
     }
 
+    func testPrimaryActionDoesNotMoveWhenTrainerBecomesReady() {
+        assertPrimaryActionKeepsPosition(
+            waitingFixture: "-shotStarting",
+            readyFixture: "-shotReady"
+        )
+    }
+
+    func testAccessibilityPrimaryActionDoesNotMoveWhenTrainerBecomesReady() {
+        assertPrimaryActionKeepsPosition(
+            waitingFixture: "-shotStartingAccessibility",
+            readyFixture: "-shotReadyAccessibility"
+        )
+    }
+
     func testRideShowsAllStatusIconsAndPrimaryControls() {
         launch("-shotRide")
 
@@ -410,6 +424,35 @@ final class VirtualGearsUITests: XCTestCase {
             fixture, "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
+    }
+
+    private func assertPrimaryActionKeepsPosition(
+        waitingFixture: String,
+        readyFixture: String
+    ) {
+        launch(waitingFixture)
+        let waiting = app.buttons["Waiting for trainer"]
+        assertVisibleElement(waiting)
+        let waitingFrame = waiting.frame
+        app.terminate()
+
+        launch(readyFixture)
+        let ready = app.buttons["Start Shifting"]
+        assertVisibleElement(ready)
+        let readyFrame = ready.frame
+
+        XCTAssertEqual(
+            waitingFrame.midY,
+            readyFrame.midY,
+            accuracy: 1,
+            "The primary action moved when the trainer became ready"
+        )
+        XCTAssertEqual(
+            waitingFrame.height,
+            readyFrame.height,
+            accuracy: 1,
+            "The primary action changed height when the trainer became ready"
+        )
     }
 
     func testTheChainReminderNeverAppearsOrDisappearsAcrossStartupStates() {

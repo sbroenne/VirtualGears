@@ -30,6 +30,10 @@ Most problems have a known answer already:
   in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
   Gears uses 2070 mm by default. See
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
+- **The Headwind did not return to its earlier setting after Stop Shifting.**
+  Keep the fan powered on or let it reconnect. Virtual Gears keeps the exact
+  pre-shifting state pending until the Headwind confirms the hand-back; any
+  refusal or timeout is shown in the app and recorded in its diagnostic log.
 
 ## What to include in a bug report
 
