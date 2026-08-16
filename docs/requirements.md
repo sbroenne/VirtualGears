@@ -178,7 +178,9 @@ Starting shifting snapshots the Headwind state before Virtual Gears applies a
 saved manual preference. Stopping shifting restores that exact state and waits
 for every command to be confirmed, including both Manual mode and its previous
 speed when needed. A temporary disconnect keeps the restoration pending for the
-fan's return. Bluetooth percentage commands in 5% steps produced audibly
+fan's return. Switching or removing a Headwind during shifting completes the
+same confirmed hand-back before disconnecting the old fan. Bluetooth percentage
+commands in 5% steps produced audibly
 distinct fan-speed changes on physical hardware, even though the fan's own
 buttons expose four presets.
 

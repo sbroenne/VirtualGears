@@ -99,13 +99,7 @@ final class HeadwindCentralService: NSObject {
     func startScanning() {
         guard !isSuspendedForDemo else { return }
         if hasSavedDevice {
-            guard isReady else {
-                deferredAction = .scan
-                commandError = nil
-                resumeSavedConnection()
-                return
-            }
-            restoreSensors(then: .scan)
+            restoreState(then: .scan)
             return
         }
         scanWhenPoweredOn = true
@@ -241,13 +235,7 @@ final class HeadwindCentralService: NSObject {
     /// Removing a connected fan is a state change, not just forgetting an ID.
     /// Manual mode survives disconnect, so sensor control must be confirmed first.
     func stopUsing() {
-        guard isReady else {
-            commandError =
-                "Reconnect the Headwind so Virtual Gears can return it to Sensors."
-            autoConnectSavedDevice()
-            return
-        }
-        restoreSensors(then: .remove)
+        restoreState(then: .remove)
     }
 
     /// Stops Bluetooth activity for Demo Mode without changing the remembered
@@ -298,6 +286,28 @@ final class HeadwindCentralService: NSObject {
         // after it and must be acknowledged before the deferred action runs.
         commandQueue.removeAll()
         enqueue(.setMode(lastSensorMode))
+    }
+
+    private func restoreState(then action: DeferredAction) {
+        deferredAction = action
+        commandError = nil
+        speedDebounceTask?.cancel()
+        commandQueue.removeAll()
+        if controlLifecycle.beginRestoration() != nil {
+            if isReady {
+                reconcileRestoration()
+            } else {
+                resumeSavedConnection()
+            }
+            return
+        }
+        requestedManual = false
+        persistControlPreference()
+        guard isReady else {
+            resumeSavedConnection()
+            return
+        }
+        restoreSensors(then: action)
     }
 
     private func enqueue(
@@ -533,6 +543,12 @@ final class HeadwindCentralService: NSObject {
         if controlLifecycle.finishRestoration(ifObserved: observedState) {
             commandError = nil
             log("Restored Headwind state from before shifting")
+            if let deferredAction {
+                self.deferredAction = nil
+                requestedManual = false
+                persistControlPreference()
+                perform(deferredAction)
+            }
         }
     }
 

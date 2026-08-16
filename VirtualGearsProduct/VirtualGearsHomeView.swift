@@ -43,6 +43,11 @@ struct VirtualGearsHomeView: View {
             guard !isDemoMode else { return }
             await discoverOptionalEquipment()
         }
+        .onChange(of: coordinator.failure, initial: true) { _, failure in
+            guard HeadwindShiftingPolicy.shouldReleaseControl(after: failure)
+            else { return }
+            headwind.releaseFanControl()
+        }
     }
 
     private func enterDemoMode() {

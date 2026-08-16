@@ -92,8 +92,7 @@ public struct HeadwindState: Equatable, Sendable {
     }
 
     public func matches(_ other: Self) -> Bool {
-        mode == other.mode
-            && (mode != .manual || manualSpeed == other.manualSpeed)
+        mode == other.mode && manualSpeed == other.manualSpeed
     }
 }
 
@@ -104,18 +103,25 @@ public enum HeadwindRestorationPolicy {
         from current: HeadwindState
     ) -> [HeadwindCommand] {
         guard !current.matches(target) else { return [] }
-        guard target.mode == .manual else {
-            return current.mode == target.mode ? [] : [.setMode(target.mode)]
-        }
-
         var commands: [HeadwindCommand] = []
-        if current.mode != .manual {
-            commands.append(.setMode(.manual))
-        }
         if current.manualSpeed != target.manualSpeed {
+            if current.mode != .manual {
+                commands.append(.setMode(.manual))
+            }
             commands.append(.setManualSpeed(target.manualSpeed))
         }
+        let projectedMode = commands.isEmpty ? current.mode : .manual
+        if projectedMode != target.mode {
+            commands.append(.setMode(target.mode))
+        }
         return commands
+    }
+}
+
+public enum HeadwindShiftingPolicy {
+    public static func shouldReleaseControl(after failure: ShiftingFailure?) -> Bool {
+        guard let failure else { return false }
+        return !failure.happenedWhileStopping
     }
 }
 

@@ -454,13 +454,13 @@ final class VirtualGearsUITests: XCTestCase {
     ) {
         launch(waitingFixture)
         let waiting = app.buttons["Waiting for trainer"]
-        assertVisibleElement(waiting)
+        XCTAssertTrue(waiting.waitForExistence(timeout: 3))
         let waitingFrame = waiting.frame
         app.terminate()
 
         launch(readyFixture)
         let ready = app.buttons["Start Shifting"]
-        assertVisibleElement(ready)
+        XCTAssertTrue(ready.waitForExistence(timeout: 3))
         let readyFrame = ready.frame
 
         XCTAssertEqual(

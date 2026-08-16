@@ -75,7 +75,9 @@ observed immediately before the first shifting command and retains it until the
 fan acknowledges the complete hand-back. Hardware-independent policy and
 lifecycle tests cover Off, heart-rate sensor, speed sensor, Sleep, Manual with
 its exact prior percentage, command ordering, start-before-ready, repeated
-start/stop, failure retry and disconnect/reconnect.
+start/stop, failed-command retry, failed shifting-start hand-back and
+disconnect/reconnect. Replacement/removal tests require the exact Off, Sleep or
+Manual baseline to finish before the old fan's lifecycle is discarded.
 
 The same physical session found that Headwind Bluetooth commands spaced 5%
 apart produced audibly distinct speed steps. That is hardware evidence for the

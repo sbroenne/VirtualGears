@@ -25,7 +25,7 @@ final class HeadwindRestorationPolicyTests: XCTestCase {
                         restoring: .init(mode: mode, manualSpeed: 35),
                         from: .init(mode: .manual, manualSpeed: 70)
                     ),
-                    [.setMode(mode)]
+                    [.setManualSpeed(35), .setMode(mode)]
                 )
             }
         }
@@ -38,6 +38,21 @@ final class HeadwindRestorationPolicyTests: XCTestCase {
                 ),
                 [.setMode(.manual), .setManualSpeed(35)]
             )
+        }
+
+        func testRestoresEveryManualSpeedExactly() {
+            for speed in stride(from: 0, through: 100, by: 5) {
+                XCTAssertEqual(
+                    HeadwindRestorationPolicy.commands(
+                        restoring: .init(mode: .manual, manualSpeed: speed),
+                        from: .init(
+                            mode: .heartRate,
+                            manualSpeed: speed == 100 ? 95 : speed + 5
+                        )
+                    ),
+                    [.setMode(.manual), .setManualSpeed(speed)]
+                )
+            }
         }
 
         func testRestoringManualAvoidsRedundantCommands() {
@@ -67,14 +82,44 @@ final class HeadwindRestorationPolicyTests: XCTestCase {
             }
         }
 
-        func testNonManualStateIgnoresIrrelevantManualSpeed() {
-            XCTAssertTrue(
-                HeadwindState(mode: .off, manualSpeed: 10).matches(
-                    .init(mode: .off, manualSpeed: 90)
-                )
+        func testNonManualStateRestoresItsRememberedManualSpeedInOrder() {
+            let target = HeadwindState(mode: .off, manualSpeed: 10)
+            let commands = HeadwindRestorationPolicy.commands(
+                restoring: target,
+                from: .init(mode: .speed, manualSpeed: 90)
             )
+            XCTAssertEqual(
+                commands,
+                [
+                    .setMode(.manual),
+                    .setManualSpeed(10),
+                    .setMode(.off),
+                ]
+            )
+
+            var observed = HeadwindState(mode: .speed, manualSpeed: 90)
+            for command in commands {
+                observed = observed.applying(command)
+            }
+            XCTAssertTrue(observed.matches(target))
         }
     }
+
+final class HeadwindShiftingPolicyTests: XCTestCase {
+    func testFailedStartReleasesFanControlButFailedStopDoesNotRepeatRelease() {
+        XCTAssertTrue(
+            HeadwindShiftingPolicy.shouldReleaseControl(
+                after: .starting(trainerNeedsWheelSizeReset: true)
+            )
+        )
+        XCTAssertFalse(
+            HeadwindShiftingPolicy.shouldReleaseControl(
+                after: .stopping(trainerNeedsWheelSizeReset: true)
+            )
+        )
+        XCTAssertFalse(HeadwindShiftingPolicy.shouldReleaseControl(after: nil))
+    }
+}
 
 final class HeadwindControlLifecycleTests: XCTestCase {
         func testCapturesOnceAndDoesNotOverwriteBaseline() {
@@ -179,18 +224,17 @@ final class HeadwindControlLifecycleTests: XCTestCase {
             lifecycle.beginRestoration()
 
             let reconnectedState = HeadwindState(mode: .manual, manualSpeed: 80)
-            XCTAssertEqual(
-                HeadwindRestorationPolicy.commands(
-                    restoring: try XCTUnwrap(lifecycle.restorationTarget),
-                    from: reconnectedState
-                ),
-                [.setMode(.sleep)]
+            let commands = HeadwindRestorationPolicy.commands(
+                restoring: try XCTUnwrap(lifecycle.restorationTarget),
+                from: reconnectedState
             )
+            XCTAssertEqual(commands, [.setManualSpeed(15), .setMode(.sleep)])
             XCTAssertFalse(lifecycle.finishRestoration(ifObserved: reconnectedState))
+            let restored = commands.reduce(reconnectedState) { state, command in
+                state.applying(command)
+            }
             XCTAssertTrue(
-                lifecycle.finishRestoration(
-                    ifObserved: reconnectedState.applying(.setMode(.sleep))
-                )
+                lifecycle.finishRestoration(ifObserved: restored)
             )
         }
 
@@ -205,7 +249,10 @@ final class HeadwindControlLifecycleTests: XCTestCase {
                 restoring: try XCTUnwrap(lifecycle.restorationTarget),
                 from: current
             )
-            XCTAssertEqual(firstAttempt, [.setMode(.heartRate)])
+            XCTAssertEqual(
+                firstAttempt,
+                [.setManualSpeed(20), .setMode(.heartRate)]
+            )
             XCTAssertEqual(lifecycle.restorationTarget, baseline)
             XCTAssertEqual(
                 HeadwindRestorationPolicy.commands(
@@ -242,6 +289,60 @@ final class HeadwindControlLifecycleTests: XCTestCase {
             var lifecycle = HeadwindControlLifecycle()
             XCTAssertNil(lifecycle.beginRestoration())
             XCTAssertEqual(lifecycle.phase, .idle)
+        }
+
+        func testCompletedLifecyclesCaptureFreshBaselines() {
+            var lifecycle = HeadwindControlLifecycle()
+            let first = HeadwindState(mode: .speed, manualSpeed: 25)
+            let second = HeadwindState(mode: .manual, manualSpeed: 70)
+
+            XCTAssertTrue(
+                lifecycle.begin(observedState: first, hasUnsettledCommand: false)
+            )
+            XCTAssertEqual(lifecycle.beginRestoration(), first)
+            XCTAssertTrue(lifecycle.finishRestoration(ifObserved: first))
+            XCTAssertEqual(lifecycle.phase, .idle)
+
+            XCTAssertTrue(
+                lifecycle.begin(observedState: second, hasUnsettledCommand: false)
+            )
+            XCTAssertEqual(lifecycle.beginRestoration(), second)
+            XCTAssertTrue(lifecycle.finishRestoration(ifObserved: second))
+            XCTAssertEqual(lifecycle.phase, .idle)
+        }
+
+        func testReplacementWaitsForEveryExactBaselineBeforeChangingDevice() {
+            let baselines = [
+                HeadwindState(mode: .off, manualSpeed: 10),
+                HeadwindState(mode: .sleep, manualSpeed: 45),
+                HeadwindState(mode: .manual, manualSpeed: 75),
+            ]
+
+            for baseline in baselines {
+                var lifecycle = HeadwindControlLifecycle()
+                lifecycle.begin(
+                    observedState: baseline,
+                    hasUnsettledCommand: false
+                )
+                XCTAssertEqual(lifecycle.beginRestoration(), baseline)
+
+                var observed = HeadwindState(mode: .manual, manualSpeed: 100)
+                let commands = HeadwindRestorationPolicy.commands(
+                    restoring: baseline,
+                    from: observed
+                )
+                for (index, command) in commands.enumerated() {
+                    observed = observed.applying(command)
+                    let isComplete = lifecycle.finishRestoration(
+                        ifObserved: observed
+                    )
+                    XCTAssertEqual(isComplete, index == commands.indices.last)
+                }
+
+                XCTAssertEqual(lifecycle.phase, .idle)
+                lifecycle.deviceChanged(whileControlling: true)
+                XCTAssertTrue(lifecycle.isAwaitingBaseline)
+            }
         }
     }
 
