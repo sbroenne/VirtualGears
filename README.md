@@ -95,6 +95,8 @@ with physical hardware.
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.
 - **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
+- **Careful Headwind hand-back** that restores the fan's exact pre-shifting
+  state when shifting stops, without stopping the riding app.
 - **Mid-ride changes** to the trainer, gears, Click or Headwind.
 - **Ride continuity** when you answer a call or briefly switch apps.
 - **A Bluetooth-free Demo Mode** for exploring the app without equipment.

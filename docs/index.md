@@ -88,9 +88,10 @@ details](accessibility.md) cover larger text and other iPhone settings.
 
 An optional Wahoo Headwind can use Automatic control from its paired sensor or a
 manual speed from the ride screen. Manual offers a slider and one-tap common
-speeds. It stays on the fan even after Bluetooth disconnects, so Virtual Gears
-explicitly returns control to the sensor and waits for confirmation before
-switching to another fan.
+speeds. Virtual Gears remembers the fan's actual state before shifting and
+restores that exact state when shifting stops: Off, heart-rate sensor, speed
+sensor, Sleep, or Manual at its previous percentage. This changes only the fan;
+the riding app remains connected and its ride continues.
 
 <p align="center">
   <img src="screenshots/headwind-control.png" width="30%" alt="Headwind manual fan control at 50 percent in portrait">

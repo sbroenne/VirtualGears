@@ -8,6 +8,12 @@ Demo Mode is separate from this hardware path. It uses local simulated gear
 state, does not use Bluetooth, does not run the interrupted-ride baseline reset
 and cannot send a command to exercise equipment.
 
+An optional Headwind is controlled only while virtual shifting asks for it.
+Virtual Gears snapshots the fan's actual state before its first control command
+and restores that exact state after **Stop Shifting**. Restoration survives a
+temporary disconnect and is complete only after the fan confirms every needed
+command. Stopping shifting does not stop or disconnect the riding app.
+
 ## The trainer has no wheel-size limit we could find
 
 This is worth stating plainly, because Virtual Gears got it wrong for a long

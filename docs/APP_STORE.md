@@ -127,7 +127,9 @@ the iPhone and when advertising itself as a trainer.
     OPTIONAL HEADWIND CONTROL
     Turn on a Wahoo KICKR HEADWIND before opening Virtual Gears and it connects
     automatically. Leave fan speed with the Headwind's own sensor, or choose a manual
-    speed from the ride screen. The fan is optional and never blocks a ride.
+    speed from the ride screen. Stop Shifting restores the fan state from before
+    shifting without stopping the ride in your riding app. The fan is optional and
+    never blocks a ride.
 
     CAREFUL WITH YOUR TRAINER
     A gear is only shown after your trainer confirms it. Every gear stays inside a
@@ -332,6 +334,19 @@ intermittently sees Virtual Gears and fails to connect, so it is not claimed as
 compatible. The iPhone stays awake
 while the trainer proxy is available so computer riding apps can discover it
 before connecting.
+
+Two further problems were physically reproduced on build 11. **Stop Shifting**
+left a Headwind at Virtual Gears' manual speed instead of restoring what the fan
+was doing beforehand. The fix snapshots the fan immediately before control and
+restores Off, heart-rate sensor, speed sensor, Sleep, or Manual at its prior
+percentage, retaining the hand-back across reconnects until all commands are
+confirmed. The primary action also still moved vertically when the trainer
+became ready: the waiting card was taller than the ready card even after the
+chain reminder stopped disappearing. Waiting and ready now share one structural
+layout, with deterministic geometry checks at normal and Accessibility Dynamic
+Type sizes. Physical Headwind testing also found that Bluetooth commands in 5%
+steps produce audibly distinct speeds even though the fan's physical controls
+offer four presets.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

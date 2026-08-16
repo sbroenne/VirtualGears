@@ -44,7 +44,7 @@ xcodebuild test \
 ```
 
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 30 scenarios cover every primary
+the simulator has Bluetooth hardware. Its 32 scenarios cover every primary
 screen, portrait and landscape status visibility, Accessibility Dynamic Type,
 startup failure, trainer reconnect, a riding app waiting, low Click battery,
 pending shifts, accepted Click press feedback, navigation, stop confirmation and
@@ -56,12 +56,31 @@ confirmation must return to the ride, every equipment status must sit on one
 row, a low Click battery must be drawn at warning weight, the Easier/Harder
 buttons in Demo Mode must be drawn with the same distinct visual weight as the
 ride screen's (sampled by pixel colour, since button styling isn't exposed via
-the accessibility tree), and the chain-position reminder must never appear or
-disappear across startup states (it previously vanished the instant the
-trainer connected, making the button above it jump). Screenshots are
+the accessibility tree), the chain-position reminder must never appear or
+disappear across startup states, and the primary action must retain the same
+frame when waiting becomes ready at normal and Accessibility Dynamic Type
+sizes. The reminder-only fix did not prevent the jump because the waiting and
+ready cards still had different heights. Screenshots are
 attached to every test result. Protocol
 behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
+
+### Headwind hand-back evidence, 16 August 2026
+
+Build 11 was physically reproduced leaving the Headwind at Virtual Gears'
+manual speed after **Stop Shifting**. The fan was not being stopped by the
+riding app; Virtual Gears simply relinquished its own bookkeeping without
+sending a restoring command. Restoration now uses the state notification
+observed immediately before the first shifting command and retains it until the
+fan acknowledges the complete hand-back. Hardware-independent policy and
+lifecycle tests cover Off, heart-rate sensor, speed sensor, Sleep, Manual with
+its exact prior percentage, command ordering, start-before-ready, repeated
+start/stop, failure retry and disconnect/reconnect.
+
+The same physical session found that Headwind Bluetooth commands spaced 5%
+apart produced audibly distinct speed steps. That is hardware evidence for the
+slider's granularity even though the fan's own buttons expose four presets; it
+is an audible observation, not a calibrated airflow measurement.
 
 Open the iPhone project:
 
