@@ -168,6 +168,12 @@ struct StartupView: View {
                         searching
                         retryButton
                     }
+                    // Fixed in the layout regardless of state, so it never
+                    // appears or disappears under the button above it. It used
+                    // to live only inside the searching and chooser cards, so
+                    // the button jumped the instant the trainer connected and
+                    // this reminder vanished with the rest of that card.
+                    chainReminder
                     demoEntry
                 }
                 .frame(maxWidth: 560)
@@ -267,7 +273,6 @@ struct StartupView: View {
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
             connectionList(includeRidingApp: false)
-            chainReminder
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
@@ -300,7 +305,6 @@ struct StartupView: View {
                 }
                 .buttonStyle(.bordered)
             }
-            chainReminder
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -746,7 +750,8 @@ struct DemoModeView: View {
             hint: easier
                 ? "Moves to the next easier simulated gear. Hold to keep shifting."
                 : "Moves to the next harder simulated gear. Hold to keep shifting.",
-            disabled: easier ? !ride.canShiftEasier : !ride.canShiftHarder
+            disabled: easier ? !ride.canShiftEasier : !ride.canShiftHarder,
+            isProminent: !easier
         ) {
             ride.shift(direction)
         } repeatAction: {

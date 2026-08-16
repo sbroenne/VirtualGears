@@ -340,6 +340,23 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisibleElement(app.buttons["50 percent"])
     }
 
+    func testDemoShiftButtonsAreDrawnLikeTheRideScreensAreWithDistinctWeight() {
+        launch("-shotDemo")
+
+        let easier = app.buttons["Shift easier"]
+        let harder = app.buttons["Shift harder"]
+        assertVisibleElement(easier)
+        assertVisibleElement(harder)
+
+        let easierColor = averageColor(of: easier)
+        let harderColor = averageColor(of: harder)
+        XCTAssertGreaterThan(
+            colorDistance(easierColor, harderColor),
+            0.1,
+            "Demo's Easier and Harder buttons look identical, unlike the ride screen"
+        )
+    }
+
     func testDemoCanShiftHarderAndEasierBackToItsStartingGear() {
         launch("-shotDemo")
 
@@ -393,6 +410,65 @@ final class VirtualGearsUITests: XCTestCase {
             fixture, "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
         ]
         app.launch()
+    }
+
+    func testTheChainReminderNeverAppearsOrDisappearsAcrossStartupStates() {
+        // It used to live only inside the searching and chooser cards, so it
+        // vanished the instant the trainer connected and the button above it
+        // jumped up to fill the gap. It must now be part of the fixed layout,
+        // present in every startup state.
+        let reminderText = "Use the smaller front ring if your bike has one. "
+            + "Pick a rear gear that keeps the chain straight, and leave it "
+            + "there."
+
+        launch("-shotStarting")
+        assertVisibleElement(app.staticTexts[reminderText])
+
+        launch("-shotReady")
+        assertVisibleElement(app.staticTexts[reminderText])
+
+        launch("-shotFailed")
+        assertVisibleElement(app.staticTexts[reminderText])
+    }
+
+    /// Samples the average colour of an element as it is actually rendered.
+    /// Button styling (bordered vs borderedProminent, tint) is not exposed on
+    /// the accessibility tree, so the only honest way to test "these two
+    /// buttons must not look identical" is to look at the pixels.
+    private func averageColor(of element: XCUIElement) -> (r: Double, g: Double, b: Double) {
+        let screenshot = element.screenshot().image
+        guard let cgImage = screenshot.cgImage else { return (0, 0, 0) }
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0,
+              let data = cgImage.dataProvider?.data,
+              let pointer = CFDataGetBytePtr(data) else { return (0, 0, 0) }
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let bytesPerRow = cgImage.bytesPerRow
+        var totals = (r: 0.0, g: 0.0, b: 0.0)
+        var samples = 0.0
+        // Sample a sparse grid rather than every pixel: fast, and averages out
+        // the icon/text drawn on top of the button's own fill colour.
+        let strideStep = max(1, min(width, height) / 12)
+        for y in stride(from: 0, to: height, by: strideStep) {
+            for x in stride(from: 0, to: width, by: strideStep) {
+                let offset = y * bytesPerRow + x * bytesPerPixel
+                guard offset + 2 < CFDataGetLength(data) else { continue }
+                totals.r += Double(pointer[offset])
+                totals.g += Double(pointer[offset + 1])
+                totals.b += Double(pointer[offset + 2])
+                samples += 1
+            }
+        }
+        guard samples > 0 else { return (0, 0, 0) }
+        return (totals.r / samples / 255, totals.g / samples / 255, totals.b / samples / 255)
+    }
+
+    private func colorDistance(
+        _ a: (r: Double, g: Double, b: Double),
+        _ b: (r: Double, g: Double, b: Double)
+    ) -> Double {
+        (pow(a.r - b.r, 2) + pow(a.g - b.g, 2) + pow(a.b - b.b, 2)).squareRoot()
     }
 
     private func assertStatusItems(

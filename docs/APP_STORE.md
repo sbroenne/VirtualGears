@@ -302,6 +302,14 @@ Every change in build 10 was made against the simulator. The gear rail, shift
 button weighting, one-row status footer and battery warning have not yet been
 checked on a physical KICKR while riding.
 
+Build 10 was ridden on a physical KICKR and surfaced two bugs, both fixed for
+build 11: the chain-position reminder was omitted from the "ready to start
+shifting" state, so it vanished the instant the trainer connected and made the
+Start Shifting button jump upward; it is now shown in a fixed position across
+every startup state. Demo Mode's shift buttons never received the
+easier/harder weight differentiation added in build 10, so they still looked
+like two equally prominent buttons; they now match the ride screen's styling.
+
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
 Connect on the next metadata change.
