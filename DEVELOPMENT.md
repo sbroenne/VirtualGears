@@ -482,10 +482,13 @@ CPS-enabled AppTap, and RideSim on a Mac connected to the phone, discovered FTMS
 and CPS, exchanged control commands, received ride data, disconnected and
 reconnected with all 15 checks passing.
 
-QZ's native iOS virtual trainer supplied the missing comparison. Unlike the
-first implementation, it both names CPS in the advertisement and makes Indoor
-Bike Data and Cycling Power Measurement readable as well as notifiable. Four
-phone builds isolated the requirement:
+[QZ (qdomyos-zwift)](https://github.com/cagnulein/qdomyos-zwift), an independent
+GPL-3.0 project, supplied the missing comparison through its publicly visible
+native iOS virtual-trainer behavior. Unlike the first implementation, it both
+names CPS in the advertisement and makes Indoor Bike Data and Cycling Power
+Measurement readable as well as notifiable. No QZ source code is copied or
+bundled in Virtual Gears; the Bluetooth-standard behavior was implemented
+independently and then proved with the four phone builds below:
 
 | Advertisement | Measurements | FulGaz on Windows |
 |---|---|---|

@@ -174,6 +174,13 @@ common problems and their answers first.
 Virtual Gears is not affiliated with Wahoo Fitness or Zwift. Wahoo, KICKR,
 HEADWIND, Zwift and Zwift Click are trademarks of their respective owners.
 
+## Acknowledgements
+
+The FulGaz-on-Windows compatibility investigation was informed by the outward
+Bluetooth behavior of [QZ (qdomyos-zwift)](https://github.com/cagnulein/qdomyos-zwift),
+an independent GPL-3.0 project. Virtual Gears implements the standard Bluetooth
+services independently; no QZ source code is copied or bundled.
+
 ## Licence
 
 Copyright &copy; 2026 Stefan Broenner. All rights reserved.
