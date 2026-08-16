@@ -28,6 +28,10 @@ final class ClickCentralService: NSObject {
     private(set) var latestButtonEvent: ZwiftClickButtonEvent?
     private(set) var identificationCandidateID: UUID?
     private(set) var latestShiftRequest: ShiftRequest?
+    /// The physical button whose press the app accepted. Unlike the raw button
+    /// event, this excludes simultaneous or overlapping presses that shifting
+    /// deliberately ignores.
+    private(set) var pressedButton: ZwiftClickButton?
     private(set) var shiftRequests: [ShiftRequest] = []
     var shiftHandler: ((ShiftRequest) -> Void)?
 
@@ -430,6 +434,7 @@ final class ClickCentralService: NSObject {
                 return
             }
             heldButton = button
+            pressedButton = button
             emit(.single(direction(for: button)))
             startRepeat(button)
         case let .released(button):
@@ -460,6 +465,7 @@ final class ClickCentralService: NSObject {
         repeatTask?.cancel()
         repeatTask = nil
         heldButton = nil
+        pressedButton = nil
         if isHolding {
             isHolding = false
             emit(.holdEnded)
@@ -535,6 +541,10 @@ extension ClickCentralService {
         selectedName = name
         self.batteryLevel = batteryLevel
         state = .ready
+    }
+
+    func stageScreenshotPressedButton(_ button: ZwiftClickButton) {
+        pressedButton = button
     }
 }
 #endif

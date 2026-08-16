@@ -76,12 +76,13 @@ the iPhone and when advertising itself as a trainer.
     Virtual Gears supplies and displays its own gears on the iPhone through an ordinary
     FTMS trainer connection; it does not support Zwift's native gear system.
 
-    You get a full set of gears you can shift through mid-ride — either 24 very wide
-    virtual gears or an exact copy of the gears on your real bike.
+    You get a full set of gears you can shift through mid-ride — either 24 evenly
+    spaced gears with an extra-low climbing range or an exact copy of the gears on
+    your real bike.
 
     NOTHING TO SET UP
-    Open the app and it starts. It finds your trainer, connects to it, puts your
-    gears on and appears to your riding app on its own. Optional original Zwift Click and
+    Open the app and it finds your trainer, connects to it and appears to your
+    riding app. Tap Start Shifting when you want it to put your gears on. Optional original Zwift Click and
     Wahoo Headwind accessories are found and remembered automatically too. If more than
     one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
     identical names, pressing a button identifies the one you want.
@@ -117,7 +118,8 @@ the iPhone and when advertising itself as a trainer.
 
     OPTIONAL SHIFT BUTTONS
     Wake an original Zwift Click before opening Virtual Gears and it connects
-    automatically. It shifts alongside the on-screen buttons, but is never required.
+    automatically. It shifts alongside the on-screen buttons and visibly presses
+    the matching control, but is never required.
 
     OPTIONAL HEADWIND CONTROL
     Turn on a Wahoo KICKR HEADWIND before opening Virtual Gears and it connects
@@ -264,12 +266,49 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current review build is 1.0 (6). Build 5 added the Demo Mode that shows the
-wheel size and command bytes changing. Build 6 removes a wheel-size limit that
-was never real: a physical KICKR V5 accepts every value the command can express,
-so the app now states the range of riding-app wheel sizes it supports instead of
-guessing at a trainer limit. It also stops describing itself to riders as
-starting a session, because it does not — it puts their gears on.
+The current TestFlight build is 1.0 (8). Build 5 added the Demo Mode that shows
+the wheel size and command bytes changing. Build 6 removed a wheel-size limit
+that was never real: a physical KICKR V5 accepts every value the command can
+express, so the app now states the range of riding-app wheel sizes it supports
+instead of guessing at a trainer limit. It also stopped describing itself to
+riders as starting a session, because it does not — it puts their gears on.
+Build 7 mirrors an accepted Zwift Click press on the matching on-screen shift
+button while keeping the gear number and haptic tied to trainer confirmation.
+Build 8 restores the explicit Start Shifting step while making the transparent
+trainer proxy available as soon as the KICKR is ready, and keeps every configured
+equipment status visible on the shifting screen.
+
+Build 1.0 (10) was uploaded to TestFlight on 15 August 2026. Build 9 was never
+uploaded, so build 10 carries everything since build 8. It fixes the case where a
+riding
+app waiting to connect replaced the KICKR, Click and fan statuses; each connection
+now keeps its own status. It also adds adaptive status layout for
+Accessibility Dynamic Type, clearer startup/status/gear/demo wording, and
+deterministic UI coverage for failure, reconnect, waiting, low-battery,
+pending-shift and physical-press states. It moves the ride status out of the
+title bar, where it was squeezed until only a wordless warning icon remained, to
+a legible line beside the gear, and gives the stop confirmation a visible Cancel
+so a rider is never shown a destructive choice with no way out. The ride screen
+was then reworked around what only it can show: the position rail fills in the
+gears already ridden through so a position can be seen instead of counted, the
+line under the gear became a caption rather than a rival to it, easier and harder
+are told apart by weight as well as by symbol, every equipment status sits on one
+row, and a low Click battery is drawn as a warning. Settings stopped saying
+"Zwift Click" twice in one row, the gears row leads with the gears chosen rather
+than a count of them, cassettes that share a name are told apart by their cog
+count, and retrying a failed start says "Try Again".
+
+Every change in build 10 was made against the simulator. The gear rail, shift
+button weighting, one-row status footer and battery warning have not yet been
+checked on a physical KICKR while riding.
+
+Build 10 was ridden on a physical KICKR and surfaced two bugs, both fixed for
+build 11: the chain-position reminder was omitted from the "ready to start
+shifting" state, so it vanished the instant the trainer connected and made the
+Start Shifting button jump upward; it is now shown in a fixed position across
+every startup state. Demo Mode's shift buttons never received the
+easier/harder weight differentiation added in build 10, so they still looked
+like two equally prominent buttons; they now match the ride screen's styling.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

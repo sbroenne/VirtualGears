@@ -91,9 +91,12 @@ idea of the bike and leaves the road alone.
    own. If it finds more than one trainer, it asks you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
    That will be your iPhone, appearing as a trainer.
-4. Ride. Shift with the two large buttons on the phone.
+4. Tap **Start Shifting**, then ride and shift with the two large buttons on the
+   phone.
 
-There is no setup screen to complete first and no start button to press.
+There is no setup screen to complete first. The app connects to the trainer and
+makes it available to the riding app automatically; **Start Shifting** only
+applies the virtual gears.
 
 You can explore the app without any equipment by tapping **Try Demo** while it
 looks for a trainer. The simulated ride does not use Bluetooth or control
@@ -118,8 +121,10 @@ About → Name — but that changes its name everywhere else too.
 
 Wake the Click by pressing a button before opening Virtual Gears. The app finds,
 connects and remembers it automatically. It shifts the same gears as the
-on-screen buttons. Nothing ever waits for it, so a Click that runs out of
-battery mid-ride costs you nothing but the buttons on the handlebar.
+on-screen buttons, and pressing it visibly presses the matching phone button.
+The gear number still changes only after the trainer confirms the shift.
+Nothing ever waits for the Click, so one that runs out of battery mid-ride
+costs you nothing but the buttons on the handlebar.
 
 If the app finds more than one Click, choose yours in Settings rather than
 letting it guess. Some Clicks advertise the same name. In that case, keep

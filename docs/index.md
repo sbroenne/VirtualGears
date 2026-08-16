@@ -75,7 +75,9 @@ list of tooth counts can tell you.
 
 Two large buttons on the phone, placed for sweaty hands and a locked-out gaze.
 An original Zwift Click can be added and shifts the same gears, but it is never
-required and nothing ever waits for it.
+required and nothing ever waits for it. Its physical press is mirrored on the
+matching phone button; the gear number still changes only after the trainer
+confirms the shift.
 
 The current gear is also an adjustable VoiceOver control: swipe up for a harder
 gear and down for an easier one. Confirmed gear changes are announced, so the
@@ -97,9 +99,9 @@ switching to another fan.
 
 ### Nothing to set up
 
-Open the app. It looks for your trainer, connects to it, puts your gears on
-and appears to your riding app, all on its own. There is no setup to complete and no
-button to press.
+Open the app. It looks for your trainer, connects to it and appears to your
+riding app. When the trainer is ready, tap **Start Shifting** to put your gears
+on. The riding app owns the ride; this button only controls Virtual Gears.
 
 The only question it asks is which device, and only when it finds more than one
 trainer, Click or Headwind. A single device is simply used. Bluetooth signal
@@ -111,6 +113,10 @@ It includes the ride screen, shifting, gear choices, Settings and example Click,
 Headwind and riding-app status. Demo Mode never uses Bluetooth and never changes
 saved equipment. It is a tour of the product, not evidence that untested
 physical hardware works.
+
+During shifting, the trainer, Click, fan and riding app each keep their own
+status. A riding app that is still waiting to connect does not hide
+the equipment Virtual Gears already connected.
 
 ### Everything changeable mid-ride
 

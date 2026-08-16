@@ -94,7 +94,15 @@ struct VirtualGearsApp: App {
 #if DEBUG
 enum ScreenshotFixture: String {
     case starting = "-shotStarting"
+    case ready = "-shotReady"
+    case failed = "-shotFailed"
     case ride = "-shotRide"
+    case rideAccessibility = "-shotRideAccessibility"
+    case rideWaiting = "-shotRideWaiting"
+    case rideLowBattery = "-shotRideLowBattery"
+    case ridePending = "-shotRidePending"
+    case ridePressed = "-shotRidePressed"
+    case rideReconnecting = "-shotRideReconnecting"
     case settings = "-shotSettings"
     case gears = "-shotGears"
     case realGears = "-shotRealGears"
@@ -129,17 +137,17 @@ private struct ScreenshotFixtureView: View {
     var body: some View {
         Group {
             switch scenario {
-            case .starting:
+            case .starting, .ready, .failed:
                 StartupView(
                     store: store,
                     kickr: kickr,
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    autoStarts: true,
                     beginsDiscovery: false
                 )
-            case .ride:
+            case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
+                 .ridePending, .ridePressed, .rideReconnecting:
                 ShiftingView(
                     store: store,
                     kickr: kickr,
@@ -170,6 +178,9 @@ private struct ScreenshotFixtureView: View {
                 DemoModeView(onExit: {})
             }
         }
+        .dynamicTypeSize(
+            scenario == .rideAccessibility ? .accessibility5 : .large
+        )
         .task {
             stage()
             try? await Task.sleep(for: .milliseconds(500))
@@ -206,10 +217,42 @@ private struct ScreenshotFixtureView: View {
             speed: 50
         )
 
-        if scenario == .ride {
+        if scenario == .rideLowBattery {
+            click.stageScreenshot(name: configuration.clickName, batteryLevel: 15)
+        } else if scenario == .ridePressed {
+            click.stageScreenshotPressedButton(.plus)
+        }
+
+        if scenario == .ready || scenario == .rideWaiting {
+            (coordinator.peripheral as? FTMSPeripheral)?
+                .stageScreenshotAdvertising()
+        } else if isRideScenario {
             (coordinator.peripheral as? FTMSPeripheral)?
                 .stageScreenshotConnection()
+        }
+        if isRideScenario {
             coordinator.stageScreenshotRide(configuration: configuration)
+        }
+        if scenario == .failed {
+            coordinator.stageScreenshotFailure("KICKR denied FTMS control")
+        } else if scenario == .ridePending {
+            coordinator.stageScreenshotPendingShift()
+        } else if scenario == .rideReconnecting {
+            kickr.stageScreenshot(
+                name: configuration.kickrName,
+                state: .connecting(name: configuration.kickrName)
+            )
+            coordinator.stageScreenshotReconnecting()
+        }
+    }
+
+    private var isRideScenario: Bool {
+        switch scenario {
+        case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
+             .ridePending, .ridePressed, .rideReconnecting:
+            true
+        default:
+            false
         }
     }
 }

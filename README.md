@@ -53,8 +53,9 @@ supported.
    may show the iPhone's name instead.
 4. Ride and shift with the large **Easier** and **Harder** buttons.
 
-There is no start button and no setup wizard. If it finds more than one trainer,
-it asks you to choose yours by name.
+There is no setup wizard. Once the trainer is connected, tap **Start Shifting**
+when you want Virtual Gears to apply its gears. If it finds more than one
+trainer, it asks you to choose yours by name.
 
 The same rule applies to optional equipment: one Click or Headwind is used
 automatically; if several are found, Virtual Gears asks instead of guessing.
@@ -75,6 +76,8 @@ with physical hardware.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
   control and support for larger text.
+- **Persistent equipment statuses** that keep the trainer, Click, fan and
+  riding app visible independently, including while the riding app is waiting.
 - **Automatic optional-equipment discovery** for an original Zwift Click and
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.

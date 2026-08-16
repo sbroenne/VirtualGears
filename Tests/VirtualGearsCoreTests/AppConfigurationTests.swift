@@ -75,6 +75,19 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.canFinishSetup)
     }
 
+    func testForgettingAHeadwindClearsBothStoredFields() {
+        var configuration = trainerReady()
+        configuration.rememberHeadwind(named: "HEADWIND 9267", id: UUID())
+        XCTAssertTrue(configuration.usesHeadwind)
+
+        configuration.forgetHeadwind()
+
+        XCTAssertNil(configuration.headwindName)
+        XCTAssertNil(configuration.headwindUUID)
+        XCTAssertFalse(configuration.usesHeadwind)
+        XCTAssertTrue(configuration.canFinishSetup)
+    }
+
     // MARK: - Gears the trainer can actually copy
 
     func testTheStartingChoiceIsSafeWithoutTheRiderTouchingAnything() {
@@ -83,6 +96,10 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertNotNil(configuration.drivetrain)
         XCTAssertTrue(configuration.hasSafeCircumference)
         XCTAssertEqual(configuration.drivetrainName, "Virtual gears")
+        XCTAssertEqual(
+            configuration.gearSummary,
+            "24 gears · extra-low climbing range"
+        )
     }
 
     /// Gears wider than the trainer can copy must block a ride rather than be
@@ -143,6 +160,37 @@ final class AppConfigurationTests: XCTestCase {
             configuration.setupDescription
         )
         XCTAssertEqual(configuration.gearCount, drivetrain.gears.count)
+    }
+
+    func testRealDrivetrainsUsePartNamesAndDescribeTheirRange() {
+        let expectedDescriptions = [
+            "close together, for flat roads",
+            "a normal road spread",
+            "wide, with easy climbing gears",
+            "very wide, for steep climbs",
+        ]
+        var observedDescriptions = Set<String>()
+
+        for chainring in DrivetrainCatalog.chainrings {
+            for cassette in DrivetrainCatalog.cassettes {
+                var configuration = trainerReady()
+                configuration.usesVirtualGears = false
+                configuration.chainringID = chainring.id
+                configuration.cassetteID = cassette.id
+                guard configuration.drivetrain != nil else { continue }
+
+                XCTAssertEqual(
+                    configuration.drivetrainName,
+                    "\(chainring.name) · \(cassette.name)"
+                )
+                for description in expectedDescriptions
+                where configuration.gearSummary.contains(description) {
+                    observedDescriptions.insert(description)
+                }
+            }
+        }
+
+        XCTAssertEqual(observedDescriptions, Set(expectedDescriptions))
     }
 
     // MARK: - Surviving an update

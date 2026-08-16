@@ -27,8 +27,41 @@ does not add any physical-hardware evidence.
 Run the hardware-independent test suite:
 
 ```bash
-swift test
+swift test --enable-code-coverage
 ```
+
+CI requires at least 90% line coverage for `Sources/VirtualGearsCore`, excluding
+tests and hardware investigation tools.
+
+Run the simulator UI regression suite:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+  -parallel-testing-enabled NO
+```
+
+`VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
+the simulator has Bluetooth hardware. Its 30 scenarios cover every primary
+screen, portrait and landscape status visibility, Accessibility Dynamic Type,
+startup failure, trainer reconnect, a riding app waiting, low Click battery,
+pending shifts, accepted Click press feedback, navigation, stop confirmation and
+cancellation, gear-mode switching, Headwind controls and Demo Mode interactions
+in both shift directions. Six of them are regression guards with measured
+assertions rather than existence checks: the ride status must be wide enough to
+be read as words rather than collapsing to an icon, cancelling the stop
+confirmation must return to the ride, every equipment status must sit on one
+row, a low Click battery must be drawn at warning weight, the Easier/Harder
+buttons in Demo Mode must be drawn with the same distinct visual weight as the
+ride screen's (sampled by pixel colour, since button styling isn't exposed via
+the accessibility tree), and the chain-position reminder must never appear or
+disappear across startup states (it previously vanished the instant the
+trainer connected, making the button above it jump). Screenshots are
+attached to every test result. Protocol
+behavior and equipment lifecycle remain covered by the package tests and
+physical-hardware evidence.
 
 Open the iPhone project:
 
@@ -54,6 +87,7 @@ without code signing.
 | `Sources/VirtualGearsCore` | Gear calculations, trainer commands, ride coordination and other hardware-independent logic |
 | `VirtualGearsProduct` | SwiftUI screens and the real Bluetooth services |
 | `Tests/VirtualGearsCoreTests` | Hardware-independent unit and ride-lifecycle tests |
+| `VirtualGearsUITests` | Simulator UI, navigation, accessibility and layout regression tests |
 | `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
 | `docs` | MkDocs website, screenshots and hardware findings |
 | `VirtualGears.xcodeproj` | iPhone app project |

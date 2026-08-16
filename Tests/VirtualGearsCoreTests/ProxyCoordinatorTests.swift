@@ -80,6 +80,17 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTFail("Timed out waiting for the ride to reach the expected state")
     }
 
+    func testTrainerProxyCanBeAvailableBeforeShiftingStarts() async {
+        coordinator.makeTrainerProxyAvailable()
+
+        XCTAssertTrue(ridingApp.isAdvertising)
+        XCTAssertEqual(coordinator.state, .idle)
+        XCTAssertNil(coordinator.displayedGear)
+
+        let response = await ridingApp.send(.requestControl)
+        XCTAssertEqual(response?.result, .success)
+    }
+
     // MARK: - What the trainer is left on
 
     func testStoppingPutsTheTrainerBackOnTheSizeItStartedWith() async throws {

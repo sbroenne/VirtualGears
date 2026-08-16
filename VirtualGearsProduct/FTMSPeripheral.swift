@@ -401,6 +401,12 @@ final class FTMSPeripheral: NSObject {
 
 #if DEBUG
 extension FTMSPeripheral {
+    func stageScreenshotAdvertising() {
+        isAdvertising = true
+        subscribedAppCount = 0
+        controllingAppID = nil
+    }
+
     func stageScreenshotConnection() {
         isAdvertising = true
         subscribedAppCount = 1
