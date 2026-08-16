@@ -89,7 +89,6 @@ final class FTMSPeripheral: NSObject {
     private lazy var featureData = VirtualTrainerFTMSProfile.feature.encode()
 
     @ObservationIgnored
-    @ObservationIgnored
     private lazy var powerRangeData =
         VirtualTrainerFTMSProfile.powerRange.encode()
 
@@ -99,6 +98,12 @@ final class FTMSPeripheral: NSObject {
         maximumTenths: 1_000,
         incrementTenths: 5
     ).encode()
+
+    @ObservationIgnored
+    private var latestIndoorBikeData = Data([0, 0, 0, 0])
+
+    @ObservationIgnored
+    private var latestCyclingPowerData = Data([0, 0, 0, 0])
 
     override init() {
         super.init()
@@ -189,6 +194,7 @@ final class FTMSPeripheral: NSObject {
     /// Sent to every subscribed app. A riding app that only reads ride data,
     /// without ever asking to steer, still gets the full stream.
     func relayIndoorBikeData(_ data: Data) {
+        latestIndoorBikeData = data
         setTrainingStatus(.manualMode)
         for id in subscribers(of: bikeDataUUID) {
             send(data, on: bikeDataCharacteristic, to: id)
@@ -201,8 +207,7 @@ final class FTMSPeripheral: NSObject {
     /// are sent anything, so nothing changes for the apps that already work.
     private func relayCyclingPower(from bikeData: Data) {
         let listeners = subscribers(of: powerMeasurementUUID)
-        guard !listeners.isEmpty,
-            let decoded = try? IndoorBikeData.decode(bikeData),
+        guard let decoded = try? IndoorBikeData.decode(bikeData),
             let watts = decoded.instantaneousPowerWatts
         else { return }
         let measurement = powerBroadcast.encode(
@@ -210,6 +215,7 @@ final class FTMSPeripheral: NSObject {
             cadenceRPM: decoded.instantaneousCadenceRPM,
             at: Date().timeIntervalSinceReferenceDate
         )
+        latestCyclingPowerData = measurement
         for id in listeners {
             send(measurement, on: powerMeasurementCharacteristic, to: id)
         }
@@ -253,9 +259,9 @@ final class FTMSPeripheral: NSObject {
         )
         bikeDataCharacteristic = CBMutableCharacteristic(
             type: bikeDataUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         resistanceCharacteristic = CBMutableCharacteristic(
             type: resistanceUUID,
@@ -298,9 +304,9 @@ final class FTMSPeripheral: NSObject {
 
         powerMeasurementCharacteristic = CBMutableCharacteristic(
             type: powerMeasurementUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         let powerService = CBMutableService(
             type: powerServiceUUID,
@@ -325,13 +331,10 @@ final class FTMSPeripheral: NSObject {
     }
 
     private func advertise() {
-        // Only the fitness machine service is advertised, even though the
-        // cycling power service is published too. FTMS is how riding apps find
-        // a trainer; they discover Cycling Power from the GATT table after
-        // connecting. Keeping the scan packet focused on FTMS also avoids
-        // depending on whether a riding app reads iOS's scan-response overflow.
+        // FulGaz on Windows requires the advertised services and readable
+        // measurement surface to agree. Either half by itself still fails.
         manager.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID],
+            CBAdvertisementDataServiceUUIDsKey: [serviceUUID, powerServiceUUID],
             CBAdvertisementDataLocalNameKey: "Virtual Gears",
         ])
     }
@@ -477,6 +480,8 @@ final class FTMSPeripheral: NSObject {
         case featureUUID: featureData
         case resistanceUUID: resistanceData
         case powerRangeUUID: powerRangeData
+        case bikeDataUUID: latestIndoorBikeData
+        case powerMeasurementUUID: latestCyclingPowerData
         case trainingStatusUUID: trainingStatus.encode()
         default: nil
         }

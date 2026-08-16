@@ -377,9 +377,8 @@ This mode changes nothing and leaves the trainer on 2070 mm.
 Before the proxy was built, the diagnostic app was made to pretend to be a
 simple indoor bike, with nothing connected to the KICKR at the time. It was run
 against RealVelo. Zwift speaks the same standard FTMS interface, but the probe
-was not run against it and it is not covered by what follows. MyWhoosh is
-covered in "MyWhoosh does not read what Virtual Gears sends" below, and it does
-not work. FulGaz is covered separately in the next section.
+was not run against it and it is not covered by what follows. MyWhoosh is covered in "What MyWhoosh reads" below. FulGaz is covered
+separately in the next section.
 
 RealVelo found the foreground iPhone as a Bluetooth FTMS trainer, showed the
 fixed speed, cadence, and power it published, and followed those values as they
@@ -474,6 +473,36 @@ wheel sizes rather than a list of known values. See `docs/safety.md`.
 Beyond the wheel size, FulGaz re-requests control every ten seconds for the
 whole ride, and drives resistance through simulation parameters rather than
 resistance commands — it sent exactly one of those, at startup.
+
+The CPS-enabled iPhone build was then tested directly on 2026-08-16. FulGaz on
+macOS connected to Virtual Gears and displayed live power and cadence. FulGaz on
+Windows saw the same phone but initially failed before subscribing to any
+app-owned characteristic. The same Windows installation connected to
+CPS-enabled AppTap, and RideSim on a Mac connected to the phone, discovered FTMS
+and CPS, exchanged control commands, received ride data, disconnected and
+reconnected with all 15 checks passing.
+
+QZ's native iOS virtual trainer supplied the missing comparison. Unlike the
+first implementation, it both names CPS in the advertisement and makes Indoor
+Bike Data and Cycling Power Measurement readable as well as notifiable. Four
+phone builds isolated the requirement:
+
+| Advertisement | Measurements | FulGaz on Windows |
+|---|---|---|
+| FTMS only | Notify only | Connection failed |
+| FTMS + CPS | Notify only | Connection failed |
+| FTMS only | Read + notify | Connection failed |
+| FTMS + CPS | Read + notify | Connected |
+
+The last build delivered live power and cadence. FulGaz on Windows therefore
+requires the advertised service list and readable measurement surface to agree;
+neither half fixes the connection by itself. The shipping peripheral now uses
+that proven combination, and RideSim checks both properties.
+
+iOS also changes peripheral advertising when the phone locks. The app therefore
+keeps the screen awake from the moment the trainer proxy is made available, not
+only after shifting starts. This keeps the standard foreground advertisement
+visible while a computer is still trying to connect.
 
 ## What RealVelo sends
 
@@ -572,7 +601,7 @@ return immediately, so every timed wait collapsed. The figures above are from
 after that was fixed. Treat any hardware evidence recorded before it with
 suspicion.
 
-## MyWhoosh does not read what Virtual Gears sends
+## What MyWhoosh reads
 
 Measured on 2026-08-14, twice: once with `Tools/AppTap` on the Mac and MyWhoosh
 on an iPad, and once with the shipping app on the phone driving the real KICKR.
@@ -589,17 +618,18 @@ The tap capture is in `docs/mywhoosh-app-tap-run.log`. What MyWhoosh did:
   bike data notifications without complaint
 
 So MyWhoosh treats the app as a controllable trainer and steers it, but does not
-take speed, cadence or power from it. Nothing on our side explains that: the
-feature characteristic declares cadence and power measurement, the packet is a
-spec-shaped Indoor Bike Data notification, and Bluetooth accepted every push.
+take speed, cadence or power from FTMS Indoor Bike Data.
 
-**The cause is not known.** One untested idea is that MyWhoosh reads power from
-a Cycling Power Service (0x1818), which the app consumes from the KICKR but has
-never published to the riding app. That is a guess and has not been tried, so it
-must not be written down anywhere as the reason.
+A later AppTap comparison added Cycling Power Service (0x1818) while continuing
+to publish the same FTMS data. MyWhoosh subscribed to Cycling Power Measurement
+and then displayed the tap's power and cadence. Virtual Gears now derives that
+measurement from the relayed FTMS packet, so it does not need another
+subscription to the KICKR.
 
-Until it is understood and fixed, MyWhoosh must not be listed as a riding app
-that works.
+That proves which Bluetooth service MyWhoosh reads, not complete compatibility.
+The CPS-enabled iPhone build was then ridden end to end with MyWhoosh on Windows
+on 2026-08-16. It connected and displayed live power and cadence, so MyWhoosh is
+now physically validated on that path.
 
 ## What name a riding app shows for Virtual Gears
 

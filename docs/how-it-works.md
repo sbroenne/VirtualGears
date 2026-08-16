@@ -17,6 +17,10 @@ adds the gears; **Stop Shifting** removes the virtual gear and restores the
 normal wheel circumference. Neither button starts or stops the ride in the
 riding app, and stopping shifting leaves that app connected.
 
+The iPhone screen stays awake for as long as this trainer proxy is available.
+iOS changes Bluetooth advertising after the phone locks, which can make a
+waiting trainer disappear from riding apps on Windows and other computers.
+
 ## Where the gears sit
 
 Every gear is scaled away from the **Normal wheel circumference** in Settings,

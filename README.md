@@ -43,10 +43,9 @@ direct-drive KICKR models are expected to work but have not yet been physically
 tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
 supported.
 
-On the riding-app side, FulGaz and RealVelo have been ridden end to end.
-**MyWhoosh does not work**: it pairs and steers the trainer, but shows no power
-or cadence. The cause is not yet understood. Other FTMS riding apps are expected
-to work but have not been tested.
+On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
+on Windows, have been ridden end to end. Other FTMS riding apps are expected to
+work but have not been tested.
 
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
 
@@ -64,6 +63,10 @@ There is no setup wizard. Virtual Gears is a transparent trainer connection as
 soon as the KICKR is ready. **Start Shifting** engages the gears; **Stop Shifting**
 removes them without disconnecting or stopping the ride in your riding app. If it
 finds more than one trainer, it asks you to choose yours by name.
+
+The iPhone screen stays awake while the trainer proxy is available. This keeps
+Virtual Gears discoverable to riding apps on Windows and other computers before
+they connect.
 
 The same rule applies to optional equipment: one Click or Headwind is used
 automatically; if several are found, Virtual Gears asks instead of guessing.

@@ -131,6 +131,10 @@ public final class ProxyCoordinator {
     /// separately decides when to apply virtual shifting.
     public func makeTrainerProxyAvailable() {
         proxyWanted = true
+        // A locked iPhone moves peripheral advertisements into an iOS-only
+        // overflow area. Keep the app visible so riding apps on computers can
+        // discover and connect to the trainer proxy.
+        screen.keepAwake = true
         kickr.resumeSavedConnection()
         startProxyIfSafe()
     }
@@ -401,6 +405,7 @@ public final class ProxyCoordinator {
         await stopShifting(disconnectWhenFinished: true)
         peripheral.stopAcceptingCommands()
         peripheral.stopAdvertising()
+        screen.keepAwake = false
     }
 
     private func stopShifting(disconnectWhenFinished: Bool) async {
@@ -482,7 +487,7 @@ public final class ProxyCoordinator {
         }
 
         if disconnectWhenFinished { disconnectOwnedEquipment() }
-        screen.keepAwake = false
+        screen.keepAwake = proxyWanted
         clearShiftingData()
         // The record is only removed once the trainer confirms the original
         // wheel size is back, so its presence is the honest answer to whether
@@ -1124,7 +1129,7 @@ public final class ProxyCoordinator {
         } else if wheelSizeGearsAreBuiltAround != nil {
             wheelSizeReset = false
         }
-        screen.keepAwake = false
+        screen.keepAwake = proxyWanted
         clearShiftingData()
         lifecycle.failStart(
             error.localizedDescription,

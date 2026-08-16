@@ -49,9 +49,8 @@ private let runMinutes: Int = {
 /// whether refusing is a safe thing for the app to do.
 private let refuseWheelSize = arguments.contains("--refuse-wheel-size")
 private let publishPowerService = !arguments.contains("--no-power-service")
-private let advertisePowerService = arguments.contains(
-    "--advertise-power-service"
-)
+private let advertisePowerService =
+    !arguments.contains("--advertise-ftms-only")
 
 @MainActor
 final class TrainerTap: NSObject {
@@ -178,9 +177,9 @@ final class TrainerTap: NSObject {
         )
         bikeDataCharacteristic = CBMutableCharacteristic(
             type: bikeDataUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         controlCharacteristic = CBMutableCharacteristic(
             type: controlUUID,
@@ -217,9 +216,9 @@ final class TrainerTap: NSObject {
         guard publishPowerService else { return }
         powerMeasurementCharacteristic = CBMutableCharacteristic(
             type: powerMeasurementUUID,
-            properties: [.notify],
+            properties: [.read, .notify],
             value: nil,
-            permissions: []
+            permissions: [.readable]
         )
         // Bit 3 says crank revolution data is present, which is what a riding
         // app needs before it will read cadence from here.
@@ -271,9 +270,8 @@ final class TrainerTap: NSObject {
     }
 
     private func advertise() {
-        // Advertising two service UUIDs is what the app tried first, and FulGaz
-        // then failed to connect. Off by default so the tap matches the app;
-        // `--advertise-power-service` puts it back to reproduce that.
+        // The shipping app advertises both services. FulGaz on Windows requires
+        // this together with readable live measurement characteristics.
         var services = [serviceUUID]
         if publishPowerService && advertisePowerService {
             services.append(cyclingPowerServiceUUID)
@@ -317,16 +315,9 @@ final class TrainerTap: NSObject {
 
     private func sendRideData() {
         elapsedSeconds &+= 1
-        let data = IndoorBikeData(
-            instantaneousSpeedHundredths: 3_000,
-            instantaneousCadenceHalfRPM: 170,
-            resistanceLevel: nil,
-            instantaneousPowerWatts: 200,
-            heartRateBPM: nil,
-            elapsedTimeSeconds: elapsedSeconds
-        )
+        let data = bikeDataBytes()
         let accepted = manager.updateValue(
-            data.encode(),
+            data,
             for: bikeDataCharacteristic,
             onSubscribedCentrals: nil
         )
@@ -345,6 +336,17 @@ final class TrainerTap: NSObject {
                     + (accepted ? "" : " (Bluetooth was busy, it did not go)")
             )
         }
+    }
+
+    private func bikeDataBytes() -> Data {
+        IndoorBikeData(
+            instantaneousSpeedHundredths: 3_000,
+            instantaneousCadenceHalfRPM: 170,
+            resistanceLevel: nil,
+            instantaneousPowerWatts: 200,
+            heartRateBPM: nil,
+            elapsedTimeSeconds: elapsedSeconds
+        ).encode()
     }
 
     private func secondsIntoRide() -> TimeInterval {
@@ -578,7 +580,6 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
         if let error {
             say("Could not publish the trainer: \(error.localizedDescription)")
             finish(sentinel: "app-tap finished", code: 1, say: say)
-            return
         }
         say("Published service \(service.uuid.uuidString).")
         servicesAdded += 1
@@ -661,6 +662,7 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
                         "wrote to \(uuid), which is not the control point."
                     )
                 }
+
                 continue
             }
             peripheral.respond(to: request, withResult: .success)
@@ -684,6 +686,28 @@ extension TrainerTap: @preconcurrency CBPeripheralManagerDelegate {
                 onSubscribedCentrals: nil
             )
         }
+    }
+
+    func peripheralManager(
+        _ peripheral: CBPeripheralManager,
+        didReceiveRead request: CBATTRequest
+    ) {
+        let value: Data?
+        switch request.characteristic.uuid {
+        case bikeDataUUID: value = bikeDataBytes()
+        case powerMeasurementUUID: value = powerMeasurementBytes()
+        default: value = nil
+        }
+        guard let value else {
+            peripheral.respond(to: request, withResult: .readNotPermitted)
+            return
+        }
+        guard request.offset >= 0, request.offset <= value.count else {
+            peripheral.respond(to: request, withResult: .invalidOffset)
+            return
+        }
+        request.value = value.subdata(in: request.offset..<value.count)
+        peripheral.respond(to: request, withResult: .success)
     }
 }
 

@@ -97,7 +97,8 @@ the iPhone and when advertising itself as a trainer.
     BUILT FOR RIDING, NOT FOR READING
     Two large shift buttons stay easy to hit without looking down or sitting up,
     while the current gear is the biggest thing on screen. Hold one to keep shifting.
-    The screen stays awake for the whole ride.
+    The screen stays awake while the trainer proxy is available, including before
+    shifting starts and after shifting stops.
 
     ACCESSIBLE RIDE CONTROLS
     VoiceOver reads the current gear and announces confirmed changes. The gear readout
@@ -231,7 +232,7 @@ Guideline 2.1:
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
     iPhone 17 Pro, iOS 26.6.
-    Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz and RealVelo.
+    Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS and Windows, plus RealVelo and MyWhoosh on Windows.
 
     EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)
     None. The app contains no networking code at all. There are no servers, accounts, analytics, adverts, tracking, payment processors, data providers or AI services. Everything happens on the device and over local Bluetooth. Nothing leaves the phone.

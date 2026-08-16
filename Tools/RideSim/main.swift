@@ -69,6 +69,10 @@ final class RideSim: NSObject {
     private let statusUUID = CBUUID(string: FTMSUUID.fitnessMachineStatus)
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
     private let trainingStatusUUID = CBUUID(string: FTMSUUID.trainingStatus)
+    private let powerServiceUUID = CBUUID(string: CyclingPowerUUID.service)
+    private let powerMeasurementUUID = CBUUID(
+        string: CyclingPowerUUID.measurement
+    )
 
     private lazy var finder = PeripheralFinder(
         scanServices: [serviceUUID], discoveryServices: nil, say: say,
@@ -81,6 +85,8 @@ final class RideSim: NSObject {
     private var status: CBCharacteristic?
     private var feature: CBCharacteristic?
     private var trainingStatus: CBCharacteristic?
+    private var powerMeasurement: CBCharacteristic?
+    private var servicesAwaitingCharacteristics: Set<CBUUID> = []
     private var trainingStatusSeen: [String] = []
 
     private var checks: [Check] = []
@@ -160,9 +166,16 @@ final class RideSim: NSObject {
             controlPoint.properties.toolDescription
         )
         record(
-            "Ride data is a notify stream",
-            bikeData.properties.contains(.notify),
+            "Ride data is readable and notifiable",
+            bikeData.properties.contains(.read)
+                && bikeData.properties.contains(.notify),
             bikeData.properties.toolDescription
+        )
+        record(
+            "Cycling power is readable and notifiable",
+            powerMeasurement?.properties.contains(.read) == true
+                && powerMeasurement?.properties.contains(.notify) == true,
+            powerMeasurement?.properties.toolDescription ?? "not found"
         )
         record(
             "Machine status is a notify stream",
@@ -404,6 +417,14 @@ extension RideSim: @preconcurrency CBCentralManagerDelegate {
             advertisementData: advertisementData, rssi: RSSI, delegate: self
         ) {
             record("The phone advertises as a fitness machine", true, found.advertisedName())
+            let services =
+                advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID]
+                ?? []
+            record(
+                "The phone advertises cycling power",
+                services.contains(powerServiceUUID),
+                services.map(\.uuidString).joined(separator: ", ")
+            )
         }
     }
 
@@ -442,9 +463,9 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
             ) == .orderedSame },
             offered.isEmpty ? "nothing found" : offered.joined(separator: ", ")
         )
-        guard let service = peripheral.services?.first(where: {
+        guard peripheral.services?.contains(where: {
             $0.uuid == serviceUUID
-        }) else {
+        }) == true else {
             record(
                 "The phone offers a fitness machine service",
                 false,
@@ -453,7 +474,19 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
             report()
             return
         }
-        peripheral.discoverCharacteristics(nil, for: service)
+        let services = (peripheral.services ?? []).filter {
+            $0.uuid == serviceUUID || $0.uuid == powerServiceUUID
+        }
+        servicesAwaitingCharacteristics = Set(services.map(\.uuid))
+        controlPoint = nil
+        bikeData = nil
+        status = nil
+        feature = nil
+        trainingStatus = nil
+        powerMeasurement = nil
+        for service in services {
+            peripheral.discoverCharacteristics(nil, for: service)
+        }
     }
 
     func peripheral(
@@ -471,9 +504,13 @@ extension RideSim: @preconcurrency CBPeripheralDelegate {
                 trainingStatus = characteristic
                 peripheral.readValue(for: characteristic)
                 peripheral.setNotifyValue(true, for: characteristic)
+            case powerMeasurementUUID:
+                powerMeasurement = characteristic
             default: break
             }
         }
+        servicesAwaitingCharacteristics.remove(service.uuid)
+        guard servicesAwaitingCharacteristics.isEmpty else { return }
         // A reconnection rediscovers everything, but the run only starts once.
         if let waiting = reconnected {
             reconnected = nil

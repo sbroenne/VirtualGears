@@ -90,6 +90,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         coordinator.makeTrainerProxyAvailable()
 
         XCTAssertTrue(ridingApp.isAdvertising)
+        XCTAssertTrue(screen.keepAwake)
         XCTAssertEqual(coordinator.state, .idle)
         XCTAssertNil(coordinator.displayedGear)
 
@@ -477,12 +478,14 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertTrue(ridingApp.isAdvertising)
     }
 
-    func testTheScreenIsKeptAwakeWhileRidingAndReleasedAfterwards() async throws {
+    func testTheScreenStaysAwakeWhileTheTrainerProxyIsAvailable() async throws {
         try await startShifting()
         XCTAssertTrue(screen.keepAwake)
 
         await coordinator.stopShifting()
+        XCTAssertTrue(screen.keepAwake)
 
+        await coordinator.shutdown()
         XCTAssertFalse(screen.keepAwake)
     }
 
@@ -703,6 +706,7 @@ final class ProxyCoordinatorTests: XCTestCase {
 
         XCTAssertFalse(ridingApp.isAdvertising)
         XCTAssertFalse(ridingApp.acceptingCommands)
+        XCTAssertFalse(screen.keepAwake)
         XCTAssertEqual(ridingApp.advertisingStopCount, 1)
         XCTAssertTrue(trainer.didDisconnect)
         XCTAssertTrue(shifter.didDisconnect)
