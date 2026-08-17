@@ -17,6 +17,10 @@ to know anything about virtual shifting.
 Leave the bike in a quiet, straight chain line and shift virtually instead.
 Nothing moves on the bike, so shifting is silent and cannot drop the chain.
 
+Because the bike stays in that one gear all ride, Virtual Gears asks you once
+which gear it is. That ratio is what every virtual gear is scaled from, so the
+app recommends the quietest gear that works and you confirm it in a tap.
+
 **[Read the full documentation](https://sbroenne.github.io/VirtualGears/)**
 
 ## Why it exists
@@ -54,15 +58,20 @@ work but have not been tested.
 1. Wake the KICKR by turning the pedals.
 2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
    available to your riding app.
-3. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
+3. Park the chain in a quiet, straight chain line and confirm the gear in
+   Settings. Virtual Gears names the gear it recommends, so this is usually one
+   tap. It is asked once and kept.
+4. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
    may show the iPhone's name instead.
-4. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
+5. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
    buttons.
 
-There is no setup wizard. Virtual Gears is a transparent trainer connection as
-soon as the KICKR is ready. **Start Shifting** engages the gears; **Stop Shifting**
-removes them without disconnecting or stopping the ride in your riding app. If it
-finds more than one trainer, it asks you to choose yours by name.
+Virtual Gears is a transparent trainer connection as soon as the KICKR is ready.
+The only thing it needs from you is the gear the bike is parked in, because
+guessing it would quietly make every gear wrong. **Start Shifting** engages the
+gears; **Stop Shifting** removes them without disconnecting or stopping the ride
+in your riding app. If it finds more than one trainer, it asks you to choose
+yours by name.
 
 The iPhone screen stays awake while the trainer proxy is available. This keeps
 Virtual Gears discoverable to riding apps on Windows and other computers before
@@ -80,10 +89,14 @@ with physical hardware.
 
 ## What it can do
 
-- **24 ready-made virtual gears**, with extra range for climbing.
+- **Ready-made virtual gears**, in ladders of 24 with extra range for climbing.
 - **App-independent shifting** for FTMS riding apps that have no virtual gears
   of their own.
-- **Real-bike gearing**, built from your chainrings and cassette.
+- **Real groupsets**, from Shimano, SRAM and Campagnolo, or your own chainrings
+  and cassette if your bike is not listed.
+- **Gears that shift the way an electronic groupset shifts**, one cog at a time
+  with the front change folded in, so there are no dead shifts and no invented
+  gaps.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
   control and support for larger text.

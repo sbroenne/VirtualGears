@@ -59,12 +59,54 @@ speed. Both remain optional and never hold up a ride.
 
 ## What you get
 
+### The one thing it asks for
+
+Your bike never shifts. It sits on the trainer in a single gear for the whole
+ride, and Virtual Gears changes gear by changing the wheel size the trainer
+works from. What your legs feel is the parked gear multiplied by the wheel size
+we set — so the app has to know the parked gear, or every gear is scaled from a
+guess.
+
+"A quiet, straight chain line" is satisfied by gears more than twice as hard as
+each other, so this cannot be assumed. Instead the app names the gear to park in
+— the quietest one that still works with the gearing you chose — and you confirm
+or correct it in a tap. It is asked once and kept.
+
+Confirm something far from the recommendation and the app says plainly what it
+costs, and offers a one-tap return to the gear it suggested.
+
 ### Gears you can see
 
 Either a 24-step virtual ladder, tuned with extra room for easy climbing, or a
-copy of a real bike described by its chainrings and cassette. A real 50/34 with
-an 11-34 cassette gives sixteen gears, running 34x34 up to 50x11 — the gears you
-would really ride, not every possible pairing of a ring with a cog.
+real groupset from Shimano, SRAM or Campagnolo — with your own chainrings and
+cassette still available if your bike is not listed. A real 50/34 with an 11-34
+cassette gives sixteen gears, running 34x34 up to 50x11 — the gears you would
+really ride, not every possible pairing of a ring with a cog.
+
+### How the ladder is built
+
+A Zwift Click has two buttons, so one sequence has to cover a whole two-ring
+drivetrain. That is the same problem Shimano solved with Synchronized Shift and
+SRAM with AXS Sequential, so Virtual Gears builds its ladder the same way rather
+than inventing a method: start on the small ring at the easiest cog, move one cog
+per press, and at the shift point change ring while jumping the cassette by a
+compensating amount, so the step still feels like an ordinary cassette step.
+Big-big and small-small are never used.
+
+Two things fall out of that, and both are tested against every groupset the app
+ships: no shift is too small to feel, and the app never invents a gap the parts
+did not already have. Large jumps that come from your real cassette — an 11-34's
+30 to 34 step — are kept, because they are real.
+
+Campagnolo has no synchronised mode, so Virtual Gears models Campagnolo *gearing*
+and its shift points rather than claiming a Campagnolo algorithm that does not
+exist.
+
+Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+or Campagnolo. Those names are used only to describe the gearing being
+simulated.
+
+### Gears drawn, not listed
 
 Whichever you choose is drawn rather than listed: one bar per gear, easiest to
 hardest, on a scale where a tall step is a jump the legs will notice. How far

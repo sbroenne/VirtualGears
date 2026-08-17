@@ -26,6 +26,14 @@ Most problems have a known answer already:
 - **Your trainer is not a KICKR V5.** Check
   [which trainers work](requirements.md#which-trainers-work) first. Several
   models cannot work at all, and the page says which.
+- **Every gear feels too hard, or too easy, by about the same amount.** Check
+  the **Gear the bike is in** setting matches the gear the chain is actually
+  parked in. Every virtual gear is scaled from that ratio, so if it is wrong the
+  steps still feel right but the whole ladder is shifted. Tapping the
+  recommended gear and parking the chain there fixes it.
+- **The Start button says "Set the gear you are in".** Virtual Gears needs to
+  know which gear the bike is parked in before it can build the gears. Open
+  Settings, park the chain in the gear it recommends and confirm.
 - **Gears feel wrong after using the app.** Set **Normal wheel circumference**
   in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
   Gears uses 2070 mm by default. See

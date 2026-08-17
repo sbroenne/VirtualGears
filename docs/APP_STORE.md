@@ -53,7 +53,7 @@ the iPhone and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or your real-bike gearing.
+    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or real groupset gearing.
 
 ### Description
 
@@ -77,8 +77,16 @@ the iPhone and when advertising itself as a trainer.
     FTMS trainer connection; it does not support Zwift's native gear system.
 
     You get a full set of gears you can shift through mid-ride — either 24 evenly
-    spaced gears with an extra-low climbing range or an exact copy of the gears on
-    your real bike.
+    spaced gears with an extra-low climbing range or the gearing of a real
+    groupset from Shimano, SRAM or Campagnolo.
+
+    ONE QUESTION BEFORE YOU RIDE
+    Your bike never shifts. It stays in one gear and Virtual Gears changes gear by
+    changing the wheel size the trainer works from, so what your legs feel is that
+    parked gear multiplied by the wheel size the app sets. Virtual Gears therefore
+    asks once which gear your bike is parked in. It works out the quietest gear
+    that still keeps every gear reachable and recommends it, so this is usually a
+    single tap — and after that it never asks again.
 
     A TRAINER PROXY, WITH SHIFTING WHEN YOU WANT IT
     Open the app and it finds your trainer, connects to it and appears to your riding
@@ -91,8 +99,15 @@ the iPhone and when advertising itself as a trainer.
     GEARS YOU CAN SEE
     Your gears are drawn, not listed as numbers — one bar per gear, short bars for
     small steps and tall bars for the ones your legs will notice. Choose the 24
-    virtual gears, or pick your real chainrings and cassette and get exactly the gears
-    you would actually ride. Cross-chained and duplicate combinations are left out.
+    virtual gears, or pick the groupset your bike has — Shimano, SRAM or Campagnolo,
+    with your own chainrings and cassette available if it is not listed — and get the
+    gears you would actually ride. The ladder is walked the way an electronic
+    groupset shifts: one cog at a time, changing chainring at the right moment, so
+    cross-chained and repeated combinations never appear and no shift is too small
+    to feel.
+
+    Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+    or Campagnolo. Those names describe only the gearing being simulated.
 
     BUILT FOR RIDING, NOT FOR READING
     Two large shift buttons stay easy to hit without looking down or sitting up,

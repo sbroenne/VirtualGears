@@ -85,6 +85,26 @@ happens; it appears only in the app's own log.
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
 
+## The gear the bike is parked in has a floor
+
+The same 6553.5 mm command ceiling puts a limit on the other end of the
+calculation. Your bike is parked in one gear all ride and every virtual gear is
+scaled from it, so a parked gear that is too easy leaves the hardest gears
+unable to encode:
+
+    2400 mm  x  5.49 (hardest gear)  /  6553.5 mm  =  2.011
+
+Park below that and the top of the ladder stops working the moment a riding app
+sets a big wheel. This is why the app computes the gear it recommends instead of
+printing a fixed sentence: literal "small ring, middle cog" advice lands a 105 on
+34/17 = 2.00 and a GRX on 31/17 = 1.82, both under the floor.
+
+There is a limit at the other end too. Parked in the big ring on the smallest cog
+every gear still fits inside the command, but the easiest one would ask the
+trainer for a 238 mm wheel — a rider a riding app would draw as having stopped.
+Setup refuses a parked gear outside the workable window rather than letting the
+ride discover it.
+
 ## If you set a custom wheel circumference
 
 The KICKR does not expose its current wheel circumference through FTMS, so

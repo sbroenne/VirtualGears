@@ -692,3 +692,59 @@ Some things that look duplicated are not, and should not be merged:
 - The fan reconnects through `resumeSavedConnection` rather than
   `retrieveAndConnect`. The two are equivalent today, but making them the
   same call would be a behaviour change wearing a refactor's clothes.
+
+## Why the gear ladder is walked rather than sorted
+
+The first version of `Drivetrain.build` paired every chainring with every cog,
+sorted the pile by ratio, pruned the cross-chained pairs and dropped exact
+duplicates. That is not how a drivetrain works, and the difference was
+measurable across the groupsets the app ships.
+
+Running both algorithms over all **72 builds** of the shipped groupsets — real
+chainring and cassette pairings only, no invented combinations:
+
+| Over 72 real groupset builds | Sorted pile | Synchro walk |
+|---|---|---|
+| Builds with a shift too small to feel | 12 | **0** |
+| Builds with a hole above 25% | 5 | **0** |
+| Smallest step anywhere | 0.4% | **5.9%** |
+| Largest step anywhere | 37% | 25% |
+| Easiest and hardest gear kept | always | always |
+
+Both defects disappear rather than being patched. A walked drivetrain cannot
+invent a hole, because it only ever moves one cog at a time, and cannot produce
+a step under the perception floor, because the ring transition refuses one.
+
+The walk is the same idea as Shimano Synchronized Shift and SRAM AXS Sequential:
+rings ascending, cogs descending, one cog per press, and at the end of a ring's
+window a jump to the ring above landing on whichever cog gives a step closest to
+the cassette step just taken. Research backing the constants: Di2 shift points
+are a programmable table rather than a formula, a front shift is always paired
+with a one-to-two cog compensating rear shift, and steps below roughly 5% cannot
+be felt.
+
+An earlier measurement across the old 616-combination catalogue produced far
+uglier numbers, but its worst cases came from 8-speed and triple drivetrains that
+have since been removed. Quoting them would have overstated the problem, so the
+table above uses real parts only.
+
+### Gear counts
+
+The walk produces **cassette speeds + 3 to + 6** gears, with 60 of the 72 builds
+landing on exactly +3 or +4. For 11-speed that is 14 to 16, which matches real
+Di2. Wider ring gaps genuinely produce more distinct gears, so `RideabilityTests`
+pins that band rather than forcing every build into 14 to 16.
+
+### The parked gear
+
+The bike never shifts, so what the rider feels is the parked ratio multiplied by
+the circumference the app sets. The app previously assumed the parked ratio
+equalled its own starting gear. `WheelCircumferenceScaler.effectiveCircumference`
+already computed `W / referenceRatio x selectedRatio`, so the fix was to pass the
+parked ratio in place of the reference. When the two are equal the behaviour is
+byte-identical to before, which is why this never showed up as a regression.
+
+The workable parked-ratio window is
+`hardestRatio / scaleRange.upperBound ... easiestRatio / scaleRange.lowerBound`.
+For the virtual ladder that is 2.011 to 2.50; for the default 105 drivetrain it
+is 1.665 to 4.167.

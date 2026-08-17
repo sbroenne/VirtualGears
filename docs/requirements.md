@@ -171,8 +171,21 @@ confirm it before switching to another Headwind.
 ## Choosing your gears
 
 The starting choice is a 24-step virtual ladder with extra room for easy
-climbing. If you would rather ride the gears of a real bike, describe it by its
-chainrings and cassette and the app builds that instead.
+climbing. If you would rather ride the gears of a real bike, pick a groupset
+from Shimano, SRAM or Campagnolo — or set the chainrings and cassette yourself
+if your bike is not listed — and the app builds that instead.
+
+The ladder is built the way Shimano Synchronized Shift and SRAM AXS Sequential
+build theirs: one cog per press, with the front change folded in and paired with
+a compensating rear jump. Campagnolo has no synchronised mode, so its entries
+model Campagnolo gearing and shift points rather than a Campagnolo algorithm.
+
+Virtual Gears also asks which gear your bike is parked in, because the bike never
+shifts and that ratio is what every virtual gear is scaled from. It recommends
+the quietest gear that works, so this is normally one tap.
+
+Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+or Campagnolo.
 
 You can change this mid-ride without interrupting the riding app. The trainer
 must confirm the newly selected gear before the app shows it.
