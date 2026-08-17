@@ -79,7 +79,8 @@ public struct DemoRideState: Equatable, Sendable {
             try? ConfirmedGearEngine(
                 drivetrain: $0,
                 wheelSizeMillimeters:
-                    TrainerSafety.referenceCircumferenceMillimeters
+                    TrainerSafety.referenceCircumferenceMillimeters,
+                parkedGear: configuration.parkedGear
             )
         }
     }

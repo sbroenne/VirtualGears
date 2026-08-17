@@ -305,8 +305,9 @@ public final class ProxyCoordinator {
         shiftingID id: UUID
     ) async {
         do {
+            let parkedGear = configuration.parkedGear
             guard let drivetrain = configuration.drivetrain,
-                  AppConfiguration.isSafe(drivetrain) else {
+                  AppConfiguration.isSafe(drivetrain, parkedGear: parkedGear) else {
                 throw ProductBluetoothError.commandFailed(
                     "These gears are outside the trainer's safe range"
                 )
@@ -323,7 +324,11 @@ public final class ProxyCoordinator {
             var wheelSize = wheelSizeCameFromRidingApp
                 ? (trainerWheelSizeMillimeters ?? reference)
                 : reference
-            if !canBuildGears(around: wheelSize, drivetrain: drivetrain) {
+            if !canBuildGears(
+                around: wheelSize,
+                drivetrain: drivetrain,
+                parkedGear: parkedGear
+            ) {
                 log(
                     "Your riding app left a \(Int(wheelSize.rounded())) mm wheel "
                         + "size. Gears built around it would reach outside the "
@@ -337,7 +342,8 @@ public final class ProxyCoordinator {
             trainerWheelSizeMillimeters = wheelSize
             gearEngine = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                wheelSizeMillimeters: wheelSize
+                wheelSizeMillimeters: wheelSize,
+                parkedGear: parkedGear
             )
             gearSequence = drivetrain.gears
             updateDisplayedGear()
@@ -592,7 +598,10 @@ public final class ProxyCoordinator {
     public func changeDrivetrain(_ configuration: AppConfiguration) async -> Bool {
         guard lifecycle.isShifting, let id = lifecycle.shiftingID,
               let drivetrain = configuration.drivetrain,
-              AppConfiguration.isSafe(drivetrain) else { return false }
+              AppConfiguration.isSafe(
+                  drivetrain,
+                  parkedGear: configuration.parkedGear
+              ) else { return false }
         // Nothing may suspend between the wait and the claim below. Two
         // rebuilds would otherwise both see the flag clear and interleave.
         guard await waitForGearsToSettle(id) else {
@@ -609,7 +618,8 @@ public final class ProxyCoordinator {
         do {
             let rebuilt = try ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                wheelSizeMillimeters: wheelSize
+                wheelSizeMillimeters: wheelSize,
+                parkedGear: configuration.parkedGear
             )
             let command = rebuilt.confirmedSetting.command
             // Shifting can be stopped while the trainer is answering. Writing
@@ -654,11 +664,13 @@ public final class ProxyCoordinator {
     /// push a gear outside that must not carry into shifting.
     private func canBuildGears(
         around millimeters: Double,
-        drivetrain: Drivetrain
+        drivetrain: Drivetrain,
+        parkedGear: ParkedGear?
     ) -> Bool {
         (try? ConfirmedGearEngine(
             drivetrain: drivetrain,
-            wheelSizeMillimeters: millimeters
+            wheelSizeMillimeters: millimeters,
+            parkedGear: parkedGear
         )) != nil
     }
 
@@ -1197,7 +1209,8 @@ extension ProxyCoordinator {
               let engine = try? ConfirmedGearEngine(
                   drivetrain: drivetrain,
                   wheelSizeMillimeters:
-                      TrainerSafety.referenceCircumferenceMillimeters
+                      TrainerSafety.referenceCircumferenceMillimeters,
+                  parkedGear: configuration.parkedGear
               )
         else { return }
 

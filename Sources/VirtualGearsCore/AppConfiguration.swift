@@ -12,9 +12,54 @@ public struct AppConfiguration: Codable, Equatable {
     public var headwindUUID: String?
     public var chainringID = DrivetrainCatalog.defaultChainringID
     public var cassetteID = DrivetrainCatalog.defaultCassetteID
-    /// The gears Zwift and Wahoo hand out when the bike has none of its own.
-    /// It is the starting point because it needs no knowledge of the bike.
+    /// A made-up ladder of evenly spaced ratios rather than a copy of a real
+    /// groupset. It is the starting point because it needs no knowledge of the
+    /// bike.
     public var usesVirtualGears = true
+    public var gearLadderID = GearLadderCatalog.defaultLadderID
+    /// What is physically on the trainer, including the one gear the bike is
+    /// parked in. Entirely separate from the gearing being simulated: a rider
+    /// on a single-sprocket Zwift Cog can simulate a twelve-speed groupset, and
+    /// most will.
+    public var physical = PhysicalSetup.default
+
+    /// Reading is deliberately forgiving: a key that is not there falls back to
+    /// the default rather than throwing the whole saved setup away. The app has
+    /// no riders yet so there is nothing to migrate today, but a setup a rider
+    /// has already made is the one thing worth never losing, so every new field
+    /// added from here on stays optional on the way in.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        func string(_ key: CodingKeys, _ fallback: String) throws -> String {
+            try container.decodeIfPresent(String.self, forKey: key) ?? fallback
+        }
+        kickrName = try string(.kickrName, "")
+        kickrUUID = try string(.kickrUUID, "")
+        clickName = try string(.clickName, "")
+        clickUUID = try string(.clickUUID, "")
+        headwindName = try container.decodeIfPresent(
+            String.self, forKey: .headwindName
+        )
+        headwindUUID = try container.decodeIfPresent(
+            String.self, forKey: .headwindUUID
+        )
+        chainringID = try string(
+            .chainringID, DrivetrainCatalog.defaultChainringID
+        )
+        cassetteID = try string(.cassetteID, DrivetrainCatalog.defaultCassetteID)
+        usesVirtualGears = try container.decodeIfPresent(
+            Bool.self, forKey: .usesVirtualGears
+        ) ?? true
+        gearLadderID = try string(
+            .gearLadderID, GearLadderCatalog.defaultLadderID
+        )
+        physical = try container.decodeIfPresent(
+            PhysicalSetup.self, forKey: .physical
+        ) ?? .default
+        normalWheelCircumferenceMillimeters = try container.decodeIfPresent(
+            Int.self, forKey: .normalWheelCircumferenceMillimeters
+        )
+    }
     /// Nil in configurations saved before this setting existed. The computed
     /// value below turns that into the long-standing 2070 mm default.
     public private(set) var normalWheelCircumferenceMillimeters: Int?
@@ -58,10 +103,61 @@ public struct AppConfiguration: Codable, Equatable {
             ?? DrivetrainCatalog.cassette(id: DrivetrainCatalog.defaultCassetteID)!
     }
 
+    public var gearLadder: GearLadder {
+        GearLadderCatalog.ladder(id: gearLadderID)
+            ?? GearLadderCatalog.defaultLadder
+    }
+
+    /// The named groupset the chosen parts belong to, when they belong to one.
+    public var groupset: Groupset? {
+        guard !usesVirtualGears else { return nil }
+        return GroupsetCatalog.groupset(
+            chainringID: chainringID,
+            cassetteID: cassetteID
+        )
+    }
+
+    /// The gear the rider confirmed their bike is parked in. Nil until they
+    /// have confirmed one, which is why setup is not finished without it.
+    public var parkedGear: ParkedGear? { physical.parkedGear }
+
+    /// The gear to recommend: the quietest one that still lets every simulated
+    /// gear reach the trainer.
+    public var suggestedParkedGear: ParkedGear? {
+        guard let drivetrain else { return nil }
+        return ParkedGearAdvice.suggestion(
+            for: physical,
+            simulating: drivetrain
+        )
+    }
+
+    /// Every parked ratio that keeps the whole ladder within the trainer's
+    /// reach, at every wheel size a riding app may ask for.
+    public var workableParkedRatios: ClosedRange<Double>? {
+        guard let drivetrain else { return nil }
+        return ParkedGearAdvice.workableRatios(for: drivetrain)
+    }
+
+    /// True when the confirmed parked gear leaves part of the ladder out of
+    /// reach, so the app can say so rather than fail mid-ride.
+    public var parkedGearPutsGearsOutOfReach: Bool {
+        guard let drivetrain, let parkedGear else { return false }
+        return !ParkedGearAdvice.isWorkable(parkedGear, simulating: drivetrain)
+    }
+
+    public mutating func park(in gear: ParkedGear) {
+        physical.park(in: gear)
+    }
+
+    /// Pre-selects the recommendation so confirming it is a single tap.
+    public mutating func parkInSuggestion() {
+        if let suggestedParkedGear { physical.park(in: suggestedParkedGear) }
+    }
+
     /// Nil when the chosen parts cover a wider spread than the trainer can copy.
     public var drivetrain: Drivetrain? {
         if usesVirtualGears {
-            return try? Drivetrain.virtualLadder()
+            return try? gearLadder.drivetrain()
         }
         return try? Drivetrain.build(
             chainrings: chainring.teeth,
@@ -91,13 +187,16 @@ public struct AppConfiguration: Codable, Equatable {
 
     public var hasSafeCircumference: Bool {
         guard let drivetrain else { return false }
-        return Self.isSafe(drivetrain)
+        return Self.isSafe(drivetrain, parkedGear: parkedGear)
     }
 
     /// Confirms every gear of a drivetrain can be built and encoded at both
     /// ends of the wheel sizes a riding app may ask for. Nothing reaches the
     /// KICKR without this.
-    public static func isSafe(_ drivetrain: Drivetrain) -> Bool {
+    public static func isSafe(
+        _ drivetrain: Drivetrain,
+        parkedGear: ParkedGear? = nil
+    ) -> Bool {
         // Building the gears is the check. The engine scales every gear and
         // encodes every command, so anything it accepts can be staged.
         //
@@ -106,17 +205,31 @@ public struct AppConfiguration: Codable, Equatable {
         // put its hardest gear out of reach once a riding app asks for 2400 mm.
         // Checking only the middle is how a drivetrain used to pass setup and
         // then fail mid-ride.
+        // The parked gear is checked separately because encoding is not the
+        // only limit. Parked in the big ring on the smallest cog every gear
+        // still fits in the command, but the easiest one asks the trainer for a
+        // 238 mm wheel, and a riding app would draw that as a rider who has
+        // stopped. That is what the scale range exists to prevent.
+        if let parkedGear,
+           !ParkedGearAdvice.isWorkable(parkedGear, simulating: drivetrain) {
+            return false
+        }
         let window = TrainerSafety.supportedRidingAppCircumferenceMillimeters
         return [window.lowerBound, window.upperBound].allSatisfy { wheelSize in
             (try? ConfirmedGearEngine(
                 drivetrain: drivetrain,
-                wheelSizeMillimeters: wheelSize
+                wheelSizeMillimeters: wheelSize,
+                parkedGear: parkedGear
             )) != nil
         }
     }
 
+    /// Setup is not finished until the rider has said which gear the bike is
+    /// parked in. There is nothing to fall back to and nothing to preserve —
+    /// the app has never shipped — and guessing it quietly moves every gear the
+    /// rider feels, so it is asked rather than assumed.
     public var canFinishSetup: Bool {
-        hasValidKickr && hasSafeCircumference
+        hasValidKickr && parkedGear != nil && hasSafeCircumference
     }
 
     /// Connecting to a trainer is not the same as choosing one. Every check
@@ -157,9 +270,13 @@ public struct AppConfiguration: Codable, Equatable {
 public extension AppConfiguration {
     var gearCount: Int { drivetrain?.gears.count ?? 0 }
 
-    /// What the rider chose, in the words printed on the parts.
+    /// What the rider chose, named the way the bike is named: the groupset if
+    /// the parts belong to one, otherwise the parts themselves.
     var drivetrainName: String {
-        guard !usesVirtualGears else { return "Virtual gears" }
+        guard !usesVirtualGears else { return gearLadder.name }
+        if let groupset {
+            return "\(groupset.qualifiedName) · \(chainring.name) \(cassette.name)"
+        }
         return "\(chainring.name) · \(cassette.name)"
     }
 
@@ -169,7 +286,7 @@ public extension AppConfiguration {
             return "Too wide a range for the trainer"
         }
         if usesVirtualGears {
-            return "\(gearCount) gears · extra-low climbing range"
+            return "\(gearCount) gears · \(gearLadder.note)"
         }
         return "\(gearCount) gears · \(rangeDescription)"
     }
@@ -203,5 +320,37 @@ public extension AppConfiguration {
         return "Gear 1 is the easiest for climbing and gear \(gearCount) is the "
             + "hardest for speed. Every ride starts in gear "
             + "\(drivetrain.referenceIndex + 1)."
+    }
+
+    /// What to tell the rider to do with the chain before they start. The
+    /// bike never shifts, so this is a one-off: park it, confirm it, ride.
+    var parkedGearAdviceText: String {
+        guard let suggestedParkedGear else {
+            return "Leave the bike in a quiet, straight chain line, then tell "
+                + "Virtual Gears which gear that is."
+        }
+        let cog = physical.isSingleSprocket
+            ? "the \(suggestedParkedGear.cogTeeth) tooth sprocket"
+            : "the \(suggestedParkedGear.cogTeeth) tooth cog"
+        return "Park the chain on the \(suggestedParkedGear.chainringTeeth) "
+            + "tooth ring and \(cog). Quiet, straight chain line — and the "
+            + "bike stays there for the whole ride."
+    }
+
+    /// Says plainly what a confirmed gear costs, rather than only computing it.
+    var parkedGearWarning: String? {
+        guard parkedGear != nil, parkedGearPutsGearsOutOfReach,
+              let range = workableParkedRatios
+        else {
+            return nil
+        }
+        return String(
+            format: "Parked in that gear, some gears cannot reach the trainer. "
+                + "It needs to be between %.2f and %.2f — around %d/%d.",
+            range.lowerBound,
+            range.upperBound,
+            suggestedParkedGear?.chainringTeeth ?? 34,
+            suggestedParkedGear?.cogTeeth ?? 15
+        )
     }
 }

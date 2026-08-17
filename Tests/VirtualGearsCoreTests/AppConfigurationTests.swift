@@ -5,9 +5,12 @@ import XCTest
 /// exist because those rules were being satisfied in one place and quietly
 /// skipped in another, which left anyone installing the app unable to ride.
 final class AppConfigurationTests: XCTestCase {
+    /// A rider who has chosen a trainer and confirmed which gear the bike is
+    /// parked in — the two things a ride genuinely needs.
     private func trainerReady() -> AppConfiguration {
         var configuration = AppConfiguration()
         configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        configuration.parkInSuggestion()
         return configuration
     }
 
@@ -29,6 +32,16 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertTrue(configuration.canFinishSetup)
         XCTAssertTrue(configuration.setupComplete)
+    }
+
+    /// A trainer on its own is not enough any more. The app also has to know
+    /// which gear the bike is left sitting in, because that is what every
+    /// virtual gear is scaled from and guessing it moves the whole ladder.
+    func testATrainerAloneIsNotEnoughWithoutTheParkedGear() {
+        var configuration = AppConfiguration()
+        configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        XCTAssertTrue(configuration.hasValidKickr)
+        XCTAssertFalse(configuration.canFinishSetup)
     }
 
     func testRememberingATrainerStoresSomethingTheAppCanReconnectTo() {
@@ -95,10 +108,11 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.usesVirtualGears)
         XCTAssertNotNil(configuration.drivetrain)
         XCTAssertTrue(configuration.hasSafeCircumference)
-        XCTAssertEqual(configuration.drivetrainName, "Virtual gears")
+        XCTAssertEqual(configuration.drivetrainName, "Virtual Gears 24")
         XCTAssertEqual(
             configuration.gearSummary,
-            "24 gears · extra-low climbing range"
+            "24 gears · Twenty-four gears, 0.60 to 5.49. "
+                + "Extra-low climbing range."
         )
     }
 
@@ -205,10 +219,18 @@ final class AppConfigurationTests: XCTestCase {
                 configuration.cassetteID = cassette.id
                 guard configuration.drivetrain != nil else { continue }
 
-                XCTAssertEqual(
-                    configuration.drivetrainName,
-                    "\(chainring.name) · \(cassette.name)"
-                )
+                if let groupset = configuration.groupset {
+                    XCTAssertEqual(
+                        configuration.drivetrainName,
+                        "\(groupset.qualifiedName) · "
+                            + "\(chainring.name) \(cassette.name)"
+                    )
+                } else {
+                    XCTAssertEqual(
+                        configuration.drivetrainName,
+                        "\(chainring.name) · \(cassette.name)"
+                    )
+                }
                 for description in expectedDescriptions
                 where configuration.gearSummary.contains(description) {
                     observedDescriptions.insert(description)
@@ -263,5 +285,13 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertFalse(configuration.usesHeadwind)
         XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        // Fields added later fall back to their defaults rather than throwing
+        // the whole saved setup away.
+        XCTAssertEqual(
+            configuration.gearLadderID,
+            GearLadderCatalog.defaultLadderID
+        )
+        XCTAssertEqual(configuration.physical, .default)
+        XCTAssertNil(configuration.parkedGear)
     }
 }

@@ -55,6 +55,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         var configuration = AppConfiguration()
         configuration.rememberKickr(named: "KICKR", id: trainer.selectedID!)
         configuration.usesVirtualGears = virtualGears
+        configuration.parkInSuggestion()
         XCTAssertTrue(
             configuration.setNormalWheelCircumference(
                 millimeters: normalWheelSize
