@@ -18,7 +18,7 @@ struct SetupView: View {
             equipmentSection
             wheelSizeSection
             gearsSection
-            chainLineSection
+            parkedGearSection
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -173,17 +173,48 @@ struct SetupView: View {
             Text(store.configuration.setupDescription)
         }
     }
-    private var chainLineSection: some View {
+    /// The bike never shifts, so the gear it is parked in is a fact the app has
+    /// to know rather than guess. Every virtual gear is scaled from that ratio,
+    /// and a wrong guess moves the whole ladder without ever looking broken.
+    private var parkedGearSection: some View {
         Section {
-            Label(
-                "Use the smaller front ring if your bike has one. Pick a rear gear "
-                    + "that keeps the chain straight, and leave it there. "
-                    + "Virtual Gears does all the shifting from now on.",
-                systemImage: "link"
-            )
-            .font(.callout)
+            NavigationLink {
+                ParkedGearView(store: store)
+            } label: {
+                // Deliberately not a connection badge. Nothing here connects;
+                // this is a fact about the bike, so it either has an answer or
+                // it is still needed.
+                LabeledContent {
+                    if let parked = store.configuration.parkedGear {
+                        Text(parked.name)
+                    } else {
+                        Text("Needed")
+                            .foregroundStyle(.orange)
+                    }
+                } label: {
+                    Text("Gear the bike is in")
+                }
+            }
+
+            if store.configuration.parkedGear == nil {
+                Label(
+                    "Virtual Gears needs to know which gear the bike is left "
+                        + "in. Without it every gear is scaled from a guess.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.callout)
+                .foregroundStyle(.orange)
+            }
+
+            if let warning = store.configuration.parkedGearWarning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
         } header: {
             Text("On the bike")
+        } footer: {
+            Text(store.configuration.parkedGearAdviceText)
         }
     }
 
@@ -786,17 +817,64 @@ struct GearChoiceView: View {
             } footer: {
                 Text(
                     store.configuration.usesVirtualGears
-                        ? "Twenty-four evenly spaced gears with an extra-low "
-                            + "climbing range. They are designed for indoor "
-                            + "riding rather than copied from a particular bike."
-                        : "Copy the numbers printed on your own bike, or pick "
-                            + "any combination you would like to ride. It does "
-                            + "not have to be a set that anyone sells."
+                        ? "Evenly spaced gears designed for indoor riding "
+                            + "rather than copied from a particular bike."
+                        : "Pick the groupset your bike has, or one you would "
+                            + "rather be riding. Nothing on the bike moves — "
+                            + "this is the gearing that gets simulated."
                 )
+            }
+
+            if store.configuration.usesVirtualGears {
+                Section {
+                    ForEach(GearLadderCatalog.ladders) { ladder in
+                        Button {
+                            store.setLadder(ladder)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ladder.name)
+                                        .foregroundStyle(.primary)
+                                    Text(ladder.note)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if ladder.id
+                                    == store.configuration.gearLadder.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Which ladder")
+                } footer: {
+                    // Apple has already sent a 2.1 review request on this app,
+                    // and the standard ladder deliberately matches a published
+                    // table, so the disclaimer is stated rather than implied.
+                    Text(
+                        "Virtual Gears is not affiliated with or endorsed by "
+                            + "Zwift, Wahoo, Shimano, SRAM or Campagnolo. "
+                            + "Product names are used only to describe what is "
+                            + "being simulated."
+                    )
+                }
             }
 
             if !store.configuration.usesVirtualGears {
                 Section {
+                    NavigationLink {
+                        GroupsetChoiceView(store: store)
+                    } label: {
+                        LabeledContent(
+                            "Groupset",
+                            value: store.configuration.groupset?.qualifiedName
+                                ?? "Custom"
+                        )
+                    }
+
                     NavigationLink {
                         ChainringChoiceView(store: store)
                     } label: {
@@ -816,6 +894,12 @@ struct GearChoiceView: View {
                     }
                 } header: {
                     Text("The bike you want to feel")
+                } footer: {
+                    Text(
+                        "Pick a groupset for a set that exists, or set the "
+                            + "chainrings and cassette yourself if your bike "
+                            + "is not listed."
+                    )
                 }
             }
 
@@ -916,9 +1000,11 @@ private struct GearPreview: View {
                    drivetrain.gears.count < expectedCombinations {
                     Text(
                         "Fewer than the \(expectedCombinations) possible "
-                            + "pairings, because the ones that would cross the "
-                            + "chain badly are left out, along with any that "
-                            + "feel exactly like another."
+                            + "pairings. The gears are walked the way an "
+                            + "electronic groupset shifts them — one cog at a "
+                            + "time, changing ring at the right moment — so "
+                            + "badly crossed and repeated combinations never "
+                            + "appear."
                     )
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -950,22 +1036,27 @@ private struct ChainringChoiceView: View {
     var body: some View {
         Form {
             ForEach(Self.groups, id: \.title) { group in
-                Section {
-                    ForEach(options(count: group.count)) { option in
-                        ChoiceRow(
-                            title: option.name,
-                            note: option.note,
-                            detail: nil,
-                            selected: option.id == store.configuration.chainringID,
-                            fits: fits(option)
-                        ) {
-                            store.setChainring(option)
+                // A heading with nothing under it looks like a loading bug, so
+                // groups the catalogue no longer stocks simply do not appear.
+                if !options(count: group.count).isEmpty {
+                    Section {
+                        ForEach(options(count: group.count)) { option in
+                            ChoiceRow(
+                                title: option.name,
+                                note: option.note,
+                                detail: nil,
+                                selected: option.id
+                                    == store.configuration.chainringID,
+                                fits: fits(option)
+                            ) {
+                                store.setChainring(option)
+                            }
                         }
+                    } header: {
+                        Text(group.title)
+                    } footer: {
+                        Text(group.note)
                     }
-                } header: {
-                    Text(group.title)
-                } footer: {
-                    Text(group.note)
                 }
             }
         }
@@ -983,11 +1074,6 @@ private struct ChainringChoiceView: View {
             "Two chainrings",
             2,
             "The usual road setup. More gears, but some of them repeat."
-        ),
-        (
-            "Three chainrings",
-            3,
-            "Older bikes. A very wide spread, so it will not fit every cassette."
         ),
     ]
 
@@ -1598,5 +1684,280 @@ private struct EquipmentSummary: View {
             click: ClickCentralService(),
             headwind: HeadwindCentralService()
         )
+    }
+}
+
+/// What is physically on the bike, and which gear it is left sitting in.
+///
+/// This is the one question the app used to skip. The bike never shifts, so the
+/// parked ratio is the baseline every virtual gear is scaled from — and a
+/// "quiet, straight chain line" is satisfied by gears more than twice as hard
+/// as each other. Rather than ask an open question, the app names the gear it
+/// wants and lets the rider confirm or correct it in one tap.
+struct ParkedGearView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            recommendationSection
+            bikeSection
+            gearSection
+        }
+        .navigationTitle("Gear the bike is in")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.parkedGear")
+    }
+
+    private var recommendationSection: some View {
+        Section {
+            Text(store.configuration.parkedGearAdviceText)
+
+            if let suggestion = store.configuration.suggestedParkedGear,
+               store.configuration.parkedGear != suggestion {
+                Button("Use \(suggestion.name)") {
+                    store.park(in: suggestion)
+                }
+                .accessibilityIdentifier("button.useSuggestedGear")
+            }
+
+            if let warning = store.configuration.parkedGearWarning {
+                Label(warning, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
+        } header: {
+            Text("What to do")
+        } footer: {
+            Text(
+                "Virtual Gears changes gear by changing the wheel size the "
+                    + "trainer works from, so it has to know the gear it is "
+                    + "working from. Park the chain once and leave it there."
+            )
+        }
+    }
+
+    private var bikeSection: some View {
+        Section {
+            Picker("Back of the bike", selection: backOfBike) {
+                Text("Cassette").tag(false)
+                Text("Single sprocket").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            NavigationLink {
+                PhysicalChainringView(store: store)
+            } label: {
+                LabeledContent("Chainrings", value: chainringSummary)
+            }
+
+            if store.configuration.physical.isSingleSprocket {
+                Stepper(
+                    value: sprocketTeeth,
+                    in: 9...30
+                ) {
+                    LabeledContent(
+                        "Sprocket",
+                        value: "\(store.configuration.physical.cogTeeth[0])T"
+                    )
+                }
+            } else {
+                NavigationLink {
+                    PhysicalCassetteView(store: store)
+                } label: {
+                    LabeledContent("Cassette", value: cassetteSummary)
+                }
+            }
+        } header: {
+            Text("What is on the bike")
+        } footer: {
+            Text(
+                "This is your real bike, not the gearing you asked to be "
+                    + "simulated. A Zwift Cog is a single sprocket with 14 teeth."
+            )
+        }
+    }
+
+    private var gearSection: some View {
+        Section {
+            ForEach(candidates, id: \.self) { gear in
+                Button {
+                    store.park(in: gear)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(gear.name)
+                                .foregroundStyle(.primary)
+                            if gear == store.configuration.suggestedParkedGear {
+                                Text("Recommended — quietest that works")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else if !isWorkable(gear) {
+                                Text("Puts some gears out of reach")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        Spacer()
+                        if gear == store.configuration.parkedGear {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
+                .accessibilityAddTraits(
+                    gear == store.configuration.parkedGear ? [.isSelected] : []
+                )
+            }
+        } header: {
+            Text("Which gear is it in")
+        }
+    }
+
+    private var candidates: [ParkedGear] {
+        ParkedGearAdvice.usableParkedGears(in: store.configuration.physical)
+    }
+
+    private func isWorkable(_ gear: ParkedGear) -> Bool {
+        guard let drivetrain = store.configuration.drivetrain else { return true }
+        return ParkedGearAdvice.isWorkable(gear, simulating: drivetrain)
+    }
+
+    private var chainringSummary: String {
+        store.configuration.physical.chainringTeeth
+            .map { "\($0)" }
+            .joined(separator: "/")
+    }
+
+    private var cassetteSummary: String {
+        let cogs = store.configuration.physical.cogTeeth
+        guard let smallest = cogs.min(), let largest = cogs.max() else {
+            return "—"
+        }
+        return "\(smallest)-\(largest)"
+    }
+
+    private var backOfBike: Binding<Bool> {
+        Binding(
+            get: { store.configuration.physical.isSingleSprocket },
+            set: { single in
+                store.setPhysicalCogs(
+                    single ? [14] : PhysicalSetup.default.cogTeeth
+                )
+            }
+        )
+    }
+
+    private var sprocketTeeth: Binding<Int> {
+        Binding(
+            get: { store.configuration.physical.cogTeeth.first ?? 14 },
+            set: { store.setPhysicalCogs([$0]) }
+        )
+    }
+}
+
+/// The rings on the rider's own bike. Kept separate from the simulated gearing
+/// on purpose: plenty of riders will run a single 31-tooth ring and ask for a
+/// twelve-speed groupset to be simulated on top of it.
+private struct PhysicalChainringView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            ForEach(DrivetrainCatalog.chainrings) { option in
+                Button {
+                    store.setPhysicalChainrings(option.teeth)
+                } label: {
+                    HStack {
+                        Text(option.name)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        if option.teeth
+                            == store.configuration.physical.chainringTeeth {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Chainrings on the bike")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct PhysicalCassetteView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            ForEach(DrivetrainCatalog.cassettes) { option in
+                Button {
+                    store.setPhysicalCogs(option.cogs)
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(option.qualifiedName)
+                                .foregroundStyle(.primary)
+                            Text(
+                                option.cogs.map(String.init)
+                                    .joined(separator: ", ")
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if option.cogs == store.configuration.physical.cogTeeth {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(Color.accentColor)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Cassette on the bike")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Named groupsets are the fast path: one tap sets both the chainrings and the
+/// cassette to a pairing that exists on a real bike, so the simulated ladder
+/// matches gearing the rider already recognises. The parts lists stay behind it
+/// for anyone whose bike is not here.
+private struct GroupsetChoiceView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            ForEach(GroupsetBrand.allCases) { brand in
+                Section {
+                    ForEach(GroupsetCatalog.groupsets(brand: brand)) { set in
+                        Button {
+                            store.setGroupset(set)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(set.name)
+                                        .foregroundStyle(.primary)
+                                    Text("\(set.speeds)-speed · \(set.note)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if set.id == store.configuration.groupset?.id {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text(brand.name)
+                }
+            }
+        }
+        .navigationTitle("Groupset")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("screen.groupset")
     }
 }

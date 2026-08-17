@@ -167,7 +167,9 @@ public enum ParkedGearAdvice {
 
     /// The gears worth parking in: real combinations of the rider's own parts,
     /// with the cross-chained corners left out.
-    static func usableParkedGears(in setup: PhysicalSetup) -> [ParkedGear] {
+    public static func usableParkedGears(
+        in setup: PhysicalSetup
+    ) -> [ParkedGear] {
         let rings = setup.chainringTeeth.sorted()
         let cogs = setup.cogTeeth.sorted(by: >)
         guard !rings.isEmpty, !cogs.isEmpty else { return [] }

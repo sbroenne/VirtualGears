@@ -494,14 +494,27 @@ struct StartupView: View {
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .disabled(!canStart)
-        .accessibilityHint(
-            canStart ? "Starts virtual shifting" : "Your trainer is not connected yet"
-        )
+        .accessibilityHint(canStart ? "Starts virtual shifting" : blockedHint)
     }
 
     private var retryTitle: String {
-        guard canStart else { return "Waiting for trainer" }
+        guard canStart else { return waitingTitle }
         return failureMessage == nil ? "Start Shifting" : "Try Again"
+    }
+
+    /// Naming the actual blocker matters: a rider told to wait for a trainer
+    /// that is sitting there connected has no way to discover that the missing
+    /// thing is which gear the bike is parked in.
+    private var waitingTitle: String {
+        store.configuration.parkedGear == nil
+            ? "Set the gear you are in"
+            : "Waiting for trainer"
+    }
+
+    private var blockedHint: String {
+        store.configuration.parkedGear == nil
+            ? "Virtual Gears needs to know which gear the bike is parked in"
+            : "Your trainer is not connected yet"
     }
 
     // MARK: - Starting
