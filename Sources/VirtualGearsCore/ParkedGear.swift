@@ -55,6 +55,10 @@ public struct PhysicalSetup: Codable, Equatable, Sendable {
         cogTeeth: [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
     )
 
+    /// The single sprocket a Zwift Cog replaces a cassette with, used instead
+    /// of a groupset's real cassette on many indoor-only setups.
+    public static let zwiftCogTeeth = [14]
+
     public init(
         chainringTeeth: [Int],
         cogTeeth: [Int],

@@ -13,10 +13,10 @@ import VirtualGearsCore
 /// what is physically bolted to the bike (so the chain-position advice is
 /// right) and the gearing that gets simulated (so the ladder matches a bike
 /// the rider already recognises), because for almost everyone those are the
-/// same bike. A rider who wants different gearing simulated than what is
-/// on the bike — running a single Zwift Cog and simulating a twelve-speed,
-/// say — can still split the two apart afterwards in Settings; the guide
-/// just does not ask that as a separate question up front.
+/// same bike. The one common exception — a single Zwift Cog standing in for
+/// the cassette on an indoor-only setup — is asked right here as a toggle,
+/// since it is common enough to deserve a real answer rather than forcing a
+/// trip to Settings afterwards; anything rarer still splits apart there.
 struct SetupWizardView: View {
     @Bindable var store: ConfigurationStore
     var onFinish: () -> Void
@@ -87,6 +87,17 @@ private struct WizardGroupsetStep: View {
     @Bindable var store: ConfigurationStore
     let onNext: () -> Void
 
+    /// True when the trainer's actual back cog is a single sprocket — a
+    /// Zwift Cog or otherwise — rather than the groupset's own cassette, a
+    /// common indoor-only setup. Asked once here, before the groupset list,
+    /// because it describes the trainer rather than the bike: it applies the
+    /// same way no matter which groupset gets picked below.
+    @State private var usesSingleSprocket = false
+    /// The tooth count for that sprocket. Defaults to 14 — a Zwift Cog —
+    /// since that is what most riders in this situation have, but the
+    /// stepper lets anyone with a different single-speed cog say so.
+    @State private var singleSprocketTeeth = PhysicalSetup.zwiftCogTeeth[0]
+
     var body: some View {
         Form {
             Section {
@@ -98,6 +109,25 @@ private struct WizardGroupsetStep: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             }
+            Section {
+                Toggle(
+                    "I ride a single sprocket, not a cassette",
+                    isOn: $usesSingleSprocket
+                )
+                if usesSingleSprocket {
+                    Stepper(value: $singleSprocketTeeth, in: 9...30) {
+                        LabeledContent("Sprocket", value: "\(singleSprocketTeeth)T")
+                    }
+                }
+            } footer: {
+                Text(
+                    "A Zwift Cog is a single 14-tooth sprocket some indoor "
+                        + "setups use instead of a cassette, though yours "
+                        + "may be a different size. Virtual Gears will "
+                        + "still simulate the full groupset you pick below "
+                        + "— only the parked-gear advice changes."
+                )
+            }
             ForEach(GroupsetBrand.allCases) { brand in
                 Section {
                     ForEach(GroupsetCatalog.groupsets(brand: brand)) { set in
@@ -107,7 +137,11 @@ private struct WizardGroupsetStep: View {
                             note: "\(set.speeds)-speed · \(set.note)",
                             selected: set.id == store.configuration.groupset?.id
                         ) {
-                            store.adoptGroupsetForBikeAndGears(set)
+                            store.adoptGroupsetForBikeAndGears(
+                                set,
+                                singleSprocketTeeth: usesSingleSprocket
+                                    ? singleSprocketTeeth : nil
+                            )
                             onNext()
                         }
                     }

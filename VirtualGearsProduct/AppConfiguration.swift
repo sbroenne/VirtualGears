@@ -58,13 +58,25 @@ final class ConfigurationStore {
     /// same thing twice. Either half can still be changed independently
     /// afterwards in Settings, for the rider who wants to simulate different
     /// gearing than what is on the bike.
-    func adoptGroupsetForBikeAndGears(_ groupset: Groupset) {
+    ///
+    /// - Parameter singleSprocketTeeth: Set when the trainer's actual back
+    ///   cog is a single sprocket — a Zwift Cog (14 teeth) or any other
+    ///   single-speed cog — rather than the groupset's own cassette; a
+    ///   common indoor-only setup. The simulated gearing still matches the
+    ///   groupset chosen either way; only the physical cog (and so the
+    ///   parked-gear advice) changes.
+    func adoptGroupsetForBikeAndGears(
+        _ groupset: Groupset,
+        singleSprocketTeeth: Int? = nil
+    ) {
         configuration.usesVirtualGears = false
         setGroupset(groupset)
         if let chainring = groupset.chainrings.first {
             setPhysicalChainrings(chainring.teeth)
         }
-        if let cassette = groupset.cassettes.first {
+        if let singleSprocketTeeth {
+            setPhysicalCogs([singleSprocketTeeth])
+        } else if let cassette = groupset.cassettes.first {
             setPhysicalCogs(cassette.cogs)
         }
     }

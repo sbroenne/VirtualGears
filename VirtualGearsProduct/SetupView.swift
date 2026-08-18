@@ -2019,7 +2019,7 @@ struct ParkedGearView: View {
             get: { store.configuration.physical.isSingleSprocket },
             set: { single in
                 store.setPhysicalCogs(
-                    single ? [14] : PhysicalSetup.default.cogTeeth
+                    single ? PhysicalSetup.zwiftCogTeeth : PhysicalSetup.default.cogTeeth
                 )
             }
         )
