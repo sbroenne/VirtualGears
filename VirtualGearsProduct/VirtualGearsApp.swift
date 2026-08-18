@@ -108,6 +108,7 @@ enum ScreenshotFixture: String {
     case ridePressed = "-shotRidePressed"
     case rideReconnecting = "-shotRideReconnecting"
     case settings = "-shotSettings"
+    case setupWizard = "-shotSetupWizard"
     case gears = "-shotGears"
     case realGears = "-shotRealGears"
     case headwind = "-shotHeadwind"
@@ -170,6 +171,10 @@ private struct ScreenshotFixtureView: View {
                         autoConnectsOnAppear: false
                     )
                 }
+            case .setupWizard:
+                NavigationStack {
+                    SetupWizardView(store: store, onFinish: {})
+                }
             case .gears, .realGears:
                 NavigationStack {
                     GearChoiceView(store: store)
@@ -195,6 +200,13 @@ private struct ScreenshotFixtureView: View {
     private func stage() {
         guard scenario != .demo else { return }
         var configuration = AppConfiguration()
+        // Every fixture here represents a rider who has already been through
+        // setup once, not a first launch — so the guide should not pop up
+        // and steal the screenshot. The wizard fixture is the one exception:
+        // it exists to test the guide itself, so it must start unseen.
+        if scenario != .setupWizard {
+            configuration.completeSetupWizard()
+        }
         configuration.rememberKickr(
             named: "Wahoo KICKR 2A93",
             id: ScreenshotFixture.kickrID

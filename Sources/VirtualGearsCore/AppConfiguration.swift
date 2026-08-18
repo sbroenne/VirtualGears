@@ -17,11 +17,23 @@ public struct AppConfiguration: Codable, Equatable {
     /// bike.
     public var usesVirtualGears = true
     public var gearLadderID = GearLadderCatalog.defaultLadderID
+    /// The rider's own gear count and range, used only while `gearLadderID`
+    /// equals `GearLadderCatalog.customLadderID`. Kept even while a built-in
+    /// ladder is selected, so switching to "Custom" and back never forgets
+    /// what the rider last set it to.
+    public var customLadder = CustomGearLadder.default
     /// What is physically on the trainer, including the one gear the bike is
     /// parked in. Entirely separate from the gearing being simulated: a rider
     /// on a single-sprocket Zwift Cog can simulate a twelve-speed groupset, and
     /// most will.
     public var physical = PhysicalSetup.default
+
+    /// Whether the rider has been through the setup guide (groupset, chain
+    /// position, wheel size) at least once. Not the same as `canFinishSetup`:
+    /// a rider can dismiss the guide part-way through and finish setting
+    /// things up by hand in Settings, and this should not re-open on every
+    /// launch once they have seen it.
+    public var setupWizardCompleted = false
 
     /// Reading is deliberately forgiving: a key that is not there falls back to
     /// the default rather than throwing the whole saved setup away. The app has
@@ -53,9 +65,15 @@ public struct AppConfiguration: Codable, Equatable {
         gearLadderID = try string(
             .gearLadderID, GearLadderCatalog.defaultLadderID
         )
+        customLadder = try container.decodeIfPresent(
+            CustomGearLadder.self, forKey: .customLadder
+        ) ?? .default
         physical = try container.decodeIfPresent(
             PhysicalSetup.self, forKey: .physical
         ) ?? .default
+        setupWizardCompleted = try container.decodeIfPresent(
+            Bool.self, forKey: .setupWizardCompleted
+        ) ?? false
         normalWheelCircumferenceMillimeters = try container.decodeIfPresent(
             Int.self, forKey: .normalWheelCircumferenceMillimeters
         )
@@ -103,8 +121,17 @@ public struct AppConfiguration: Codable, Equatable {
             ?? DrivetrainCatalog.cassette(id: DrivetrainCatalog.defaultCassetteID)!
     }
 
+    /// True while the rider has chosen to define their own gear count and
+    /// range rather than the one built-in ladder.
+    public var usesCustomLadder: Bool {
+        gearLadderID == GearLadderCatalog.customLadderID
+    }
+
     public var gearLadder: GearLadder {
-        GearLadderCatalog.ladder(id: gearLadderID)
+        if usesCustomLadder {
+            return GearLadderCatalog.custom(customLadder)
+        }
+        return GearLadderCatalog.ladder(id: gearLadderID)
             ?? GearLadderCatalog.defaultLadder
     }
 
@@ -152,6 +179,12 @@ public struct AppConfiguration: Codable, Equatable {
     /// Pre-selects the recommendation so confirming it is a single tap.
     public mutating func parkInSuggestion() {
         if let suggestedParkedGear { physical.park(in: suggestedParkedGear) }
+    }
+
+    /// Marks the setup guide as seen, whether the rider finished every step
+    /// or dismissed it early. Either way it should not reopen on its own.
+    public mutating func completeSetupWizard() {
+        setupWizardCompleted = true
     }
 
     /// Nil when the chosen parts cover a wider spread than the trainer can copy.

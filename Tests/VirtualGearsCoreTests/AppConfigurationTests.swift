@@ -108,11 +108,107 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.usesVirtualGears)
         XCTAssertNotNil(configuration.drivetrain)
         XCTAssertTrue(configuration.hasSafeCircumference)
-        XCTAssertEqual(configuration.drivetrainName, "Virtual Gears 24")
+        XCTAssertEqual(configuration.drivetrainName, "Standard 24")
         XCTAssertEqual(
             configuration.gearSummary,
-            "24 gears · 0.60 to 5.49, with an extra-low climbing range"
+            "24 gears · 0.75 to 5.49, the common virtual ladder"
         )
+    }
+
+    /// A rider who never opened Custom still has parameters to fall back on
+    /// if they later switch, and they start from the same numbers as Standard
+    /// so switching to Custom for the first time changes nothing on its own.
+    func testUnusedCustomLadderDefaultsMatchStandard() {
+        let configuration = AppConfiguration()
+        XCTAssertFalse(configuration.usesCustomLadder)
+        XCTAssertEqual(configuration.customLadder.gearCount, 24)
+        XCTAssertEqual(configuration.customLadder.easiestRatioHundredths, 75)
+        XCTAssertEqual(configuration.customLadder.hardestRatioHundredths, 549)
+    }
+
+    /// Switching to Custom is what `gearLadder` should read once it happens,
+    /// and the ladder it builds should have the rider's own gear count.
+    func testSwitchingToCustomBuildsTheLadderFromTheRidersOwnParameters() {
+        var configuration = trainerReady()
+        configuration.customLadder = CustomGearLadder(
+            gearCount: 12,
+            easiestRatioHundredths: 100,
+            hardestRatioHundredths: 300
+        )
+        configuration.gearLadderID = GearLadderCatalog.customLadderID
+
+        XCTAssertTrue(configuration.usesCustomLadder)
+        XCTAssertEqual(configuration.gearLadder.gearCount, 12)
+        XCTAssertEqual(configuration.gearLadder.ratiosHundredths.first, 100)
+        XCTAssertEqual(configuration.gearLadder.ratiosHundredths.last, 300)
+        XCTAssertNotNil(configuration.drivetrain)
+        XCTAssertTrue(configuration.hasSafeCircumference)
+    }
+
+    /// The same safety check that catches an impossible real drivetrain also
+    /// has to catch an impossible custom ladder — a rider typing in a wide
+    /// range should be told plainly, not left with a ride that fails later.
+    func testACustomLadderThatIsTooWideForTheTrainerIsRejected() {
+        var configuration = trainerReady()
+        configuration.customLadder = CustomGearLadder(
+            gearCount: 24,
+            easiestRatioHundredths: 20,
+            hardestRatioHundredths: 2_000
+        )
+        configuration.gearLadderID = GearLadderCatalog.customLadderID
+
+        XCTAssertNil(configuration.drivetrain)
+        XCTAssertFalse(configuration.hasSafeCircumference)
+        XCTAssertFalse(configuration.canFinishSetup)
+    }
+
+    /// A saved configuration from before Custom existed has no `customLadder`
+    /// key at all. Decoding must fall back rather than throw away the rest of
+    /// a rider's saved setup.
+    // MARK: - Setup guide
+
+    func testAFreshConfigurationHasNotSeenTheSetupGuide() {
+        let configuration = AppConfiguration()
+        XCTAssertFalse(configuration.setupWizardCompleted)
+    }
+
+    func testCompletingTheSetupGuideMarksItSeen() {
+        var configuration = AppConfiguration()
+        configuration.completeSetupWizard()
+        XCTAssertTrue(configuration.setupWizardCompleted)
+    }
+
+    func testDecodingAConfigurationWithNoSetupWizardKeyFallsBackToNotSeen() throws {
+        var configuration = AppConfiguration()
+        configuration.completeSetupWizard()
+        var data = try JSONEncoder().encode(configuration)
+        var object = try JSONSerialization.jsonObject(
+            with: data
+        ) as! [String: Any]
+        object.removeValue(forKey: "setupWizardCompleted")
+        data = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self, from: data
+        )
+        XCTAssertFalse(decoded.setupWizardCompleted)
+    }
+
+    func testDecodingAConfigurationWithNoCustomLadderKeyFallsBackToDefault() throws {
+        var configuration = AppConfiguration()
+        configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        var data = try JSONEncoder().encode(configuration)
+        var object = try JSONSerialization.jsonObject(
+            with: data
+        ) as! [String: Any]
+        object.removeValue(forKey: "customLadder")
+        data = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self, from: data
+        )
+        XCTAssertEqual(decoded.customLadder, .default)
+        XCTAssertFalse(decoded.usesCustomLadder)
     }
 
     func testNormalWheelSizeDefaultsTo2070Millimeters() {

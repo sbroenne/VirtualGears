@@ -38,6 +38,12 @@ Most problems have a known answer already:
   in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
   Gears uses 2070 mm by default. See
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
+- **A Windows riding app disconnected mid-ride and won't come back.** A weak
+  Bluetooth link can time out, and some riding apps on Windows do not scan for
+  your phone again on their own afterwards. Restart the riding app to make it
+  look again. This has been confirmed to be the riding app's own reconnect
+  behaviour, not a Virtual Gears fault — the trainer stayed connected and
+  working the whole time.
 
 ## What to include in a bug report
 

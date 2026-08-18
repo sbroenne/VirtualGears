@@ -669,6 +669,14 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
             central.identifier,
             characteristic: characteristic.uuid.uuidString
         ))
+        // CoreBluetooth is documented to keep broadcasting on its own once a
+        // central disconnects, but a riding app that never returns has been
+        // reported in the field with no other explanation found. Re-asserting
+        // the advertisement here costs nothing when it was already fine, and
+        // is the one thing that can help if the OS silently let it lapse.
+        if wantsAdvertising, isAdvertising, centrals.isEmpty {
+            advertise()
+        }
     }
 
     func peripheralManagerIsReady(

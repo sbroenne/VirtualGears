@@ -51,8 +51,34 @@ final class ConfigurationStore {
         }
     }
 
+    /// The setup guide's single "what's your bike" question: one groupset
+    /// answers both what is physically bolted on (so the chain-position
+    /// advice is right) and what gearing gets simulated (so the ladder
+    /// matches a bike the rider actually recognises), instead of asking the
+    /// same thing twice. Either half can still be changed independently
+    /// afterwards in Settings, for the rider who wants to simulate different
+    /// gearing than what is on the bike.
+    func adoptGroupsetForBikeAndGears(_ groupset: Groupset) {
+        configuration.usesVirtualGears = false
+        setGroupset(groupset)
+        if let chainring = groupset.chainrings.first {
+            setPhysicalChainrings(chainring.teeth)
+        }
+        if let cassette = groupset.cassettes.first {
+            setPhysicalCogs(cassette.cogs)
+        }
+    }
+
     func setLadder(_ ladder: GearLadder) {
         configuration.gearLadderID = ladder.id
+    }
+
+    /// Switches to a ladder the rider defines themselves. The parameters are
+    /// kept even after switching back to the built-in ladder, so returning to
+    /// "Custom" does not forget what was last set.
+    func setCustomLadder(_ params: CustomGearLadder) {
+        configuration.gearLadderID = GearLadderCatalog.customLadderID
+        configuration.customLadder = params
     }
 
     /// What is physically bolted to the bike. Changing it invalidates whichever
@@ -83,6 +109,10 @@ final class ConfigurationStore {
 
     func setNormalWheelCircumference(millimeters: Int) {
         configuration.setNormalWheelCircumference(millimeters: millimeters)
+    }
+
+    func completeSetupWizard() {
+        configuration.completeSetupWizard()
     }
 
     private func save() {

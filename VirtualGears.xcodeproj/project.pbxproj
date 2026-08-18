@@ -20,6 +20,7 @@
 		A00000000000000000000009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* Assets.xcassets */; };
 		A0000000000000000000000B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* PrivacyInfo.xcprivacy */; };
 		A0000000000000000000000C /* HeadwindCentralService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* HeadwindCentralService.swift */; };
+		A0000000000000000000000D /* SetupWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* SetupWizardView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,7 @@
 		A10000000000000000000007 /* FTMSPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FTMSPeripheral.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000000000000000000000C /* HeadwindCentralService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadwindCentralService.swift; sourceTree = "<group>"; };
+		A1000000000000000000000D /* SetupWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupWizardView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +83,7 @@
 				A10000000000000000000006 /* ClickCentralService.swift */,
 				A10000000000000000000007 /* FTMSPeripheral.swift */,
 				A1000000000000000000000C /* HeadwindCentralService.swift */,
+				A1000000000000000000000D /* SetupWizardView.swift */,
 				A10000000000000000000009 /* Assets.xcassets */,
 				20000000000000000000000B /* Info.plist */,
 			);
@@ -239,6 +242,7 @@
 				A00000000000000000000006 /* ClickCentralService.swift in Sources */,
 				A00000000000000000000007 /* FTMSPeripheral.swift in Sources */,
 				A0000000000000000000000C /* HeadwindCentralService.swift in Sources */,
+				A0000000000000000000000D /* SetupWizardView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

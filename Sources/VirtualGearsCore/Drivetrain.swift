@@ -22,17 +22,17 @@ public struct Drivetrain: Equatable, Sendable {
     /// An even ladder of twenty-four virtual ratios that belongs to no real
     /// bike. See ``GearLadderCatalog`` for the ladders on offer.
     public static let virtualReferenceIndex = GearLadderCatalog
-        .extendedRange.startingIndex
+        .standardRange.startingIndex
 
     public static let virtualRatiosHundredths = GearLadderCatalog
-        .extendedRange.ratiosHundredths
+        .standardRange.ratiosHundredths
 
     /// Built as ratios out of one hundred rather than real teeth, because these
     /// gears are not parts anyone can buy.
     public static func virtualLadder(
-        ratiosHundredths: [Int] = GearLadderCatalog.extendedRange
+        ratiosHundredths: [Int] = GearLadderCatalog.standardRange
             .ratiosHundredths,
-        startingIndex: Int = GearLadderCatalog.extendedRange.startingIndex,
+        startingIndex: Int = GearLadderCatalog.standardRange.startingIndex,
         scaleRange: ClosedRange<Double> = TrainerSafety.supportedScaleRange
     ) throws -> Drivetrain {
         let gears = try ratiosHundredths

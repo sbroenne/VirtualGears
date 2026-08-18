@@ -45,25 +45,52 @@ public struct GearLadder: Identifiable, Equatable, Sendable {
     }
 }
 
-public enum GearLadderCatalog {
-    /// Twenty-four evenly spaced ratios whose upper half is the widely used
-    /// table and whose lower half reaches further down, so first gear is
-    /// genuinely easy for indoor climbing without giving up anything at the top.
-    public static let extendedRange = GearLadder(
-        id: "virtual-gears-24",
-        name: "Virtual Gears 24",
-        note: "0.60 to 5.49, with an extra-low climbing range",
-        ratiosHundredths: [
-            60, 68, 77, 88, 100, 113, 129, 146,
-            165, 187, 212, 240, 261, 282, 303, 324,
-            349, 374, 399, 424, 454, 484, 514, 549,
-        ],
-        startingIndex: 11
+/// The rider's own gear count and range, used when they want something other
+/// than the one built-in ladder. Stored separately from `GearLadder` because it
+/// is parameters a rider can edit, not a fixed table.
+public struct CustomGearLadder: Codable, Equatable, Sendable {
+    public var gearCount: Int
+    public var easiestRatioHundredths: Int
+    public var hardestRatioHundredths: Int
+
+    public init(
+        gearCount: Int,
+        easiestRatioHundredths: Int,
+        hardestRatioHundredths: Int
+    ) {
+        self.gearCount = gearCount
+        self.easiestRatioHundredths = easiestRatioHundredths
+        self.hardestRatioHundredths = hardestRatioHundredths
+    }
+
+    /// Starts from the same numbers as the built-in ladder, so switching to
+    /// "Custom" for the first time changes nothing about how the bike rides
+    /// until the rider actually edits something.
+    public static let `default` = CustomGearLadder(
+        gearCount: 24,
+        easiestRatioHundredths: 75,
+        hardestRatioHundredths: 549
     )
 
+    /// How many gears a custom ladder may have. Below this a "ladder" stops
+    /// meaning anything; above it the on-screen shift buttons would need more
+    /// taps than any real derailleur has sprockets.
+    public static let gearCountRange = 6...30
+
+    /// The same figures `TrainerSafety.supportedScaleRange` allows a built-in
+    /// ladder to reach, rounded to whole hundredths so a rider edits the same
+    /// units the note text shows.
+    public static var ratioHundredthsRange: ClosedRange<Int> {
+        let scale = TrainerSafety.supportedScaleRange
+        let lower = Int((scale.lowerBound * 100).rounded(.up))
+        let upper = Int((scale.upperBound * 100).rounded(.down))
+        return lower...upper
+    }
+}
+
+public enum GearLadderCatalog {
     /// The twenty-four ratios published for the best-known virtual shifting
-    /// system, reproduced exactly. Our own ladder already shares its upper half
-    /// and its starting gear; the difference is only the easy end.
+    /// system, reproduced exactly.
     ///
     /// Named descriptively rather than after the product. Virtual Gears is not
     /// affiliated with, endorsed by, or connected to Zwift, Wahoo, Shimano,
@@ -81,19 +108,60 @@ public enum GearLadderCatalog {
         startingIndex: 11
     )
 
-    public static let ladders: [GearLadder] = [extendedRange, standardRange]
+    /// The one built-in ladder. A rider who wants something else defines their
+    /// own instead of choosing between several fixed tables that all belong to
+    /// no bike they own.
+    public static let ladders: [GearLadder] = [standardRange]
 
-    /// The easier bottom end is the better default indoors, where the gradient
-    /// a riding app hands out is not limited by what a rider could climb
-    /// outside. Chosen on merit: the app has no riders yet, so there is no
-    /// previous behaviour to preserve.
-    public static let defaultLadderID = extendedRange.id
+    public static let defaultLadderID = standardRange.id
+
+    /// The id a saved configuration uses to mean "build the ladder from the
+    /// rider's own `CustomGearLadder` parameters instead of a fixed table."
+    public static let customLadderID = "custom"
 
     public static func ladder(id: String) -> GearLadder? {
         ladders.first { $0.id == id }
     }
 
     public static var defaultLadder: GearLadder {
-        ladder(id: defaultLadderID) ?? extendedRange
+        ladder(id: defaultLadderID) ?? standardRange
+    }
+
+    /// Builds evenly spaced ratios from a rider's own gear count and range, the
+    /// same way every built-in ladder is shaped. The starting gear sits at the
+    /// same fractional position `standardRange` starts at, so a custom ladder
+    /// feels centred the same way rather than starting at one end.
+    public static func custom(_ params: CustomGearLadder) -> GearLadder {
+        let count = max(2, params.gearCount)
+        let easiest = min(
+            params.easiestRatioHundredths, params.hardestRatioHundredths
+        )
+        let hardest = max(
+            params.easiestRatioHundredths, params.hardestRatioHundredths
+        )
+        let ratios: [Int] = (0..<count).map { index in
+            guard count > 1 else { return hardest }
+            let fraction = Double(index) / Double(count - 1)
+            return Int(
+                (Double(easiest) + fraction * Double(hardest - easiest))
+                    .rounded()
+            )
+        }
+        let startingFraction = Double(standardRange.startingIndex)
+            / Double(standardRange.gearCount - 1)
+        let startingIndex = min(
+            count - 1,
+            max(0, Int((startingFraction * Double(count - 1)).rounded()))
+        )
+        return GearLadder(
+            id: customLadderID,
+            name: "Custom \(count)",
+            note: String(
+                format: "%.2f to %.2f, your own range",
+                Double(easiest) / 100, Double(hardest) / 100
+            ),
+            ratiosHundredths: ratios,
+            startingIndex: startingIndex
+        )
     }
 }

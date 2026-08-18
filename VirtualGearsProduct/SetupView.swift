@@ -15,6 +15,7 @@ struct SetupView: View {
 
     var body: some View {
         Form {
+            setupGuideSection
             equipmentSection
             wheelSizeSection
             gearsSection
@@ -42,6 +43,24 @@ struct SetupView: View {
                 Button("Done") { onFinish?() }
                     .fontWeight(.semibold)
             }
+        }
+    }
+
+    /// The row that lets a rider re-run the three-step guide later, for a new
+    /// bike or a groupset change, without having to find and set the
+    /// groupset, chain position and wheel size as three separate rows again.
+    private var setupGuideSection: some View {
+        Section {
+            NavigationLink {
+                SetupGuideEntryView(store: store)
+            } label: {
+                Text("Setup guide")
+            }
+        } footer: {
+            Text(
+                "Walks through your groupset, where the chain is parked, and "
+                    + "your wheel size, in the order they depend on each other."
+            )
         }
     }
 
@@ -195,6 +214,10 @@ struct SetupView: View {
                     Text("Gear the bike is in")
                 }
             }
+            // A stable identifier for UI tests to find this row directly,
+            // since it can sit below the fold once other rows are added
+            // above it and its value text changes with the parked gear.
+            .accessibilityIdentifier("row.parkedGear")
 
             if store.configuration.parkedGear == nil {
                 Label(
@@ -228,6 +251,18 @@ struct SetupView: View {
         }
     }
 
+}
+
+/// Re-running the guide from Settings pushes it instead of presenting a
+/// sheet, so it needs its own way to close: finishing pops it back to
+/// Settings, matching what tapping Back all the way out would have done.
+private struct SetupGuideEntryView: View {
+    @Bindable var store: ConfigurationStore
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        SetupWizardView(store: store, onFinish: { dismiss() })
+    }
 }
 
 private struct NormalWheelSizeView: View {
@@ -827,27 +862,43 @@ struct GearChoiceView: View {
 
             if store.configuration.usesVirtualGears {
                 Section {
-                    ForEach(GearLadderCatalog.ladders) { ladder in
-                        ChoiceRow(
-                            title: ladder.name,
-                            note: ladder.note,
-                            selected: ladder.id
-                                == store.configuration.gearLadder.id
-                        ) {
-                            store.setLadder(ladder)
+                    ChoiceRow(
+                        title: GearLadderCatalog.standardRange.name,
+                        note: GearLadderCatalog.standardRange.note,
+                        selected: !store.configuration.usesCustomLadder
+                    ) {
+                        store.setLadder(GearLadderCatalog.standardRange)
+                    }
+                    NavigationLink {
+                        CustomGearLadderView(store: store)
+                    } label: {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Custom")
+                                if store.configuration.usesCustomLadder {
+                                    Text(store.configuration.gearLadder.note)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer(minLength: 0)
+                            if store.configuration.usesCustomLadder {
+                                Image(systemName: "checkmark")
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.tint)
+                            }
                         }
+                        .accessibilityAddTraits(
+                            store.configuration.usesCustomLadder
+                                ? .isSelected : []
+                        )
                     }
                 } header: {
                     Text("Which ladder")
                 } footer: {
-                    // Apple has already sent a 2.1 review request on this app,
-                    // and the standard ladder deliberately matches a published
-                    // table, so the disclaimer is stated rather than implied.
                     Text(
-                        "Virtual Gears is not affiliated with or endorsed by "
-                            + "Zwift, Wahoo, Shimano, SRAM or Campagnolo. "
-                            + "Product names are used only to describe what is "
-                            + "being simulated."
+                        "Standard is the widely used 24-gear table. Custom "
+                            + "lets you set your own gear count and range."
                     )
                 }
             }
@@ -972,7 +1023,7 @@ private struct GearSpread: View {
 
 /// The result of the two choices above, kept on the same screen so a change is
 /// seen immediately rather than discovered mid-ride.
-private struct GearPreview: View {
+struct GearPreview: View {
     let configuration: AppConfiguration
 
     var body: some View {
@@ -1016,6 +1067,119 @@ private struct GearPreview: View {
 
     private var expectedCombinations: Int {
         configuration.chainring.teeth.count * configuration.cassette.cogs.count
+    }
+}
+
+/// Lets a rider define their own gear count and range instead of the one
+/// built-in ladder, for a bike whose gearing does not match the standard
+/// table. Selecting "Custom" and opening this screen are the same action, so
+/// there is nothing to separately confirm — the live preview at the bottom is
+/// the confirmation.
+private struct CustomGearLadderView: View {
+    @Bindable var store: ConfigurationStore
+
+    var body: some View {
+        Form {
+            Section {
+                Stepper(
+                    "\(store.configuration.customLadder.gearCount) gears",
+                    value: gearCountBinding,
+                    in: CustomGearLadder.gearCountRange
+                )
+            } header: {
+                Text("How many gears")
+            }
+
+            Section {
+                Stepper(
+                    "Easiest \(easiestRatioText)×",
+                    value: easiestBinding,
+                    in: CustomGearLadder.ratioHundredthsRange,
+                    step: 5
+                )
+                Stepper(
+                    "Hardest \(hardestRatioText)×",
+                    value: hardestBinding,
+                    in: CustomGearLadder.ratioHundredthsRange,
+                    step: 5
+                )
+            } header: {
+                Text("Range")
+            } footer: {
+                Text(
+                    "A ratio is how much harder or easier a gear is than "
+                        + "riding one-to-one. 1.00× is even, 2.00× is twice "
+                        + "as hard, 0.50× is half as hard."
+                )
+            }
+
+            Section {
+                GearPreview(configuration: store.configuration)
+            } header: {
+                Text("What you get")
+            }
+        }
+        .navigationTitle("Custom Ladder")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            // Opening this screen is how a rider chooses Custom, so it takes
+            // effect immediately rather than waiting for a value to change —
+            // otherwise navigating here and back without touching anything
+            // would silently leave Standard selected.
+            if !store.configuration.usesCustomLadder {
+                store.setCustomLadder(store.configuration.customLadder)
+            }
+        }
+        .accessibilityIdentifier("screen.customGearLadder")
+    }
+
+    private var easiestRatioText: String {
+        String(
+            format: "%.2f",
+            Double(store.configuration.customLadder.easiestRatioHundredths)
+                / 100
+        )
+    }
+
+    private var hardestRatioText: String {
+        String(
+            format: "%.2f",
+            Double(store.configuration.customLadder.hardestRatioHundredths)
+                / 100
+        )
+    }
+
+    private var gearCountBinding: Binding<Int> {
+        Binding(
+            get: { store.configuration.customLadder.gearCount },
+            set: { store.configuration.customLadder.gearCount = $0 }
+        )
+    }
+
+    /// Kept at least one step below the hardest ratio, so the two can never
+    /// cross and silently swap places under the rider's thumb.
+    private var easiestBinding: Binding<Int> {
+        Binding(
+            get: { store.configuration.customLadder.easiestRatioHundredths },
+            set: { newValue in
+                store.configuration.customLadder.easiestRatioHundredths = min(
+                    newValue,
+                    store.configuration.customLadder.hardestRatioHundredths - 5
+                )
+            }
+        )
+    }
+
+    private var hardestBinding: Binding<Int> {
+        Binding(
+            get: { store.configuration.customLadder.hardestRatioHundredths },
+            set: { newValue in
+                store.configuration.customLadder.hardestRatioHundredths = max(
+                    newValue,
+                    store.configuration.customLadder.easiestRatioHundredths + 5
+                )
+            }
+        )
     }
 }
 
@@ -1133,7 +1297,7 @@ private struct CassetteChoiceView: View {
 /// override it) and nobody noticed until a rider pointed it out. Sharing this
 /// one implementation means that class of bug cannot come back a part at a
 /// time.
-private struct ChoiceRow: View {
+struct ChoiceRow: View {
     let title: String
     /// What VoiceOver says, when the visible title alone is ambiguous. Three
     /// cassettes are called "11-28"; on screen their section heading tells them

@@ -172,6 +172,12 @@ Every gear change waits for confirmation from the trainer.
   uses the **Normal wheel circumference** saved in Settings, 2070 mm by default,
   unless the riding app supplies another size. If you use a custom value in the
   Wahoo app, enter the same value in Virtual Gears before shifting.
+- **A riding app on Windows may not reconnect on its own after a Bluetooth
+  drop.** If the wireless link between your phone and the computer times out
+  mid-ride, some Windows riding apps do not scan for the phone again by
+  themselves; you may need to restart the riding app to see Virtual Gears once
+  more. This is the riding app's own reconnect behaviour, not something Virtual
+  Gears controls.
 
 ## Support
 

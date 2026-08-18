@@ -18,7 +18,7 @@ final class ParkedGearTests: XCTestCase {
     )
 
     private func ladder() throws -> Drivetrain {
-        try GearLadderCatalog.extendedRange.drivetrain()
+        try GearLadderCatalog.standardRange.drivetrain()
     }
 
     // MARK: - The maths
@@ -156,7 +156,7 @@ final class ParkedGearTests: XCTestCase {
             ParkedGearAdvice.workableRatios(for: try ladder())
         )
         XCTAssertEqual(range.lowerBound, 2.0105, accuracy: 0.001)
-        XCTAssertEqual(range.upperBound, 2.5, accuracy: 0.001)
+        XCTAssertEqual(range.upperBound, 3.125, accuracy: 0.001)
     }
 
     /// Literal middle-cog advice puts a 105 on 34/17 = 2.00, under the floor,

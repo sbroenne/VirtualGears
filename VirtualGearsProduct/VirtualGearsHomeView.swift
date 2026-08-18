@@ -151,6 +151,7 @@ struct StartupView: View {
     /// where the rider has to say which is theirs.
     @State private var mustChoose = false
     @State private var trainerScanSettled = false
+    @State private var showsSetupWizard = false
 
     var body: some View {
         NavigationStack {
@@ -201,7 +202,18 @@ struct StartupView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showsSetupWizard) {
+                NavigationStack {
+                    SetupWizardView(
+                        store: store,
+                        onFinish: { showsSetupWizard = false }
+                    )
+                }
+            }
             .task {
+                if !store.configuration.setupWizardCompleted {
+                    showsSetupWizard = true
+                }
                 if beginsDiscovery {
                     await begin()
                 }
@@ -494,7 +506,11 @@ struct StartupView: View {
     private var retryButton: some View {
         Button {
             if needsParkedGear {
-                showsSettings = true
+                if store.configuration.setupWizardCompleted {
+                    showsSettings = true
+                } else {
+                    showsSetupWizard = true
+                }
             } else {
                 headwind.applySavedControlPreference()
                 coordinator.startShifting(configuration: store.configuration)
@@ -538,7 +554,10 @@ struct StartupView: View {
 
     private var blockedHint: String {
         store.configuration.parkedGear == nil
-            ? "Opens Settings so you can set which gear the bike is parked in"
+            ? (store.configuration.setupWizardCompleted
+                ? "Opens Settings so you can set which gear the bike is parked in"
+                : "Opens the setup guide so you can set which gear the bike "
+                    + "is parked in")
             : "Your trainer is not connected yet"
     }
 

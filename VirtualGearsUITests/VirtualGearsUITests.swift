@@ -238,13 +238,82 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisibleElement(app.buttons["Stop virtual shifting"])
     }
 
+    /// The setup guide's three steps in order: choosing a groupset moves to
+    /// the parked-gear recommendation, confirming that gear moves to wheel
+    /// size, and Back retraces every step without losing what was chosen.
+    func testSetupGuideWalksGroupsetThenParkedGearThenWheelSize() {
+        launch("-shotSetupWizard")
+
+        assertVisible("screen.setupWizard")
+        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
+
+        let dura = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Dura-Ace R9200")
+        ).firstMatch
+        XCTAssertTrue(dura.waitForExistence(timeout: 2))
+        dura.tap()
+
+        XCTAssertTrue(
+            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2)
+        )
+        let continueButton = app.buttons["Continue"]
+        XCTAssertTrue(continueButton.waitForExistence(timeout: 2))
+        // A recommendation is pre-selected on arrival, so Continue is already
+        // enabled without the rider tapping a gear first.
+        XCTAssertTrue(continueButton.isEnabled)
+        continueButton.tap()
+
+        XCTAssertTrue(app.navigationBars["Wheel size"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2),
+            "Back from wheel size should return to the parked-gear step"
+        )
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Your groupset"].waitForExistence(timeout: 2),
+            "Back from parked gear should return to the groupset step"
+        )
+    }
+
+    /// Skip on the first step ends the guide immediately without asking the
+    /// remaining two questions — the rider who taps it is choosing not to
+    /// answer any of them right now, not just the first one.
+    func testSetupGuideSkipEndsTheGuideWithoutFurtherSteps() {
+        launch("-shotSetupWizard")
+
+        assertVisible("screen.setupWizard")
+        let skip = app.buttons["Skip"]
+        XCTAssertTrue(skip.waitForExistence(timeout: 2))
+        skip.tap()
+        XCTAssertFalse(
+            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 1)
+        )
+    }
+
+    /// Re-entering the guide from Settings is how a rider who already
+    /// finished it once — everyday fixtures included — gets back to it, so
+    /// the row must exist and open the same first step every time.
+    func testSetupGuideRowInSettingsReopensTheGuide() {
+        launch("-shotSettings")
+
+        assertVisible("screen.settings")
+        app.staticTexts["Setup guide"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
+
+        app.navigationBars.buttons.firstMatch.tap()
+        assertVisible("screen.settings")
+    }
+
     func testSettingsNavigatesToEveryDestination() {
         launch("-shotSettings")
 
         assertVisible("screen.settings")
         for destination in [
             "Trainer", "Zwift Click", "Wahoo Headwind", "Gears",
-            "Gear the bike is in",
         ] {
             let row = app.staticTexts[destination].firstMatch
             assertVisibleElement(row)
@@ -255,6 +324,21 @@ final class VirtualGearsUITests: XCTestCase {
             )
             app.navigationBars.buttons.firstMatch.tap()
         }
+
+        // The parked-gear row's title and value collapse into a single
+        // accessibility element, so it is reached by identifier rather than
+        // its title text like the rows above. It also sits below the fold
+        // now that the setup guide row was added at the top, so the list
+        // needs a scroll before it is on screen.
+        app.swipeUp()
+        let parkedGearRow = app.descendants(matching: .any)["row.parkedGear"]
+        assertVisibleElement(parkedGearRow)
+        parkedGearRow.tap()
+        XCTAssertTrue(
+            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2),
+            "Gear the bike is in screen did not open"
+        )
+        app.navigationBars.buttons.firstMatch.tap()
     }
 
     /// The gear the bike is parked in is the one thing setup cannot guess, so
@@ -263,7 +347,9 @@ final class VirtualGearsUITests: XCTestCase {
     func testParkedGearScreenRecommendsAGearAndLetsItBeConfirmed() {
         launch("-shotSettings")
 
-        app.staticTexts["Gear the bike is in"].firstMatch.tap()
+        // The row is below the fold once the setup guide row is above it.
+        app.swipeUp()
+        app.descendants(matching: .any)["row.parkedGear"].firstMatch.tap()
         assertVisible("screen.parkedGear")
 
         // The advice has to name a gear rather than describe one, because
@@ -395,25 +481,57 @@ final class VirtualGearsUITests: XCTestCase {
         )
     }
 
-    /// Same regression coverage as above, for the virtual gear ladder rows.
-    func testGearLadderChoiceMovesTheCheckmarkOnSelection() {
+    /// Same regression coverage as above, for the virtual gear ladder rows —
+    /// updated for the Standard/Custom redesign: one built-in ladder plus a
+    /// rider-defined one, instead of choosing between two fixed tables.
+    func testGearLadderChoiceCanSwitchToACustomLadderAndBack() {
         launch("-shotGears")
 
         assertVisible("screen.gears")
-        let extended = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "Virtual Gears 24")
-        ).firstMatch
         let standard = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "Standard 24")
         ).firstMatch
-        XCTAssertTrue(extended.waitForExistence(timeout: 2))
         XCTAssertTrue(standard.waitForExistence(timeout: 2))
-        XCTAssertTrue(extended.isSelected)
+        XCTAssertTrue(standard.isSelected)
+
+        let custom = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Custom")
+        ).firstMatch
+        XCTAssertTrue(custom.waitForExistence(timeout: 2))
+        XCTAssertFalse(custom.isSelected)
+
+        custom.tap()
+        XCTAssertTrue(
+            app.navigationBars["Custom Ladder"].waitForExistence(timeout: 2)
+        )
+        app.navigationBars.buttons.firstMatch.tap()
+
+        assertVisible("screen.gears")
         XCTAssertFalse(standard.isSelected)
+        XCTAssertTrue(custom.isSelected)
 
         standard.tap()
         XCTAssertTrue(standard.isSelected)
-        XCTAssertFalse(extended.isSelected)
+        XCTAssertFalse(custom.isSelected)
+    }
+
+    /// Editing the gear count on the Custom ladder screen should change the
+    /// preview at the bottom — proof the rider's own numbers actually reach
+    /// the gearing that gets simulated, not just a label.
+    func testCustomLadderGearCountChangesThePreview() {
+        launch("-shotGears")
+        assertVisible("screen.gears")
+
+        app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Custom")
+        ).firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Custom Ladder"].waitForExistence(timeout: 2)
+        )
+        XCTAssertTrue(app.staticTexts["24 gears"].waitForExistence(timeout: 2))
+
+        app.steppers.firstMatch.buttons["Increment"].tap()
+        XCTAssertTrue(app.staticTexts["25 gears"].waitForExistence(timeout: 2))
     }
 
     /// Same regression coverage, for the physical chainring and cassette
@@ -421,7 +539,9 @@ final class VirtualGearsUITests: XCTestCase {
     func testPhysicalChainringAndCassetteChoicesUpdateTheSummary() {
         launch("-shotSettings")
 
-        app.staticTexts["Gear the bike is in"].firstMatch.tap()
+        // The row is below the fold once the setup guide row is above it.
+        app.swipeUp()
+        app.descendants(matching: .any)["row.parkedGear"].firstMatch.tap()
         assertVisible("screen.parkedGear")
 
         app.staticTexts["Chainrings"].firstMatch.tap()
