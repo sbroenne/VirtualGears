@@ -828,24 +828,13 @@ struct GearChoiceView: View {
             if store.configuration.usesVirtualGears {
                 Section {
                     ForEach(GearLadderCatalog.ladders) { ladder in
-                        Button {
+                        ChoiceRow(
+                            title: ladder.name,
+                            note: ladder.note,
+                            selected: ladder.id
+                                == store.configuration.gearLadder.id
+                        ) {
                             store.setLadder(ladder)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(ladder.name)
-                                        .foregroundStyle(.primary)
-                                    Text(ladder.note)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if ladder.id
-                                    == store.configuration.gearLadder.id {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                            }
                         }
                     }
                 } header: {
@@ -1136,16 +1125,37 @@ private struct CassetteChoiceView: View {
 
 /// One selectable part. A part that cannot work with the other choice is shown
 /// dimmed and says why, rather than disappearing and leaving the rider guessing.
+///
+/// This is the one row style used for every tap-to-select list in setup —
+/// ladders, groupsets, physical parts and the parked gear all reuse it rather
+/// than each hand-rolling a `Button` — because a hand-rolled row rendered its
+/// title in the accent colour on iOS 26 (`.buttonStyle(.plain)` alone did not
+/// override it) and nobody noticed until a rider pointed it out. Sharing this
+/// one implementation means that class of bug cannot come back a part at a
+/// time.
 private struct ChoiceRow: View {
     let title: String
     /// What VoiceOver says, when the visible title alone is ambiguous. Three
     /// cassettes are called "11-28"; on screen their section heading tells them
     /// apart, but a rider hearing the list gets no heading with each row.
     var spokenTitle: String?
-    let note: String
-    let detail: String?
+    /// A single line under the title. Read aloud by VoiceOver as part of the
+    /// row, so it is the right place for anything a rider needs to hear, not
+    /// just see — the gear the row is recommended for, or the cog counts on a
+    /// cassette.
+    var note: String? = nil
+    /// Overrides the note's colour for a warning that should still be tappable
+    /// (a parked gear that puts some gears out of reach, say). Leave nil for
+    /// the default: secondary, or red when `fits` is false.
+    var noteColor: Color? = nil
+    /// A second, quieter line, not read aloud — used for the small print under
+    /// a part that already explains itself in `note`.
+    var detail: String? = nil
     let selected: Bool
-    let fits: Bool
+    /// False disables the row, dims it and swaps in a fixed "too wide" note —
+    /// used only by the two screens that can conflict with another choice. All
+    /// other callers default to always-tappable.
+    var fits: Bool = true
     let select: () -> Void
 
     var body: some View {
@@ -1155,9 +1165,11 @@ private struct ChoiceRow: View {
                     Text(title)
                         .font(.body)
                         .foregroundStyle(.primary)
-                    Text(fits ? note : "Too wide to combine with your other choice")
-                        .font(.subheadline)
-                        .foregroundStyle(fits ? .secondary : Color.red)
+                    if let resolvedNote {
+                        Text(resolvedNote)
+                            .font(.subheadline)
+                            .foregroundStyle(resolvedNoteColor)
+                    }
                     if let detail, fits {
                         Text(detail)
                             .font(.caption)
@@ -1176,12 +1188,23 @@ private struct ChoiceRow: View {
         .buttonStyle(.plain)
         .disabled(!fits)
         .opacity(fits ? 1 : 0.5)
-        .accessibilityLabel(
-            fits
-                ? "\(spokenTitle ?? title), \(note)"
-                : "\(spokenTitle ?? title), too wide to combine with your other choice"
-        )
+        .accessibilityLabel(accessibilityText)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private var resolvedNote: String? {
+        guard fits else { return "Too wide to combine with your other choice" }
+        return note
+    }
+
+    private var resolvedNoteColor: Color {
+        guard fits else { return .red }
+        return noteColor ?? .secondary
+    }
+
+    private var accessibilityText: String {
+        guard let resolvedNote else { return spokenTitle ?? title }
+        return "\(spokenTitle ?? title), \(resolvedNote)"
     }
 }
 
@@ -1781,37 +1804,27 @@ struct ParkedGearView: View {
     private var gearSection: some View {
         Section {
             ForEach(candidates, id: \.self) { gear in
-                Button {
+                ChoiceRow(
+                    title: gear.name,
+                    note: caption(for: gear),
+                    noteColor: isWorkable(gear) ? nil : .orange,
+                    selected: gear == store.configuration.parkedGear
+                ) {
                     store.park(in: gear)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(gear.name)
-                                .foregroundStyle(.primary)
-                            if gear == store.configuration.suggestedParkedGear {
-                                Text("Recommended — quietest that works")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            } else if !isWorkable(gear) {
-                                Text("Puts some gears out of reach")
-                                    .font(.caption)
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                        Spacer()
-                        if gear == store.configuration.parkedGear {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
                 }
-                .accessibilityAddTraits(
-                    gear == store.configuration.parkedGear ? [.isSelected] : []
-                )
             }
         } header: {
             Text("Which gear is it in")
         }
+    }
+
+    private func caption(for gear: ParkedGear) -> String? {
+        if gear == store.configuration.suggestedParkedGear {
+            return "Recommended — quietest that works"
+        } else if !isWorkable(gear) {
+            return "Puts some gears out of reach"
+        }
+        return nil
     }
 
     private var candidates: [ParkedGear] {
@@ -1865,19 +1878,12 @@ private struct PhysicalChainringView: View {
     var body: some View {
         Form {
             ForEach(DrivetrainCatalog.chainrings) { option in
-                Button {
+                ChoiceRow(
+                    title: option.name,
+                    selected: option.teeth
+                        == store.configuration.physical.chainringTeeth
+                ) {
                     store.setPhysicalChainrings(option.teeth)
-                } label: {
-                    HStack {
-                        Text(option.name)
-                            .foregroundStyle(.primary)
-                        Spacer()
-                        if option.teeth
-                            == store.configuration.physical.chainringTeeth {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
                 }
             }
         }
@@ -1892,26 +1898,12 @@ private struct PhysicalCassetteView: View {
     var body: some View {
         Form {
             ForEach(DrivetrainCatalog.cassettes) { option in
-                Button {
+                ChoiceRow(
+                    title: option.qualifiedName,
+                    note: option.cogs.map(String.init).joined(separator: ", "),
+                    selected: option.cogs == store.configuration.physical.cogTeeth
+                ) {
                     store.setPhysicalCogs(option.cogs)
-                } label: {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(option.qualifiedName)
-                                .foregroundStyle(.primary)
-                            Text(
-                                option.cogs.map(String.init)
-                                    .joined(separator: ", ")
-                            )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if option.cogs == store.configuration.physical.cogTeeth {
-                            Image(systemName: "checkmark")
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
                 }
             }
         }
@@ -1932,23 +1924,13 @@ private struct GroupsetChoiceView: View {
             ForEach(GroupsetBrand.allCases) { brand in
                 Section {
                     ForEach(GroupsetCatalog.groupsets(brand: brand)) { set in
-                        Button {
+                        ChoiceRow(
+                            title: set.name,
+                            spokenTitle: set.qualifiedName,
+                            note: "\(set.speeds)-speed · \(set.note)",
+                            selected: set.id == store.configuration.groupset?.id
+                        ) {
                             store.setGroupset(set)
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(set.name)
-                                        .foregroundStyle(.primary)
-                                    Text("\(set.speeds)-speed · \(set.note)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                if set.id == store.configuration.groupset?.id {
-                                    Image(systemName: "checkmark")
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                            }
                         }
                     }
                 } header: {

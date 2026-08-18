@@ -350,6 +350,110 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Cassette"].waitForExistence(timeout: 2))
     }
 
+    /// Regression test for a rendering bug: every selectable row added for
+    /// setup (ladders, groupsets, physical parts, the parked gear) was a
+    /// hand-rolled `Button` that iOS 26 rendered entirely in the accent
+    /// colour, rather than the standard black-text-with-a-blue-checkmark
+    /// list style every other row in the app uses. `.buttonStyle(.plain)`
+    /// alone did not fix it. The rows now all share the one `ChoiceRow`
+    /// already proven correct by the pre-existing chainring/cassette
+    /// pickers, so this exercises that every one of them still reports
+    /// exactly one selected row, and that tapping a different one moves the
+    /// selection rather than leaving two rows marked or none at all.
+    func testGroupsetChoiceMovesTheCheckmarkOnSelection() {
+        launch("-shotRealGears")
+
+        assertVisible("screen.gears")
+        app.staticTexts["Groupset"].tap()
+        XCTAssertTrue(app.navigationBars["Groupset"].waitForExistence(timeout: 2))
+
+        let current = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Shimano 105 R7100")
+        ).firstMatch
+        let other = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Shimano Dura-Ace R9200")
+        ).firstMatch
+        XCTAssertTrue(current.waitForExistence(timeout: 2))
+        XCTAssertTrue(other.waitForExistence(timeout: 2))
+        XCTAssertTrue(current.isSelected)
+        XCTAssertFalse(other.isSelected)
+
+        other.tap()
+        XCTAssertTrue(other.isSelected)
+        XCTAssertFalse(current.isSelected)
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.staticTexts["Groupset, Shimano Dura-Ace R9200"]
+                .waitForExistence(timeout: 2)
+        )
+    }
+
+    /// Same regression coverage as above, for the virtual gear ladder rows.
+    func testGearLadderChoiceMovesTheCheckmarkOnSelection() {
+        launch("-shotGears")
+
+        assertVisible("screen.gears")
+        let extended = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Virtual Gears 24")
+        ).firstMatch
+        let standard = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Standard 24")
+        ).firstMatch
+        XCTAssertTrue(extended.waitForExistence(timeout: 2))
+        XCTAssertTrue(standard.waitForExistence(timeout: 2))
+        XCTAssertTrue(extended.isSelected)
+        XCTAssertFalse(standard.isSelected)
+
+        standard.tap()
+        XCTAssertTrue(standard.isSelected)
+        XCTAssertFalse(extended.isSelected)
+    }
+
+    /// Same regression coverage, for the physical chainring and cassette
+    /// pickers reached from the parked-gear screen.
+    func testPhysicalChainringAndCassetteChoicesUpdateTheSummary() {
+        launch("-shotSettings")
+
+        app.staticTexts["Gear the bike is in"].firstMatch.tap()
+        assertVisible("screen.parkedGear")
+
+        app.staticTexts["Chainrings"].firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Chainrings on the bike"].waitForExistence(timeout: 2)
+        )
+        let defaultChainring = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "50/34")
+        ).firstMatch
+        let otherChainring = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "38")
+        ).firstMatch
+        XCTAssertTrue(defaultChainring.isSelected)
+        XCTAssertFalse(otherChainring.isSelected)
+        otherChainring.tap()
+        XCTAssertTrue(otherChainring.isSelected)
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.staticTexts["Chainrings, 38"].waitForExistence(timeout: 2)
+        )
+
+        app.staticTexts["Cassette"].firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Cassette on the bike"].waitForExistence(timeout: 2)
+        )
+        let otherCassette = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "11-30 · 11 cogs")
+        ).firstMatch
+        XCTAssertTrue(otherCassette.waitForExistence(timeout: 2))
+        XCTAssertFalse(otherCassette.isSelected)
+        otherCassette.tap()
+        XCTAssertTrue(otherCassette.isSelected)
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.staticTexts["Cassette, 11-30"].waitForExistence(timeout: 2)
+        )
+    }
+
     func testHeadwindControlsExposeModeSpeedAndPresets() {
         launch("-shotHeadwind")
 
