@@ -149,7 +149,7 @@ private struct WizardGroupsetStep: View {
                         ChoiceRow(
                             title: set.name,
                             spokenTitle: set.qualifiedName,
-                            note: "\(set.speeds)-speed · \(set.note)",
+                            note: note(for: set),
                             selected: set.id == store.configuration.groupset?.id
                         ) {
                             store.adoptGroupsetForBikeAndGears(
@@ -177,6 +177,15 @@ private struct WizardGroupsetStep: View {
             }
         }
         .navigationTitle("Your groupset")
+    }
+
+    /// Carries the toggle's effect down into the list itself, so scrolling
+    /// past the toggle never leaves a rider guessing what state it was left
+    /// in when they finally tap a row.
+    private func note(for set: Groupset) -> String {
+        let base = "\(set.speeds)-speed · \(set.note)"
+        guard usesSingleSprocket else { return base }
+        return base + " · paired with a \(singleSprocketTeeth)T sprocket"
     }
 }
 
@@ -260,16 +269,39 @@ private struct WizardParkedGearStep: View {
 }
 
 /// Step 3. The last fact the guide needs: the wheel size to assume when a
-/// riding app does not send its own. Kept to a single Stepper — the guide is
-/// meant to be quick, and the full text-entry option stays in Settings for
-/// anyone who wants an exact, typed value.
+/// riding app does not send its own. A typed value is offered alongside the
+/// Stepper — 1 mm taps across a 600 mm range is fine for nudging the 2070 mm
+/// default, but far too slow for anyone who already knows their exact number.
 private struct WizardWheelSizeStep: View {
     @Bindable var store: ConfigurationStore
     let onFinish: () -> Void
 
+    @State private var enteredValue: String
+
+    init(store: ConfigurationStore, onFinish: @escaping () -> Void) {
+        self.store = store
+        self.onFinish = onFinish
+        _enteredValue = State(
+            initialValue: String(
+                store.configuration.neutralCircumferenceMillimeters
+            )
+        )
+    }
+
     var body: some View {
         Form {
             Section {
+                TextField("Millimetres", text: $enteredValue)
+                    .keyboardType(.numberPad)
+                    .onChange(of: enteredValue) { _, value in
+                        guard let millimeters = Int(value),
+                              isValid(millimeters)
+                        else { return }
+                        store.setNormalWheelCircumference(
+                            millimeters: millimeters
+                        )
+                    }
+
                 Stepper(
                     value: wheelSize,
                     in: lowerBound...upperBound,
@@ -289,6 +321,16 @@ private struct WizardWheelSizeStep: View {
                         + "default, and this can be changed later in Settings."
                 )
             }
+
+            if let value = Int(enteredValue), !isValid(value) {
+                Section {
+                    Label(
+                        "Enter a value from \(lowerBound) to \(upperBound) mm.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.orange)
+                }
+            }
         }
         .navigationTitle("Wheel size")
         .safeAreaInset(edge: .bottom) {
@@ -304,7 +346,10 @@ private struct WizardWheelSizeStep: View {
     private var wheelSize: Binding<Int> {
         Binding(
             get: { store.configuration.neutralCircumferenceMillimeters },
-            set: { store.setNormalWheelCircumference(millimeters: $0) }
+            set: { value in
+                store.setNormalWheelCircumference(millimeters: value)
+                enteredValue = String(value)
+            }
         )
     }
 
@@ -314,5 +359,9 @@ private struct WizardWheelSizeStep: View {
 
     private var upperBound: Int {
         Int(TrainerSafety.supportedRidingAppCircumferenceMillimeters.upperBound)
+    }
+
+    private func isValid(_ value: Int) -> Bool {
+        (lowerBound...upperBound).contains(value)
     }
 }

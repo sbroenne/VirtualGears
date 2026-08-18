@@ -2101,6 +2101,22 @@ private struct GroupsetChoiceView: View {
                     Text(brand.name)
                 }
             }
+
+            if let groupset = store.configuration.groupset,
+               !store.physicalSetupMatches(groupset) {
+                Section {
+                    Button("Also set this as what's on the bike") {
+                        store.matchPhysicalSetup(to: groupset)
+                    }
+                } footer: {
+                    Text(
+                        "This only changes the gearing being simulated. Your "
+                            + "real bike still shows different chainrings or "
+                            + "a different cassette — tap to bring those in "
+                            + "line too, unless that is deliberate."
+                    )
+                }
+            }
         }
         .navigationTitle("Groupset")
         .navigationBarTitleDisplayMode(.inline)

@@ -51,6 +51,36 @@ final class ConfigurationStore {
         }
     }
 
+    /// Whether the rider's real bike (chainrings, and cassette unless they
+    /// are on a single sprocket) already matches this simulated groupset. Used
+    /// to decide whether it is worth offering to bring the physical setup
+    /// along too, rather than always showing that offer even when there is
+    /// nothing left to do.
+    func physicalSetupMatches(_ groupset: Groupset) -> Bool {
+        guard let chainring = groupset.chainrings.first,
+              configuration.physical.chainringTeeth == chainring.teeth
+        else { return false }
+        guard !configuration.physical.isSingleSprocket else { return true }
+        guard let cassette = groupset.cassettes.first else { return false }
+        return configuration.physical.cogTeeth == cassette.cogs
+    }
+
+    /// Brings the physical bike's chainrings — and cassette, unless the rider
+    /// is on a single sprocket — in line with a groupset chosen from Settings.
+    /// Settings otherwise keeps the two apart on purpose, so this is offered
+    /// rather than automatic: a rider who deliberately simulates a different
+    /// bike than the one on the trainer should never have that quietly
+    /// overwritten just for picking a new groupset to simulate.
+    func matchPhysicalSetup(to groupset: Groupset) {
+        if let chainring = groupset.chainrings.first {
+            setPhysicalChainrings(chainring.teeth)
+        }
+        if !configuration.physical.isSingleSprocket,
+           let cassette = groupset.cassettes.first {
+            setPhysicalCogs(cassette.cogs)
+        }
+    }
+
     /// The setup guide's single "what's your bike" question: one groupset
     /// answers both what is physically bolted on (so the chain-position
     /// advice is right) and what gearing gets simulated (so the ladder
