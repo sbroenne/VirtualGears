@@ -298,13 +298,19 @@ final class VirtualGearsUITests: XCTestCase {
 
     /// The parked gear is the app's biggest silent-failure risk, so a rider who
     /// has not confirmed one is told exactly that rather than being told to wait
-    /// for a trainer that is already connected.
+    /// for a trainer that is already connected. It also used to be disabled,
+    /// naming an action it wouldn't perform — now it opens Settings itself.
     func testStartNamesTheParkedGearWhenThatIsWhatIsMissing() {
         launch("-shotUnparked")
 
-        assertVisibleElement(app.buttons["Set the gear you are in"])
+        let button = app.buttons["Set the gear you are in"]
+        assertVisibleElement(button)
+        XCTAssertTrue(button.isEnabled)
         XCTAssertFalse(app.buttons["Waiting for trainer"].exists)
         XCTAssertFalse(app.buttons["Start Shifting"].exists)
+
+        button.tap()
+        assertVisibleElement(app.navigationBars["Settings"])
     }
 
     func testVirtualGearChoiceShowsModeAndPreview() {

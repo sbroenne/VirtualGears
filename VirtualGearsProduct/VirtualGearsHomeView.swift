@@ -485,24 +485,41 @@ struct StartupView: View {
     /// The same control starts shifting and tries again after a failure. After a
     /// failure "Start Shifting" reads as though nothing had been attempted,
     /// which is exactly the doubt the card above it has just resolved.
+    ///
+    /// When the only missing piece is the parked gear, this button used to sit
+    /// there greyed out, naming exactly what to do while giving no way to do
+    /// it — the rider had to notice the unrelated Settings gear icon on their
+    /// own. Now it opens Settings itself, so the instruction it gives is also
+    /// the thing tapping it does.
     private var retryButton: some View {
         Button {
-            headwind.applySavedControlPreference()
-            coordinator.startShifting(configuration: store.configuration)
+            if needsParkedGear {
+                showsSettings = true
+            } else {
+                headwind.applySavedControlPreference()
+                coordinator.startShifting(configuration: store.configuration)
+            }
         } label: {
             Label(
                 retryTitle,
                 systemImage: canStart
                     ? (failureMessage == nil ? "bicycle" : "arrow.clockwise")
-                    : "hourglass"
+                    : (needsParkedGear ? "gearshape" : "hourglass")
             )
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, minHeight: 64)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(!canStart)
+        .disabled(!canStart && !needsParkedGear)
         .accessibilityHint(canStart ? "Starts virtual shifting" : blockedHint)
+    }
+
+    /// True when the parked gear is the only thing standing between here and
+    /// starting, regardless of whether the trainer has connected yet — so the
+    /// button stays actionable even before the trainer is found.
+    private var needsParkedGear: Bool {
+        store.configuration.parkedGear == nil
     }
 
     private var retryTitle: String {
@@ -521,7 +538,7 @@ struct StartupView: View {
 
     private var blockedHint: String {
         store.configuration.parkedGear == nil
-            ? "Virtual Gears needs to know which gear the bike is parked in"
+            ? "Opens Settings so you can set which gear the bike is parked in"
             : "Your trainer is not connected yet"
     }
 
