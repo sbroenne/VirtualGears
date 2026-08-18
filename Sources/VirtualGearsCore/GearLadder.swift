@@ -52,7 +52,7 @@ public enum GearLadderCatalog {
     public static let extendedRange = GearLadder(
         id: "virtual-gears-24",
         name: "Virtual Gears 24",
-        note: "Twenty-four gears, 0.60 to 5.49. Extra-low climbing range.",
+        note: "0.60 to 5.49, with an extra-low climbing range",
         ratiosHundredths: [
             60, 68, 77, 88, 100, 113, 129, 146,
             165, 187, 212, 240, 261, 282, 303, 324,
@@ -72,7 +72,7 @@ public enum GearLadderCatalog {
     public static let standardRange = GearLadder(
         id: "standard-24",
         name: "Standard 24",
-        note: "Twenty-four gears, 0.75 to 5.49. The common virtual ladder.",
+        note: "0.75 to 5.49, the common virtual ladder",
         ratiosHundredths: [
             75, 87, 99, 111, 123, 138, 153, 168,
             186, 204, 222, 240, 261, 282, 303, 324,

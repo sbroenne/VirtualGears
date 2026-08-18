@@ -263,13 +263,19 @@ public enum GroupsetCatalog {
 
     /// The groupset a pair of parts belongs to, if any. Used to show a saved
     /// setup by the name printed on the bike rather than as two part numbers.
+    ///
+    /// Several groupsets share the same parts — 50/34 with an 11-34 is sold on
+    /// everything from 105 to Dura-Ace — so the default is preferred when it
+    /// fits. Guessing the most expensive groupset a rider *might* own is worse
+    /// than guessing the most common one they probably do.
     public static func groupset(
         chainringID: String,
         cassetteID: String
     ) -> Groupset? {
-        groupsets.first {
+        let matches = groupsets.filter {
             $0.chainringIDs.contains(chainringID)
                 && $0.cassetteIDs.contains(cassetteID)
         }
+        return matches.first { $0.id == defaultGroupsetID } ?? matches.first
     }
 }

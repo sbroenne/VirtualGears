@@ -96,6 +96,9 @@ struct VirtualGearsApp: App {
 enum ScreenshotFixture: String {
     case starting = "-shotStarting"
     case ready = "-shotReady"
+    /// A trainer that is connected but a bike whose gear has not been
+    /// confirmed — the one blocker a rider cannot fix by waiting.
+    case unparked = "-shotUnparked"
     case failed = "-shotFailed"
     case ride = "-shotRide"
     case rideAccessibility = "-shotRideAccessibility"
@@ -138,7 +141,7 @@ private struct ScreenshotFixtureView: View {
     var body: some View {
         Group {
             switch scenario {
-            case .starting, .ready, .failed:
+            case .starting, .ready, .failed, .unparked:
                 StartupView(
                     store: store,
                     kickr: kickr,
@@ -205,6 +208,11 @@ private struct ScreenshotFixtureView: View {
             id: ScreenshotFixture.headwindID
         )
         configuration.usesVirtualGears = scenario != .realGears
+        // The screenshot rider has already parked the bike and confirmed the
+        // gear, which is the state every screen after setup is drawn in.
+        if scenario != .unparked {
+            configuration.parkInSuggestion()
+        }
         store.configuration = configuration
 
         kickr.stageScreenshot(
@@ -224,7 +232,8 @@ private struct ScreenshotFixtureView: View {
             click.stageScreenshotPressedButton(.plus)
         }
 
-        if scenario == .ready || scenario == .rideWaiting {
+        if scenario == .ready || scenario == .rideWaiting
+            || scenario == .unparked {
             (coordinator.peripheral as? FTMSPeripheral)?
                 .stageScreenshotAdvertising()
         } else if isRideScenario {

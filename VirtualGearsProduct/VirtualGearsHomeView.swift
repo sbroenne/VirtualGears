@@ -309,16 +309,24 @@ struct StartupView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// The one thing the app cannot do for the rider.
+    /// The one thing the app cannot do for the rider. Once they have confirmed
+    /// a gear it names that exact gear, because a reminder that names the gear
+    /// can actually be checked against the bike; one that describes a chain
+    /// line cannot.
     private var chainReminder: some View {
-        Label(
-            "Use the smaller front ring if your bike has one. Pick a rear gear "
-                + "that keeps the chain straight, and leave it there.",
-            systemImage: "link"
-        )
+        Label(chainReminderText, systemImage: "link")
         .font(.footnote)
         .foregroundStyle(.secondary)
         .padding(.top, 4)
+    }
+
+    private var chainReminderText: String {
+        guard let parked = store.configuration.parkedGear else {
+            return "Use the smaller front ring if your bike has one. Pick a "
+                + "rear gear that keeps the chain straight, and leave it there."
+        }
+        return "Chain on \(parked.chainringTeeth) at the front and "
+            + "\(parked.cogTeeth) at the back, and leave it there."
     }
 
     private var demoEntry: some View {

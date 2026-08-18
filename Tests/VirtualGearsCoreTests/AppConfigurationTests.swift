@@ -111,8 +111,7 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.drivetrainName, "Virtual Gears 24")
         XCTAssertEqual(
             configuration.gearSummary,
-            "24 gears · Twenty-four gears, 0.60 to 5.49. "
-                + "Extra-low climbing range."
+            "24 gears · 0.60 to 5.49, with an extra-low climbing range"
         )
     }
 

@@ -242,7 +242,10 @@ final class VirtualGearsUITests: XCTestCase {
         launch("-shotSettings")
 
         assertVisible("screen.settings")
-        for destination in ["Trainer", "Zwift Click", "Wahoo Headwind", "Gears"] {
+        for destination in [
+            "Trainer", "Zwift Click", "Wahoo Headwind", "Gears",
+            "Gear the bike is in",
+        ] {
             let row = app.staticTexts[destination].firstMatch
             assertVisibleElement(row)
             row.tap()
@@ -252,6 +255,56 @@ final class VirtualGearsUITests: XCTestCase {
             )
             app.navigationBars.buttons.firstMatch.tap()
         }
+    }
+
+    /// The gear the bike is parked in is the one thing setup cannot guess, so
+    /// the screen has to name a gear, mark it as the recommendation and let it
+    /// be confirmed in a tap.
+    func testParkedGearScreenRecommendsAGearAndLetsItBeConfirmed() {
+        launch("-shotSettings")
+
+        app.staticTexts["Gear the bike is in"].firstMatch.tap()
+        assertVisible("screen.parkedGear")
+
+        // The advice has to name a gear rather than describe one, because
+        // "a quiet, straight chain line" is true of gears twice as hard as
+        // each other.
+        let advice = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Park the chain on the")
+        ).firstMatch
+        XCTAssertTrue(advice.waitForExistence(timeout: 3))
+
+        // Gears that would put part of the ladder beyond the trainer's reach
+        // are still listed, and say so, rather than silently vanishing.
+        let outOfReach = app.buttons.matching(
+            NSPredicate(
+                format: "label CONTAINS[c] %@", "Puts some gears out of reach"
+            )
+        ).firstMatch
+        XCTAssertTrue(outOfReach.waitForExistence(timeout: 3))
+
+        // Confirming one of them has to stick and has to leave a one-tap way
+        // back, rather than the app silently overriding the rider.
+        outOfReach.tap()
+        XCTAssertTrue(
+            app.buttons.matching(
+                NSPredicate(format: "label BEGINSWITH %@", "Use ")
+            ).firstMatch.waitForExistence(timeout: 3),
+            "Confirming another gear should offer a way back to the "
+                + "recommendation"
+        )
+    }
+
+
+    /// The parked gear is the app's biggest silent-failure risk, so a rider who
+    /// has not confirmed one is told exactly that rather than being told to wait
+    /// for a trainer that is already connected.
+    func testStartNamesTheParkedGearWhenThatIsWhatIsMissing() {
+        launch("-shotUnparked")
+
+        assertVisibleElement(app.buttons["Set the gear you are in"])
+        XCTAssertFalse(app.buttons["Waiting for trainer"].exists)
+        XCTAssertFalse(app.buttons["Start Shifting"].exists)
     }
 
     func testVirtualGearChoiceShowsModeAndPreview() {
@@ -417,9 +470,10 @@ final class VirtualGearsUITests: XCTestCase {
         // vanished the instant the trainer connected and the button above it
         // jumped up to fill the gap. It must now be part of the fixed layout,
         // present in every startup state.
-        let reminderText = "Use the smaller front ring if your bike has one. "
-            + "Pick a rear gear that keeps the chain straight, and leave it "
-            + "there."
+        // Once a gear is confirmed the reminder names it, which is what makes
+        // it checkable against the bike.
+        let reminderText = "Chain on 34 at the front and 15 at the back, and "
+            + "leave it there."
 
         launch("-shotStarting")
         assertVisibleElement(app.staticTexts[reminderText])
@@ -540,4 +594,5 @@ final class VirtualGearsUITests: XCTestCase {
             line: line
         )
     }
+
 }
