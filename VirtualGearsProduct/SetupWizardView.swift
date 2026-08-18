@@ -91,12 +91,27 @@ private struct WizardGroupsetStep: View {
     /// Zwift Cog or otherwise — rather than the groupset's own cassette, a
     /// common indoor-only setup. Asked once here, before the groupset list,
     /// because it describes the trainer rather than the bike: it applies the
-    /// same way no matter which groupset gets picked below.
-    @State private var usesSingleSprocket = false
+    /// same way no matter which groupset gets picked below. Seeded from the
+    /// store rather than always starting false, so tapping Back after
+    /// already choosing a single sprocket shows that choice rather than
+    /// quietly reverting to "cassette" underneath an unchanged screen.
+    @State private var usesSingleSprocket: Bool
     /// The tooth count for that sprocket. Defaults to 14 — a Zwift Cog —
     /// since that is what most riders in this situation have, but the
     /// stepper lets anyone with a different single-speed cog say so.
-    @State private var singleSprocketTeeth = PhysicalSetup.zwiftCogTeeth[0]
+    @State private var singleSprocketTeeth: Int
+
+    init(store: ConfigurationStore, onNext: @escaping () -> Void) {
+        self.store = store
+        self.onNext = onNext
+        _usesSingleSprocket = State(
+            initialValue: store.configuration.physical.isSingleSprocket
+        )
+        _singleSprocketTeeth = State(
+            initialValue: store.configuration.physical.cogTeeth.first
+                ?? PhysicalSetup.zwiftCogTeeth[0]
+        )
+    }
 
     var body: some View {
         Form {
@@ -150,7 +165,7 @@ private struct WizardGroupsetStep: View {
                 }
             }
             Section {
-                Button("Single sprocket, or my bike isn't listed") {
+                Button("None of these, or my bike isn't listed") {
                     onNext()
                 }
             } footer: {
