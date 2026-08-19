@@ -1,8 +1,143 @@
 import XCTest
 
+/// The maintained contract for "100% UX coverage": every intentionally
+/// designed, app-owned visual state belongs here and is exercised by one of the
+/// journey tests below. Adding a state without assigning it a test fails the
+/// manifest completeness test.
+private enum DesignedUXState: String, CaseIterable {
+    // Setup wizard
+    case wizardGroupsetCassette = "setup/groupset-cassette"
+    case wizardGroupsetSingleSprocket = "setup/groupset-single-sprocket"
+    case wizardParkedGearRecommended = "setup/parked-gear-recommended"
+    case wizardParkedGearWarning = "setup/parked-gear-warning"
+    case wizardWheelSizeValid = "setup/wheel-size-valid"
+    case wizardWheelSizeInvalid = "setup/wheel-size-invalid"
+    case wizardAccessibilityText = "setup/accessibility-text"
+
+    // Startup
+    case startupSavedTrainerConnecting = "startup/saved-trainer-connecting"
+    case startupLookingForTrainer = "startup/looking-for-trainer"
+    case startupChooseTrainer = "startup/choose-trainer"
+    case startupReady = "startup/ready"
+    case startupMissingParkedGear = "startup/missing-parked-gear"
+    case startupFailure = "startup/failure"
+
+    // Ride
+    case rideActive = "ride/active"
+    case rideWaitingForApp = "ride/waiting-for-riding-app"
+    case ridePendingShift = "ride/pending-shift"
+    case rideClickPressed = "ride/click-pressed"
+    case rideLowBattery = "ride/low-click-battery"
+    case rideReconnecting = "ride/reconnecting"
+    case rideStopping = "ride/stopping"
+    case rideAppWheelSize = "ride/riding-app-wheel-size"
+    case rideStopConfirmation = "ride/stop-confirmation"
+    case rideLandscape = "ride/landscape"
+    case rideAccessibilityText = "ride/accessibility-text"
+    case rideDarkMode = "ride/dark-mode"
+
+    // Settings and equipment
+    case settingsConnected = "settings/connected"
+    case settingsMissingParkedGear = "settings/missing-parked-gear"
+    case settingsUnsafeGears = "settings/unsafe-gears"
+    case settingsAccessibilityText = "settings/accessibility-text"
+    case wheelSizeValid = "settings/wheel-size-valid"
+    case wheelSizeInvalid = "settings/wheel-size-invalid"
+    case trainerConnected = "equipment/trainer-connected"
+    case trainerSearching = "equipment/trainer-searching"
+    case trainerResults = "equipment/trainer-results"
+    case trainerUnsupported = "equipment/trainer-unsupported"
+    case trainerTimedOut = "equipment/trainer-timed-out"
+    case trainerBluetoothIssue = "equipment/trainer-bluetooth-issue"
+    case trainerStalled = "equipment/trainer-stalled"
+    case clickConnected = "equipment/click-connected"
+    case clickLowBattery = "equipment/click-low-battery"
+    case clickDuplicatePrompt = "equipment/click-duplicate-prompt"
+    case clickIdentifying = "equipment/click-identifying"
+    case headwindSetup = "equipment/headwind-connected"
+
+    // Simulated and physical gears
+    case gearsVirtual = "gears/virtual"
+    case gearsCustom = "gears/custom"
+    case gearsRealBike = "gears/real-bike"
+    case groupsetPicker = "gears/groupset-picker"
+    case groupsetMatchBikeOffer = "gears/groupset-match-bike-offer"
+    case chainringPicker = "gears/chainring-picker"
+    case cassettePicker = "gears/cassette-picker"
+    case gearPreviewTooWide = "gears/preview-too-wide"
+    case parkedGearCassette = "physical/parked-gear-cassette"
+    case parkedGearSingleSprocket = "physical/parked-gear-single-sprocket"
+    case parkedGearOutOfReach = "physical/parked-gear-out-of-reach"
+
+    // Headwind
+    case headwindManual = "headwind/manual"
+    case headwindAutomatic = "headwind/automatic"
+    case headwindPending = "headwind/pending-command"
+    case headwindError = "headwind/command-error"
+    case headwindLandscape = "headwind/landscape"
+    case headwindDarkMode = "headwind/dark-mode"
+
+    // Demo
+    case demoRide = "demo/ride"
+    case demoSettings = "demo/settings"
+    case demoGearSettings = "demo/gear-settings"
+    case demoHeadwindAutomatic = "demo/headwind-automatic"
+    case demoHeadwindManual = "demo/headwind-manual"
+}
+
+private let uxCoverageManifest: [DesignedUXState: String] = {
+    var result: [DesignedUXState: String] = [:]
+    func assign(_ states: [DesignedUXState], to test: String) {
+        for state in states { result[state] = test }
+    }
+    assign([
+        .wizardGroupsetCassette, .wizardGroupsetSingleSprocket,
+        .wizardParkedGearRecommended, .wizardParkedGearWarning,
+        .wizardWheelSizeValid, .wizardWheelSizeInvalid,
+    ], to: "testUXCoverageSetupWizardStates")
+    assign([
+        .startupSavedTrainerConnecting, .startupLookingForTrainer,
+        .startupChooseTrainer, .startupReady, .startupMissingParkedGear,
+        .startupFailure,
+    ], to: "testUXCoverageStartupStates")
+    assign([
+        .rideActive, .rideWaitingForApp, .ridePendingShift, .rideClickPressed,
+        .rideLowBattery, .rideReconnecting, .rideStopping, .rideAppWheelSize,
+        .rideStopConfirmation, .rideLandscape, .rideAccessibilityText,
+    ], to: "testUXCoverageRideStates")
+    assign([
+        .settingsConnected, .settingsMissingParkedGear, .settingsUnsafeGears,
+        .wheelSizeValid, .wheelSizeInvalid, .trainerConnected,
+        .trainerSearching, .trainerResults, .trainerUnsupported,
+        .trainerTimedOut, .trainerBluetoothIssue, .trainerStalled,
+        .clickConnected, .clickLowBattery, .clickDuplicatePrompt,
+        .clickIdentifying, .headwindSetup,
+    ], to: "testUXCoverageSettingsAndEquipmentStates")
+    assign([
+        .gearsVirtual, .gearsCustom, .gearsRealBike, .groupsetPicker,
+        .groupsetMatchBikeOffer, .chainringPicker, .cassettePicker,
+        .gearPreviewTooWide, .parkedGearCassette,
+        .parkedGearSingleSprocket, .parkedGearOutOfReach,
+    ], to: "testUXCoverageGearAndPhysicalBikeStates")
+    assign([
+        .headwindManual, .headwindAutomatic, .headwindPending, .headwindError,
+        .headwindLandscape,
+    ], to: "testUXCoverageHeadwindStates")
+    assign([
+        .wizardAccessibilityText, .settingsAccessibilityText, .rideDarkMode,
+        .headwindDarkMode,
+    ], to: "testUXCoverageAccessibilityAndAppearanceVariants")
+    assign([
+        .demoRide, .demoSettings, .demoGearSettings,
+        .demoHeadwindAutomatic, .demoHeadwindManual,
+    ], to: "testUXCoverageDemoStates")
+    return result
+}()
+
 @MainActor
 final class VirtualGearsUITests: XCTestCase {
     private var app: XCUIApplication!
+    private var capturedUXStates: Set<DesignedUXState> = []
 
     func testStartingScreenShowsEveryConfiguredEquipmentStatus() {
         launch("-shotStarting")
@@ -674,7 +809,466 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertFalse(app.buttons["50 percent"].isSelected)
     }
 
-    private func launch(_ fixture: String) {
+    func testDesignedUXStateManifestIsComplete() {
+        XCTAssertEqual(
+            Set(uxCoverageManifest.keys),
+            Set(DesignedUXState.allCases),
+            "Every designed app-owned state must be assigned to executable UX coverage."
+        )
+        XCTAssertTrue(
+            uxCoverageManifest.values.allSatisfy { $0.hasPrefix("testUXCoverage") },
+            "Coverage entries must name a journey test rather than prose or a ticket."
+        )
+    }
+
+    func testUXCoverageSetupWizardStates() {
+        launch("-shotSetupWizard")
+        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
+        capture(.wizardGroupsetCassette)
+
+        let singleSprocket = app.switches["wizard.singleSprocket"].firstMatch
+        singleSprocket.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+        ).tap()
+        XCTAssertEqual(singleSprocket.value as? String, "1")
+        capture(.wizardGroupsetSingleSprocket)
+        singleSprocket.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
+        ).tap()
+        XCTAssertEqual(singleSprocket.value as? String, "0")
+
+        let dura = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Dura-Ace R9200")
+        ).firstMatch
+        assertVisibleElement(dura)
+        dura.tap()
+        XCTAssertTrue(
+            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2)
+        )
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Park the chain on")
+        ).firstMatch)
+        capture(.wizardParkedGearRecommended)
+
+        let outOfReach = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Puts some gears out of reach")
+        ).firstMatch
+        assertVisibleElement(outOfReach)
+        outOfReach.tap()
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "cannot reach")
+        ).firstMatch)
+        capture(.wizardParkedGearWarning)
+
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.navigationBars["Wheel size"].waitForExistence(timeout: 2))
+        assertVisibleElement(app.textFields["Millimetres"])
+        capture(.wizardWheelSizeValid)
+
+        let field = app.textFields["Millimetres"]
+        field.tap()
+        field.typeText("999")
+        app.swipeUp()
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Enter a value from")
+        ).firstMatch)
+        capture(.wizardWheelSizeInvalid)
+        assertJourneyCoverage()
+
+    }
+
+    func testUXCoverageStartupStates() {
+        launch("-shotStarting")
+        assertVisibleElement(app.staticTexts["Getting Virtual Gears ready"])
+        capture(.startupSavedTrainerConnecting)
+
+        launch("-shotStartupLooking")
+        assertVisibleElement(app.staticTexts["Looking for your trainer"])
+        capture(.startupLookingForTrainer)
+
+        launch("-shotStartupChoosing")
+        assertVisibleElement(app.staticTexts["Which one is yours?"])
+        assertVisibleElement(app.buttons["Wahoo KICKR 2A93"])
+        capture(.startupChooseTrainer)
+
+        launch("-shotReady")
+        assertVisibleElement(app.staticTexts["Ready to shift"])
+        assertVisibleElement(app.buttons["Start Shifting"])
+        capture(.startupReady)
+
+        launch("-shotUnparked")
+        assertVisibleElement(app.buttons["Set the gear you are in"])
+        capture(.startupMissingParkedGear)
+
+        launch("-shotFailed")
+        assertVisibleElement(app.staticTexts["Shifting could not start"])
+        assertVisibleElement(app.buttons["Try Again"])
+        capture(.startupFailure)
+        assertJourneyCoverage()
+    }
+
+    func testUXCoverageRideStates() {
+        launch("-shotRide")
+        assertVisible("screen.ride")
+        capture(.rideActive)
+
+        launch("-shotRideWaiting")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["status.ridingapp"].label
+                .contains("Waiting for connection")
+        )
+        capture(.rideWaitingForApp)
+
+        launch("-shotRidePending")
+        assertVisibleElement(app.staticTexts["Shifting…"])
+        capture(.ridePendingShift)
+
+        launch("-shotRidePressed")
+        XCTAssertEqual(app.buttons["Shift harder"].value as? String, "Pressed")
+        capture(.rideClickPressed)
+
+        launch("-shotRideLowBattery")
+        assertVisibleElement(
+            app.descendants(matching: .any)["Click battery low, 15 percent"]
+        )
+        capture(.rideLowBattery)
+
+        launch("-shotRideReconnecting")
+        assertVisibleElement(app.descendants(matching: .any)["ride.status"])
+        capture(.rideReconnecting)
+
+        launch("-shotRideStopping")
+        assertVisibleElement(app.descendants(matching: .any)["ride.status"])
+        capture(.rideStopping)
+
+        launch("-shotRideWheelSize")
+        assertVisibleElement(
+            app.descendants(matching: .any)["note.ridingAppWheelSize"]
+        )
+        capture(.rideAppWheelSize)
+
+        launch("-shotRide")
+        app.buttons["Stop virtual shifting"].tap()
+        assertVisibleElement(app.staticTexts["Stop virtual shifting?"])
+        assertVisibleElement(app.buttons["Cancel"])
+        assertVisibleElement(app.buttons["Stop Shifting"])
+        capture(.rideStopConfirmation)
+
+        launch("-shotRide", orientation: .landscapeLeft)
+        waitForLandscapeLayout()
+        assertVisible("screen.ride")
+        assertVisibleElement(app.buttons["Shift easier"])
+        assertVisibleElement(app.buttons["Shift harder"])
+        capture(.rideLandscape)
+
+        launch("-shotRideAccessibility")
+        assertVisible("screen.ride")
+        assertVisibleElement(app.buttons["Shift easier"])
+        capture(.rideAccessibilityText)
+        assertJourneyCoverage()
+
+    }
+
+    func testUXCoverageSettingsAndEquipmentStates() {
+        launch("-shotSettings")
+        assertVisible("screen.settings")
+        capture(.settingsConnected)
+
+        launch("-shotUnparked")
+        app.buttons["Set the gear you are in"].tap()
+        assertVisible("screen.settings")
+        scrollToParkedGearRow()
+        let missingParkedGear = app.descendants(matching: .any)[
+            "row.parkedGear"
+        ].firstMatch
+        XCTAssertTrue(
+            missingParkedGear.label.contains("Needed")
+        )
+        capture(.settingsMissingParkedGear)
+
+        launch("-shotSettingsUnsafeGears")
+        assertVisible("screen.settings")
+        app.swipeUp()
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "safe range")
+        ).firstMatch)
+        capture(.settingsUnsafeGears)
+
+
+        launch("-shotSettings")
+        app.staticTexts["Normal wheel circumference"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars["Normal wheel size"].waitForExistence(timeout: 2))
+        capture(.wheelSizeValid)
+        let field = app.textFields["Millimetres"]
+        field.tap()
+        field.typeKey("a", modifierFlags: .command)
+        field.typeKey(.delete, modifierFlags: [])
+        field.typeText("999")
+        app.swipeUp()
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Enter a value from")
+        ).firstMatch)
+        capture(.wheelSizeInvalid)
+
+        openSettingsDestination("Trainer", fixture: "-shotSettings")
+        capture(.trainerConnected)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsSearching")
+        assertVisibleElement(app.staticTexts["Looking for trainers…"])
+        capture(.trainerSearching)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsResults")
+        assertVisibleElement(app.buttons["Wahoo KICKR 7B20"])
+        capture(.trainerResults)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsUnsupported")
+        assertVisibleElement(app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Wheel-on trainers")
+        ).firstMatch)
+        capture(.trainerUnsupported)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsTimedOut")
+        assertVisibleElement(app.staticTexts["No trainer found"])
+        capture(.trainerTimedOut)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsBluetoothIssue")
+        assertVisibleElement(app.buttons["Open Bluetooth Settings"])
+        capture(.trainerBluetoothIssue)
+        openSettingsDestination("Trainer", fixture: "-shotSettingsStalled")
+        assertVisibleElement(app.staticTexts["Still trying to connect"])
+        capture(.trainerStalled)
+
+        openSettingsDestination("Zwift Click", fixture: "-shotSettings")
+        assertVisibleElement(app.staticTexts["Battery 82%"])
+        capture(.clickConnected)
+        openSettingsDestination("Zwift Click", fixture: "-shotSettingsClickLowBattery")
+        assertVisibleElement(app.staticTexts["Worth replacing the battery soon."])
+        capture(.clickLowBattery)
+        openSettingsDestination("Zwift Click", fixture: "-shotSettingsClickDuplicates")
+        assertVisibleElement(app.buttons["Identify by pressing a button"])
+        capture(.clickDuplicatePrompt)
+        openSettingsDestination("Zwift Click", fixture: "-shotSettingsClickIdentifying")
+        assertVisibleElement(
+            app.staticTexts["Keep pressing either button on the Click you want."]
+        )
+        capture(.clickIdentifying)
+
+        openSettingsDestination("Wahoo Headwind", fixture: "-shotSettings")
+        assertVisibleElement(app.staticTexts["KICKR HEADWIND 4D21"])
+        capture(.headwindSetup)
+        assertJourneyCoverage()
+    }
+
+    func testUXCoverageGearAndPhysicalBikeStates() {
+        launch("-shotGears")
+        assertVisible("screen.gears")
+        capture(.gearsVirtual)
+        app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Custom")
+        ).firstMatch.tap()
+        assertVisible("screen.customGearLadder")
+        capture(.gearsCustom)
+
+        launch("-shotRealGears")
+        assertVisible("screen.gears")
+        capture(.gearsRealBike)
+
+        app.staticTexts["Groupset"].tap()
+        assertVisible("screen.groupset")
+        capture(.groupsetPicker)
+        let dura = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Dura-Ace R9200")
+        ).firstMatch
+        assertVisibleElement(dura)
+        dura.tap()
+        for _ in 0..<4 { app.swipeUp() }
+        assertVisibleElement(app.buttons["Also set this as what's on the bike"])
+        capture(.groupsetMatchBikeOffer)
+
+        launch("-shotRealGears")
+        app.staticTexts["Chainrings"].tap()
+        XCTAssertTrue(app.navigationBars["Chainrings"].waitForExistence(timeout: 2))
+        capture(.chainringPicker)
+
+        launch("-shotRealGears")
+        app.staticTexts["Cassette"].tap()
+        XCTAssertTrue(app.navigationBars["Cassette"].waitForExistence(timeout: 2))
+        capture(.cassettePicker)
+
+        launch("-shotSettingsUnsafeGears")
+        app.staticTexts["Gears"].firstMatch.tap()
+        assertVisibleElement(app.staticTexts["Too wide for the trainer"])
+        capture(.gearPreviewTooWide)
+
+        launch("-shotSettings")
+        openParkedGear()
+        assertVisible("screen.parkedGear")
+        capture(.parkedGearCassette)
+        app.buttons["Single sprocket"].tap()
+        XCTAssertTrue(app.buttons["Single sprocket"].isSelected)
+        capture(.parkedGearSingleSprocket)
+
+        app.buttons["Cassette"].tap()
+        let outOfReach = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Puts some gears out of reach")
+        ).firstMatch
+        assertVisibleElement(outOfReach)
+        outOfReach.tap()
+        assertVisibleElement(app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "Use ")
+        ).firstMatch)
+        capture(.parkedGearOutOfReach)
+        assertJourneyCoverage()
+    }
+
+    func testUXCoverageHeadwindStates() {
+        launch("-shotHeadwind")
+        assertVisible("screen.headwind")
+        assertVisibleElement(app.staticTexts["Fixed fan speed"])
+        capture(.headwindManual)
+
+        launch("-shotHeadwindAutomatic")
+        assertVisibleElement(app.staticTexts["Sensor control"])
+        capture(.headwindAutomatic)
+
+        launch("-shotHeadwindPending")
+        assertVisibleElement(app.staticTexts["Applying change…"])
+        capture(.headwindPending)
+
+        launch("-shotHeadwindError")
+        assertVisibleElement(
+            app.staticTexts["The Headwind did not confirm the change."]
+        )
+        capture(.headwindError)
+
+        launch("-shotHeadwind", orientation: .landscapeLeft)
+        waitForLandscapeLayout()
+        assertVisible("screen.headwind")
+        assertVisibleElement(app.buttons["50 percent"])
+        capture(.headwindLandscape)
+        assertJourneyCoverage()
+
+    }
+
+    func testUXCoverageAccessibilityAndAppearanceVariants() {
+        launch("-shotSetupWizardAccessibility")
+        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
+        app.swipeUp()
+        assertVisibleElement(app.switches["wizard.singleSprocket"].firstMatch)
+        capture(.wizardAccessibilityText)
+
+        launch("-shotSettingsAccessibility")
+        assertVisible("screen.settings")
+        assertVisibleElement(app.staticTexts["Setup guide"])
+        capture(.settingsAccessibilityText)
+
+        launch("-shotRide", extraArguments: ["-AppleInterfaceStyle", "Dark"])
+        assertVisible("screen.ride")
+        assertVisibleElement(app.buttons["Shift harder"])
+        capture(.rideDarkMode)
+
+        launch("-shotHeadwind", extraArguments: ["-AppleInterfaceStyle", "Dark"])
+        assertVisible("screen.headwind")
+        assertVisibleElement(app.buttons["50 percent"])
+        capture(.headwindDarkMode)
+        assertJourneyCoverage()
+    }
+
+    func testUXCoverageDemoStates() {
+        launch("-shotDemo")
+        assertVisible("screen.demo")
+        capture(.demoRide)
+
+        app.buttons["Settings"].tap()
+        assertVisible("screen.demo-settings")
+        capture(.demoSettings)
+        app.buttons["Done"].tap()
+
+        let gearsMenu = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "gears")
+        ).firstMatch
+        gearsMenu.tap()
+        let allGearSettings = app.buttons["All Gear Settings…"]
+        assertVisibleElement(allGearSettings)
+        allGearSettings.tap()
+        assertVisible("screen.gears")
+        capture(.demoGearSettings)
+        app.buttons["Done"].tap()
+
+        app.buttons["Fan"].tap()
+        assertVisible("screen.demo-headwind")
+        capture(.demoHeadwindAutomatic)
+        app.buttons["Manual"].tap()
+        assertVisibleElement(app.buttons["50 percent"])
+        capture(.demoHeadwindManual)
+        assertJourneyCoverage()
+    }
+
+    private func openSettingsDestination(_ title: String, fixture: String) {
+        launch(fixture)
+        assertVisible("screen.settings")
+        let row = app.staticTexts[title].firstMatch
+        assertVisibleElement(row)
+        row.tap()
+        XCTAssertTrue(
+            app.navigationBars[title].waitForExistence(timeout: 2),
+            "\(title) screen did not open"
+        )
+    }
+
+    private func openParkedGear() {
+        scrollToParkedGearRow()
+        let row = app.descendants(matching: .any)["row.parkedGear"].firstMatch
+        assertVisibleElement(row)
+        row.tap()
+    }
+
+    private func scrollToParkedGearRow() {
+        let row = app.descendants(matching: .any)["row.parkedGear"].firstMatch
+        for _ in 0..<3 where !row.exists || !row.isHittable {
+            app.swipeUp()
+        }
+        assertVisibleElement(row)
+    }
+
+    private func waitForLandscapeLayout() {
+        let window = app.windows.firstMatch
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline, window.frame.width <= window.frame.height {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertGreaterThan(window.frame.width, window.frame.height)
+    }
+
+    private func capture(_ state: DesignedUXState) {
+        XCTAssertTrue(
+            capturedUXStates.insert(state).inserted,
+            "\(state.rawValue) was captured more than once in one journey."
+        )
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = "UX-\(state.rawValue.replacingOccurrences(of: "/", with: "-"))"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func assertJourneyCoverage() {
+        guard let journey = Set(uxCoverageManifest.values).first(
+            where: { name.contains($0) }
+        ) else {
+            return XCTFail("No UX coverage manifest entry matches \(name).")
+        }
+        let expected = Set(
+            uxCoverageManifest.compactMap { state, assignedJourney in
+                assignedJourney == journey ? state : nil
+            }
+        )
+        XCTAssertEqual(
+            capturedUXStates,
+            expected,
+            "\(journey) must execute every state assigned to it exactly once."
+        )
+    }
+
+    private func launch(
+        _ fixture: String,
+        orientation: UIDeviceOrientation = .portrait,
+        extraArguments: [String] = []
+    ) {
         continueAfterFailure = false
         app = XCUIApplication()
         addTeardownBlock { @MainActor [weak self] in
@@ -688,10 +1282,10 @@ final class VirtualGearsUITests: XCTestCase {
             app.terminate()
             self.app = nil
         }
-        XCUIDevice.shared.orientation = .portrait
+        XCUIDevice.shared.orientation = orientation
         app.launchArguments = [
             fixture, "-AppleLanguages", "(en)", "-AppleLocale", "en_US",
-        ]
+        ] + extraArguments
         app.launch()
     }
 

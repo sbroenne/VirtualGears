@@ -384,6 +384,7 @@ private struct TrainerSetupView: View {
                 selectedID: kickr.selectedID,
                 isScanning: kickr.isScanning,
                 connectionState: kickr.state,
+                initialPhase: stagedDiscoveryPhase(for: .trainer),
                 startScanning: kickr.startScanning,
                 stopScanning: {
                     kickr.stopScanning(reconnectSavedDevice: false)
@@ -470,6 +471,7 @@ private struct ShiftingSetupView: View {
                 selectedID: click.selectedID,
                 isScanning: click.isScanning,
                 connectionState: click.state,
+                initialPhase: stagedDiscoveryPhase(for: .click),
                 startScanning: click.startScanning,
                 stopScanning: {
                     click.stopScanning(reconnectSavedDevice: false)
@@ -603,6 +605,7 @@ private struct HeadwindSetupView: View {
                 selectedID: headwind.selectedID,
                 isScanning: headwind.state == .scanning,
                 connectionState: headwind.state,
+                initialPhase: stagedDiscoveryPhase(for: .headwind),
                 startScanning: headwind.startScanning,
                 stopScanning: {
                     headwind.stopScanning(reconnectSavedDevice: false)
@@ -1374,6 +1377,40 @@ struct ChoiceRow: View {
 
 // MARK: - Shared rows
 
+private enum StagedDiscoveryDevice {
+    case trainer
+    case click
+    case headwind
+}
+
+/// Production discovery always starts idle. Screenshot fixtures can seed a
+/// later app-owned phase so UI tests cover results, timeout, and identification
+/// without waiting on a real Bluetooth radio.
+private func stagedDiscoveryPhase(
+    for device: StagedDiscoveryDevice
+) -> DeviceDiscoveryState.Phase {
+#if DEBUG
+    guard let fixture = ScreenshotFixture.current else { return .idle }
+    switch (device, fixture) {
+    case (.trainer, .settingsSearching):
+        return .searching
+    case (.trainer, .settingsResults),
+         (.trainer, .settingsUnsupported):
+        return .showingResults
+    case (.trainer, .settingsTimedOut),
+         (.trainer, .settingsBluetoothIssue):
+        return .timedOut
+    case (.click, .settingsClickDuplicates),
+         (.click, .settingsClickIdentifying):
+        return .showingResults
+    default:
+        return .idle
+    }
+#else
+    .idle
+#endif
+}
+
 /// A Settings-style row: what it is on the left, what it is set to on the
 /// right, and a badge saying whether it is actually connected.
 private struct SetupRow: View {
@@ -1507,6 +1544,7 @@ private struct DeviceDiscoverySection: View {
         selectedID: UUID?,
         isScanning: Bool,
         connectionState: ProductConnectionState,
+        initialPhase: DeviceDiscoveryState.Phase = .idle,
         startScanning: @escaping () -> Void,
         stopScanning: @escaping () -> Void,
         cancelScanning: @escaping () -> Void,
@@ -1523,6 +1561,20 @@ private struct DeviceDiscoverySection: View {
         self.selectedID = selectedID
         self.isScanning = isScanning
         self.connectionState = connectionState
+        var initialDiscovery = DeviceDiscoveryState()
+        switch initialPhase {
+        case .idle:
+            break
+        case .searching:
+            initialDiscovery.start()
+        case .showingResults:
+            initialDiscovery.start()
+            initialDiscovery.observe(candidateCount: max(1, candidates.count))
+        case .timedOut:
+            initialDiscovery.start()
+            initialDiscovery.finish(candidateCount: 0)
+        }
+        _discovery = State(initialValue: initialDiscovery)
         self.startScanning = startScanning
         self.stopScanning = stopScanning
         self.cancelScanning = cancelScanning
@@ -1948,6 +2000,7 @@ struct ParkedGearView: View {
                         value: "\(store.configuration.physical.cogTeeth[0])T"
                     )
                 }
+                .accessibilityIdentifier("parkedGear.sprocketTeeth")
             } else {
                 NavigationLink {
                     PhysicalCassetteView(store: store)

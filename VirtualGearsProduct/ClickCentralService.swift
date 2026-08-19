@@ -536,11 +536,21 @@ final class ClickCentralService: NSObject {
 
 #if DEBUG
 extension ClickCentralService {
-    func stageScreenshot(name: String, batteryLevel: Int) {
+    func stageScreenshot(
+        name: String,
+        batteryLevel: Int,
+        candidates: [BluetoothCandidate] = [],
+        state: ProductConnectionState = .ready,
+        stalled: Bool = false,
+        identifying: UUID? = nil
+    ) {
         selectedID = ScreenshotFixture.clickID
         selectedName = name
+        self.candidates = candidates
         self.batteryLevel = batteryLevel
-        state = .ready
+        connectionIsStalled = stalled
+        identificationCandidateID = identifying
+        self.state = state
     }
 
     func stageScreenshotPressedButton(_ button: ZwiftClickButton) {

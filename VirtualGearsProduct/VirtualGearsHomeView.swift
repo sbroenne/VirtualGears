@@ -145,6 +145,7 @@ struct StartupView: View {
     @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     var beginsDiscovery = true
+    var startsWithTrainerChoice = false
     var onTryDemo: () -> Void = {}
     @State private var showsSettings = false
     /// Set when more than one trainer is found, which is the one situation
@@ -211,6 +212,10 @@ struct StartupView: View {
                 }
             }
             .task {
+                if startsWithTrainerChoice {
+                    trainerScanSettled = true
+                    mustChoose = true
+                }
                 if !store.configuration.setupWizardCompleted {
                     showsSetupWizard = true
                 }
@@ -1578,6 +1583,7 @@ struct ShiftingView: View {
                         "Your riding app set the wheel size. "
                             + "Your gears are built around it."
                     )
+                    .accessibilityIdentifier("note.ridingAppWheelSize")
             }
         }
         .font(.caption)

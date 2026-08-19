@@ -129,10 +129,12 @@ private struct WizardGroupsetStep: View {
                     "I ride a single sprocket, not a cassette",
                     isOn: $usesSingleSprocket
                 )
+                .accessibilityIdentifier("wizard.singleSprocket")
                 if usesSingleSprocket {
                     Stepper(value: $singleSprocketTeeth, in: 9...30) {
                         LabeledContent("Sprocket", value: "\(singleSprocketTeeth)T")
                     }
+                    .accessibilityIdentifier("wizard.sprocketTeeth")
                 }
             } footer: {
                 Text(

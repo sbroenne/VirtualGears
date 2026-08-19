@@ -1236,5 +1236,13 @@ extension ProxyCoordinator {
     public func stageScreenshotReconnecting() {
         lifecycle.markReconnecting()
     }
+
+    public func stageScreenshotStopping() {
+        _ = lifecycle.beginStopping()
+    }
+
+    public func stageScreenshotRidingAppWheelSize() {
+        wheelSizeCameFromRidingApp = true
+    }
 }
 #endif

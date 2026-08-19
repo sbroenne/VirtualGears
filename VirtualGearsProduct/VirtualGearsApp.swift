@@ -95,6 +95,8 @@ struct VirtualGearsApp: App {
 #if DEBUG
 enum ScreenshotFixture: String {
     case starting = "-shotStarting"
+    case startupLooking = "-shotStartupLooking"
+    case startupChoosing = "-shotStartupChoosing"
     case ready = "-shotReady"
     /// A trainer that is connected but a bike whose gear has not been
     /// confirmed — the one blocker a rider cannot fix by waiting.
@@ -107,11 +109,28 @@ enum ScreenshotFixture: String {
     case ridePending = "-shotRidePending"
     case ridePressed = "-shotRidePressed"
     case rideReconnecting = "-shotRideReconnecting"
+    case rideStopping = "-shotRideStopping"
+    case rideWheelSize = "-shotRideWheelSize"
     case settings = "-shotSettings"
+    case settingsSearching = "-shotSettingsSearching"
+    case settingsResults = "-shotSettingsResults"
+    case settingsUnsupported = "-shotSettingsUnsupported"
+    case settingsTimedOut = "-shotSettingsTimedOut"
+    case settingsBluetoothIssue = "-shotSettingsBluetoothIssue"
+    case settingsStalled = "-shotSettingsStalled"
+    case settingsClickLowBattery = "-shotSettingsClickLowBattery"
+    case settingsClickDuplicates = "-shotSettingsClickDuplicates"
+    case settingsClickIdentifying = "-shotSettingsClickIdentifying"
+    case settingsUnsafeGears = "-shotSettingsUnsafeGears"
+    case settingsAccessibility = "-shotSettingsAccessibility"
     case setupWizard = "-shotSetupWizard"
+    case setupWizardAccessibility = "-shotSetupWizardAccessibility"
     case gears = "-shotGears"
     case realGears = "-shotRealGears"
     case headwind = "-shotHeadwind"
+    case headwindAutomatic = "-shotHeadwindAutomatic"
+    case headwindPending = "-shotHeadwindPending"
+    case headwindError = "-shotHeadwindError"
     case demo = "-shotDemo"
 
     static let kickrID = UUID(uuidString: "10000000-0000-0000-0000-000000000001")!
@@ -142,17 +161,20 @@ private struct ScreenshotFixtureView: View {
     var body: some View {
         Group {
             switch scenario {
-            case .starting, .ready, .failed, .unparked:
+            case .starting, .startupLooking, .startupChoosing, .ready, .failed,
+                 .unparked:
                 StartupView(
                     store: store,
                     kickr: kickr,
                     click: click,
                     headwind: headwind,
                     coordinator: coordinator,
-                    beginsDiscovery: false
+                    beginsDiscovery: false,
+                    startsWithTrainerChoice: scenario == .startupChoosing
                 )
             case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
-                 .ridePending, .ridePressed, .rideReconnecting:
+                 .ridePending, .ridePressed, .rideReconnecting, .rideStopping,
+                 .rideWheelSize:
                 ShiftingView(
                     store: store,
                     kickr: kickr,
@@ -161,7 +183,12 @@ private struct ScreenshotFixtureView: View {
                     coordinator: coordinator,
                     onRiderStop: {}
                 )
-            case .settings:
+            case .settings, .settingsSearching, .settingsResults,
+                 .settingsUnsupported, .settingsTimedOut,
+                 .settingsBluetoothIssue, .settingsStalled,
+                 .settingsClickLowBattery, .settingsClickDuplicates,
+                 .settingsClickIdentifying, .settingsUnsafeGears,
+                 .settingsAccessibility:
                 NavigationStack {
                     SetupView(
                         store: store,
@@ -171,7 +198,7 @@ private struct ScreenshotFixtureView: View {
                         autoConnectsOnAppear: false
                     )
                 }
-            case .setupWizard:
+            case .setupWizard, .setupWizardAccessibility:
                 NavigationStack {
                     SetupWizardView(store: store, onFinish: {})
                 }
@@ -179,7 +206,7 @@ private struct ScreenshotFixtureView: View {
                 NavigationStack {
                     GearChoiceView(store: store)
                 }
-            case .headwind:
+            case .headwind, .headwindAutomatic, .headwindPending, .headwindError:
                 NavigationStack {
                     HeadwindControlView(headwind: headwind)
                 }
@@ -188,7 +215,10 @@ private struct ScreenshotFixtureView: View {
             }
         }
         .dynamicTypeSize(
-            scenario == .rideAccessibility ? .accessibility5 : .large
+            scenario == .rideAccessibility
+                || scenario == .setupWizardAccessibility
+                || scenario == .settingsAccessibility
+                ? .accessibility5 : .large
         )
         .task {
             stage()
@@ -207,10 +237,12 @@ private struct ScreenshotFixtureView: View {
         if scenario != .setupWizard {
             configuration.completeSetupWizard()
         }
-        configuration.rememberKickr(
-            named: "Wahoo KICKR 2A93",
-            id: ScreenshotFixture.kickrID
-        )
+        if scenario != .startupLooking && scenario != .startupChoosing {
+            configuration.rememberKickr(
+                named: "Wahoo KICKR 2A93",
+                id: ScreenshotFixture.kickrID
+            )
+        }
         configuration.rememberClick(
             named: "Zwift Click",
             id: ScreenshotFixture.clickID
@@ -220,6 +252,15 @@ private struct ScreenshotFixtureView: View {
             id: ScreenshotFixture.headwindID
         )
         configuration.usesVirtualGears = scenario != .realGears
+        if scenario == .settingsUnsafeGears {
+            configuration.usesVirtualGears = true
+            configuration.gearLadderID = GearLadderCatalog.customLadderID
+            configuration.customLadder = CustomGearLadder(
+                gearCount: 24,
+                easiestRatioHundredths: 24,
+                hardestRatioHundredths: 1_000
+            )
+        }
         // The screenshot rider has already parked the bike and confirmed the
         // gear, which is the state every screen after setup is drawn in.
         if scenario != .unparked {
@@ -227,15 +268,74 @@ private struct ScreenshotFixtureView: View {
         }
         store.configuration = configuration
 
+        let trainerCandidates = [
+            BluetoothCandidate(
+                id: ScreenshotFixture.kickrID,
+                name: "Wahoo KICKR 2A93",
+                compatibility: .supported
+            ),
+            BluetoothCandidate(
+                id: UUID(uuidString: "10000000-0000-0000-0000-000000000011")!,
+                name: scenario == .settingsUnsupported
+                    ? "Wahoo KICKR SNAP 7B20" : "Wahoo KICKR 7B20",
+                compatibility: scenario == .settingsUnsupported
+                    ? .unsupported(
+                        model: "KICKR SNAP",
+                        reason: "Wheel-on trainers do not support virtual shifting."
+                    )
+                    : .supported
+            ),
+        ]
+        let stagedTrainerState: ProductConnectionState
+        switch scenario {
+        case .starting:
+            stagedTrainerState = .connecting(name: configuration.kickrName)
+        case .startupLooking, .settingsSearching:
+            stagedTrainerState = .scanning
+        case .settingsBluetoothIssue:
+            stagedTrainerState = .unavailable(
+                "Bluetooth permission is required to find equipment."
+            )
+        case .settingsStalled:
+            stagedTrainerState = .connecting(name: configuration.kickrName)
+        default:
+            stagedTrainerState = .ready
+        }
         kickr.stageScreenshot(
-            name: configuration.kickrName,
-            state: scenario == .starting
-                ? .connecting(name: configuration.kickrName) : .ready
+            name: configuration.kickrName.isEmpty
+                ? "Wahoo KICKR 2A93" : configuration.kickrName,
+            state: stagedTrainerState,
+            candidates: scenario == .startupChoosing
+                || scenario == .settingsResults
+                || scenario == .settingsUnsupported
+                ? trainerCandidates : [],
+            stalled: scenario == .settingsStalled
         )
-        click.stageScreenshot(name: configuration.clickName, batteryLevel: 82)
+        let duplicateClicks = [
+            BluetoothCandidate(
+                id: ScreenshotFixture.clickID,
+                name: "Zwift Click"
+            ),
+            BluetoothCandidate(
+                id: UUID(uuidString: "10000000-0000-0000-0000-000000000012")!,
+                name: "Zwift Click"
+            ),
+        ]
+        click.stageScreenshot(
+            name: configuration.clickName,
+            batteryLevel: scenario == .settingsClickLowBattery ? 15 : 82,
+            candidates: scenario == .settingsClickDuplicates
+                || scenario == .settingsClickIdentifying ? duplicateClicks : [],
+            identifying: scenario == .settingsClickIdentifying
+                ? ScreenshotFixture.clickID : nil
+        )
         headwind.stageScreenshot(
             name: configuration.headwindName ?? "KICKR HEADWIND",
-            speed: 50
+            speed: 50,
+            manual: scenario != .headwindAutomatic,
+            pending: scenario == .headwindPending,
+            error: scenario == .headwindError
+                ? "The Headwind did not confirm the change." : nil
         )
 
         if scenario == .rideLowBattery {
@@ -265,13 +365,18 @@ private struct ScreenshotFixtureView: View {
                 state: .connecting(name: configuration.kickrName)
             )
             coordinator.stageScreenshotReconnecting()
+        } else if scenario == .rideStopping {
+            coordinator.stageScreenshotStopping()
+        } else if scenario == .rideWheelSize {
+            coordinator.stageScreenshotRidingAppWheelSize()
         }
     }
 
     private var isRideScenario: Bool {
         switch scenario {
         case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
-             .ridePending, .ridePressed, .rideReconnecting:
+             .ridePending, .ridePressed, .rideReconnecting, .rideStopping,
+             .rideWheelSize:
             true
         default:
             false

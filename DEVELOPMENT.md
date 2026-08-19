@@ -43,24 +43,51 @@ xcodebuild test \
   -parallel-testing-enabled NO
 ```
 
+Run the dense setup and Settings journeys on the smaller supported simulator:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone 17e' \
+  -parallel-testing-enabled NO \
+  -only-testing:VirtualGearsUITests/VirtualGearsUITests/testUXCoverageSetupWizardStates \
+  -only-testing:VirtualGearsUITests/VirtualGearsUITests/testUXCoverageSettingsAndEquipmentStates
+```
+
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 30 scenarios cover every primary
-screen, portrait and landscape status visibility, Accessibility Dynamic Type,
-startup failure, trainer reconnect, a riding app waiting, low Click battery,
-pending shifts, accepted Click press feedback, navigation, stop confirmation and
-cancellation, gear-mode switching, Headwind controls and Demo Mode interactions
-in both shift directions. Six of them are regression guards with measured
-assertions rather than existence checks: the ride status must be wide enough to
-be read as words rather than collapsing to an icon, cancelling the stop
-confirmation must return to the ride, every equipment status must sit on one
-row, a low Click battery must be drawn at warning weight, the Easier/Harder
-buttons in Demo Mode must be drawn with the same distinct visual weight as the
-ride screen's (sampled by pixel colour, since button styling isn't exposed via
-the accessibility tree), and the chain-position reminder must never appear or
-disappear across startup states (it previously vanished the instant the
-trainer connected, making the button above it jump). Screenshots are
-attached to every test result. Protocol
-behavior and equipment lifecycle remain covered by the package tests and
+the simulator has Bluetooth hardware. `DesignedUXState` is the maintained
+coverage contract: it lists every intentionally designed, app-owned screen,
+modal, loading state, warning, error and recovery state. The journey tests cover
+all 65 entries and retain a stable `UX-...` screenshot for each one. The
+completeness test fails if a state is not assigned to an executable journey.
+
+The matrix includes the setup guide, startup, ride, Settings, every equipment
+destination, virtual and physical gearing, Headwind and Demo Mode. It also
+includes Accessibility Dynamic Type for the wizard, Settings and ride;
+landscape ride and Headwind layouts; dark-mode ride and Headwind controls; and
+the dense wizard and Settings journeys on the smaller iPhone 17e. Assertions
+check the state-specific message and action, plus important layout and visual
+invariants. Whole-screen pixel comparisons are deliberately avoided; pixel
+sampling is used only when XCTest cannot expose a meaningful property such as
+button emphasis.
+
+To add or change a user-visible state:
+
+1. Add a debug-only `ScreenshotFixture` launch route that stages the real
+   production view and model. Do not build a visual copy for the test.
+2. Add the state to `DesignedUXState` and assign it to a journey in
+   `uxCoverageManifest`.
+3. In that journey, launch or navigate to the state, assert its defining message
+   and available recovery action, then call `capture(_:)`.
+4. Add an accessibility identifier only when the existing label is unstable or
+   SwiftUI combines several children into one element.
+5. Run the manifest test and all `testUXCoverage...` journeys. A state is not
+   covered until its named screenshot is attached to a passing result.
+
+OS-owned permission sheets and real Bluetooth timing are outside this simulator
+matrix. Every response Virtual Gears owns after those events is still represented.
+Protocol behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
 
 Open the iPhone project:
