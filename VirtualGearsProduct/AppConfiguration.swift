@@ -115,6 +115,33 @@ final class ConfigurationStore {
         configuration.gearLadderID = ladder.id
     }
 
+    func useStandardVirtualGears() {
+        configuration.usesVirtualGears = true
+        setLadder(GearLadderCatalog.standardRange)
+        clearParkedGear()
+    }
+
+    /// Uses the parts the rider just chose for both the real bike and the
+    /// simulated gearing. A single sprocket is not a cassette to simulate, so
+    /// that setup keeps the physical answer and uses the standard virtual ladder.
+    func copyPhysicalBikeToSimulatedGears() {
+        guard !configuration.physical.isSingleSprocket,
+              let chainring = DrivetrainCatalog.chainrings.first(where: {
+                  $0.teeth == configuration.physical.chainringTeeth
+              }),
+              let cassette = DrivetrainCatalog.cassettes.first(where: {
+                  $0.cogs == configuration.physical.cogTeeth
+              })
+        else {
+            useStandardVirtualGears()
+            return
+        }
+        configuration.usesVirtualGears = false
+        setChainring(chainring)
+        setCassette(cassette)
+        clearParkedGear()
+    }
+
     /// Switches to a ladder the rider defines themselves. The parameters are
     /// kept even after switching back to the built-in ladder, so returning to
     /// "Custom" does not forget what was last set.

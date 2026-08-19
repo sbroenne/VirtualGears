@@ -58,17 +58,18 @@ work but have not been tested.
 1. Wake the KICKR by turning the pedals.
 2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
    available to your riding app.
-3. Park the chain in a quiet, straight chain line and confirm the gear in
-   Settings. Virtual Gears names the gear it recommends, so this is usually one
-   tap. It is asked once and kept.
-4. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
+3. In the setup guide, choose whichever description you know: your groupset
+   name, the tooth counts on the bike, or the standard 24 virtual gears. If the
+   trainer uses a Zwift Cog or another single sprocket, say so there.
+4. Park the chain in the exact gear Virtual Gears recommends and confirm it.
+5. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
    may show the iPhone's name instead.
-5. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
+6. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
    buttons.
 
 Virtual Gears is a transparent trainer connection as soon as the KICKR is ready.
-The only thing it needs from you is the gear the bike is parked in, because
-guessing it would quietly make every gear wrong. **Start Shifting** engages the
+The physical fact it cannot guess is the gear the bike is parked in, because a
+wrong guess would quietly make every gear wrong. **Start Shifting** engages the
 gears; **Stop Shifting** removes them without disconnecting or stopping the ride
 in your riding app. If it finds more than one trainer, it asks you to choose
 yours by name.
@@ -136,13 +137,24 @@ with physical hardware.
   <br>
   <p align="center">
     <a href="docs/screenshots/riding.png">
-      <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen">
+      <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen showing gear 12 of 24 and large Easier and Harder controls">
+    </a>
+    <a href="docs/screenshots/setup.png">
+      <img src="docs/screenshots/setup.png" width="28%" alt="Beginner setup offering groupset, bike-parts, and standard virtual-gear paths">
+    </a>
+    <a href="docs/screenshots/bike-setup.png">
+      <img src="docs/screenshots/bike-setup.png" width="28%" alt="Physical bike setup for chainrings and a cassette or single sprocket">
+    </a>
+  </p>
+  <p align="center">
+    <a href="docs/screenshots/parked-gear.png">
+      <img src="docs/screenshots/parked-gear.png" width="28%" alt="Parked-gear recommendation naming the exact chainring and cassette cog">
     </a>
     <a href="docs/screenshots/gears.png">
       <img src="docs/screenshots/gears.png" width="28%" alt="The 24-step virtual gear ladder">
     </a>
-    <a href="docs/screenshots/gears-real-bike.png">
-      <img src="docs/screenshots/gears-real-bike.png" width="28%" alt="Virtual gears based on a real drivetrain">
+    <a href="docs/screenshots/headwind-control.png">
+      <img src="docs/screenshots/headwind-control.png" width="28%" alt="Wahoo Headwind manual fan controls with one-tap speed choices">
     </a>
   </p>
 </details>

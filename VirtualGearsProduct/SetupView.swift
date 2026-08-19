@@ -15,7 +15,7 @@ struct SetupView: View {
 
     var body: some View {
         Form {
-            setupGuideSection
+            setupStatusSection
             equipmentSection
             wheelSizeSection
             gearsSection
@@ -49,19 +49,67 @@ struct SetupView: View {
     /// The row that lets a rider re-run the three-step guide later, for a new
     /// bike or a groupset change, without having to find and set the
     /// groupset, chain position and wheel size as three separate rows again.
-    private var setupGuideSection: some View {
+    private var setupStatusSection: some View {
         Section {
+            if needsSetup {
+                Text(setupStatusMessage)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+                NavigationLink {
+                    if store.configuration.hasSafeGearing {
+                        ParkedGearView(store: store)
+                    } else {
+                        GearChoiceView(store: store)
+                    }
+                } label: {
+                    Label(setupNextAction, systemImage: "arrow.right.circle.fill")
+                        .fontWeight(.semibold)
+                }
+                .accessibilityIdentifier("action.finishSetup")
+            }
+
             NavigationLink {
                 SetupGuideEntryView(store: store)
             } label: {
-                Text("Setup guide")
+                Text(needsSetup ? "Start the full setup guide" : "Run setup guide again")
             }
+        } header: {
+            Text(needsSetup ? "Finish setup" : "Setup")
         } footer: {
             Text(
-                "Walks through your groupset, where the chain is parked, and "
-                    + "your wheel size, in the order they depend on each other."
+                needsSetup
+                    ? "Gearing comes first because it decides which parked gear "
+                        + "is safe. Then confirm where the chain is left."
+                    : "The guide walks through gearing, where the chain is parked, "
+                        + "and wheel size."
             )
         }
+    }
+
+    private var needsSetup: Bool {
+        !store.configuration.hasSafeGearing
+            || store.configuration.parkedGear == nil
+            || store.configuration.parkedGearPutsGearsOutOfReach
+    }
+
+    private var setupStatusMessage: String {
+        if !store.configuration.hasSafeGearing {
+            return "First choose gears that fit the trainer. After that, Virtual "
+                + "Gears can recommend where to leave the chain."
+        }
+        if store.configuration.parkedGearPutsGearsOutOfReach {
+            return "Your gears fit the trainer, but the current chain position "
+                + "puts some of them out of reach. Choose a workable parked gear."
+        }
+        return "Your gears are ready. Confirm the gear the bike is left in so "
+            + "every virtual gear is scaled correctly."
+    }
+
+    private var setupNextAction: String {
+        store.configuration.hasSafeGearing
+            ? "Confirm the gear the bike is in"
+            : "Choose gears that fit"
     }
 
     private var equipmentSection: some View {
@@ -180,7 +228,7 @@ struct SetupView: View {
                 }
             }
 
-            if !store.configuration.hasSafeCircumference {
+            if !store.configuration.hasSafeGearing {
                 Label(
                     "These gears fall outside the trainer's safe range. Choose "
                         + "another set.",
@@ -219,7 +267,8 @@ struct SetupView: View {
             // above it and its value text changes with the parked gear.
             .accessibilityIdentifier("row.parkedGear")
 
-            if store.configuration.parkedGear == nil {
+            if store.configuration.parkedGear == nil,
+               store.configuration.hasSafeGearing {
                 Label(
                     "Virtual Gears needs to know which gear the bike is left "
                         + "in. Without it every gear is scaled from a guess.",
@@ -2089,7 +2138,7 @@ struct ParkedGearView: View {
 /// The rings on the rider's own bike. Kept separate from the simulated gearing
 /// on purpose: plenty of riders will run a single 31-tooth ring and ask for a
 /// twelve-speed groupset to be simulated on top of it.
-private struct PhysicalChainringView: View {
+struct PhysicalChainringView: View {
     @Bindable var store: ConfigurationStore
 
     var body: some View {
@@ -2109,7 +2158,7 @@ private struct PhysicalChainringView: View {
     }
 }
 
-private struct PhysicalCassetteView: View {
+struct PhysicalCassetteView: View {
     @Bindable var store: ConfigurationStore
 
     var body: some View {

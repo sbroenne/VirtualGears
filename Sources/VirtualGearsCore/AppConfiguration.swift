@@ -218,6 +218,13 @@ public struct AppConfiguration: Codable, Equatable {
             && UUID(uuidString: headwindUUID ?? "") != nil
     }
 
+    /// Whether the simulated gearing itself fits the trainer, before the
+    /// rider's physical chain position is considered.
+    public var hasSafeGearing: Bool {
+        guard let drivetrain else { return false }
+        return Self.isSafe(drivetrain)
+    }
+
     public var hasSafeCircumference: Bool {
         guard let drivetrain else { return false }
         return Self.isSafe(drivetrain, parkedGear: parkedGear)

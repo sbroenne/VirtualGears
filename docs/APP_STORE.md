@@ -80,13 +80,19 @@ the iPhone and when advertising itself as a trainer.
     spaced gears with an extra-low climbing range or the gearing of a real
     groupset from Shimano, SRAM or Campagnolo.
 
-    ONE QUESTION BEFORE YOU RIDE
+    START WITH WHAT YOU KNOW
+    The setup guide does not expect you to know specialist bike terminology. Choose
+    a named groupset if you know it, enter the chainrings and cassette printed on
+    the bike, or use the ready-made 24 virtual gears. A Zwift Cog or any other
+    single sprocket is handled separately from the gearing being simulated.
+
+    ONE PHYSICAL FACT CANNOT BE GUESSED
     Your bike never shifts. It stays in one gear and Virtual Gears changes gear by
     changing the wheel size the trainer works from, so what your legs feel is that
     parked gear multiplied by the wheel size the app sets. Virtual Gears therefore
-    asks once which gear your bike is parked in. It works out the quietest gear
-    that still keeps every gear reachable and recommends it, so this is usually a
-    single tap — and after that it never asks again.
+    needs to know which gear your bike is parked in. It works out the quietest gear
+    that still keeps every gear reachable and recommends it. If setup is unfinished,
+    Settings gives one next action: fix gearing first, then confirm the parked gear.
 
     A TRAINER PROXY, WITH SHIFTING WHEN YOU WANT IT
     Open the app and it finds your trainer, connects to it and appears to your riding
@@ -192,8 +198,8 @@ Issues and Discussions must stay enabled on the repository.
 
 ### Screenshots
 
-Required: **6.9-inch iPhone**. The six portrait images in `docs/screenshots/`
-are 1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
+Required: **6.9-inch iPhone**. The six portrait images listed below are
+1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
 uploaded as they are. Apple scales them down for smaller phones; one set is
 enough. The two landscape images are 2868 × 1320 documentation views; they are
 not part of the portrait upload set below.
@@ -201,12 +207,15 @@ not part of the portrait upload set below.
 Upload these six, in this order:
 
 1. `riding.png` — the ride screen, which is what the app is for.
-2. `gears.png` — the 24 virtual gears drawn as bars.
-3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
-4. `headwind-control.png` — optional Automatic/Manual Headwind control with
+2. `setup.png` — the beginner-first choice between a known groupset, entering
+   bike parts, or using the standard virtual ladder.
+3. `bike-setup.png` — cassette versus Zwift Cog/single sprocket and the physical
+   chainrings on the bike.
+4. `parked-gear.png` — the exact quiet, reachable chain position the app
+   recommends.
+5. `gears.png` — the 24 virtual gears drawn as bars.
+6. `headwind-control.png` — optional Automatic/Manual Headwind control with
    one-tap speeds.
-5. `starting.png` — automatic reconnect plus the Bluetooth-free Try Demo entry.
-6. `settings.png` — the three remembered equipment rows and gear choice.
 
 ### Privacy answers ("App Privacy" section)
 

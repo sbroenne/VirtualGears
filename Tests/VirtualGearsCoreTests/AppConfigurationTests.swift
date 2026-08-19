@@ -162,6 +162,24 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertFalse(configuration.canFinishSetup)
     }
 
+    func testUnsafeParkedGearDoesNotMakeSafeGearingLookInvalid() throws {
+        var configuration = trainerReady()
+        let drivetrain = try XCTUnwrap(configuration.drivetrain)
+        let unsuitable = try XCTUnwrap(
+            ParkedGearAdvice.usableParkedGears(in: configuration.physical)
+                .first {
+                    !ParkedGearAdvice.isWorkable($0, simulating: drivetrain)
+                }
+        )
+
+        configuration.park(in: unsuitable)
+
+        XCTAssertTrue(configuration.hasSafeGearing)
+        XCTAssertTrue(configuration.parkedGearPutsGearsOutOfReach)
+        XCTAssertFalse(configuration.hasSafeCircumference)
+        XCTAssertFalse(configuration.canFinishSetup)
+    }
+
     /// A saved configuration from before Custom existed has no `customLadder`
     /// key at all. Decoding must fall back rather than throw away the rest of
     /// a rider's saved setup.

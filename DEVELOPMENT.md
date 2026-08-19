@@ -59,7 +59,7 @@ xcodebuild test \
 the simulator has Bluetooth hardware. `DesignedUXState` is the maintained
 coverage contract: it lists every intentionally designed, app-owned screen,
 modal, loading state, warning, error and recovery state. The journey tests cover
-all 65 entries and retain a stable `UX-...` screenshot for each one. The
+all 67 entries and retain a stable `UX-...` screenshot for each one. The
 completeness test fails if a state is not assigned to an executable journey.
 
 The matrix includes the setup guide, startup, ride, Settings, every equipment

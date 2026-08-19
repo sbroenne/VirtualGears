@@ -115,9 +115,11 @@ and the complete iPhone-to-Windows path has been ridden end to end.
 4. Tap **Start Shifting** when you want gears. Shift with the two large buttons
    on the phone.
 
-There is no setup screen to complete first. Start and Stop control only virtual
-shifting. Virtual Gears remains connected as a transparent trainer proxy, so
-stopping shifting does not pause, stop or disconnect the ride in your riding app.
+The first-run setup guide can be completed or deferred. Trainer pass-through
+does not depend on it, but virtual shifting needs safe gearing and a confirmed
+parked gear. Start and Stop control only virtual shifting. Virtual Gears remains
+connected as a transparent trainer proxy, so stopping shifting does not pause,
+stop or disconnect the ride in your riding app.
 
 You can explore the app without any equipment by tapping **Try Demo** while it
 looks for a trainer. The simulated ride does not use Bluetooth or control

@@ -53,13 +53,30 @@ speed. Both remain optional and never hold up a ride.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
-  <img src="screenshots/gears.png" width="30%" alt="The 24 virtual gears drawn as bars">
-  <img src="screenshots/gears-real-bike.png" width="30%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
+  <img src="screenshots/setup.png" width="30%" alt="Beginner setup offering groupset, bike-parts, and standard virtual-gear paths">
+  <img src="screenshots/bike-setup.png" width="30%" alt="Physical bike setup for chainrings and a cassette or single sprocket">
 </p>
 
 ## What you get
 
-### The one thing it asks for
+### Start with what you know
+
+The setup guide does not expect you to know a groupset model. Choose the easiest
+path: pick a named groupset, enter the chainrings and cassette printed on the
+bike, or use the ready-made 24 virtual gears. A Zwift Cog is selected as a
+single sprocket and defaults to its usual 14 teeth.
+
+Settings keeps unfinished setup in one ordered card. Gearing is fixed first,
+because that determines which physical parked gear is safe; the chain position
+comes next.
+
+<p align="center">
+  <img src="screenshots/parked-gear.png" width="30%" alt="Parked-gear recommendation naming the exact chainring and cassette cog">
+  <img src="screenshots/gears.png" width="30%" alt="The 24 virtual gears drawn as bars">
+  <img src="screenshots/gears-real-bike.png" width="30%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
+</p>
+
+### The physical fact it cannot guess
 
 Your bike never shifts. It sits on the trainer in a single gear for the whole
 ride, and Virtual Gears changes gear by changing the wheel size the trainer
@@ -142,9 +159,10 @@ switching to another fan.
 ### A trainer proxy, with shifting when you want it
 
 Open the app. It looks for your trainer, connects to it and appears to your
-riding app on its own. There is no setup ritual. **Start Shifting** engages the
-gears; **Stop Shifting** removes them without stopping or disconnecting the ride
-in your riding app.
+riding app on its own. The setup guide can be completed then or deferred;
+trainer pass-through does not depend on it. **Start Shifting** engages the
+gears once gearing and the parked gear are ready; **Stop Shifting** removes them
+without stopping or disconnecting the ride in your riding app.
 
 The only question it asks is which device, and only when it finds more than one
 trainer, Click or Headwind. A single device is simply used. Bluetooth signal
