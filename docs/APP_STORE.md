@@ -80,11 +80,12 @@ the iPhone and when advertising itself as a trainer.
     spaced gears with an extra-low climbing range or the gearing of a real
     groupset from Shimano, SRAM or Campagnolo.
 
-    START WITH WHAT YOU KNOW
-    The setup guide does not expect you to know specialist bike terminology. Choose
-    a named groupset if you know it, enter the chainrings and cassette printed on
-    the bike, or use the ready-made 24 virtual gears. A Zwift Cog or any other
-    single sprocket is handled separately from the gearing being simulated.
+    START WITH THE BIKE
+    Required first-run setup asks only what is physically on the bike: the
+    chainrings and either its cassette or a Zwift Cog/other single sprocket. Virtual
+    Gears then recommends where to leave the chain and starts with the ready-made
+    Standard 24 virtual gears. Named groupsets and custom gears remain available
+    later in Settings.
 
     ONE PHYSICAL FACT CANNOT BE GUESSED
     Your bike never shifts. It stays in one gear and Virtual Gears changes gear by
@@ -138,7 +139,8 @@ the iPhone and when advertising itself as a trainer.
     to compatible apps that have none of their own, without requiring a plugin or
     account. Apps that set their own wheel size are honoured — the gears are rebuilt
     around whatever size the app asks for. If an app sends no size, Virtual Gears uses
-    the Normal wheel circumference saved in Settings, 2070 mm by default.
+    the optional Wheel circumference saved in Settings, or the 2105 mm (700×25 road)
+    default.
 
     OPTIONAL SHIFT BUTTONS
     Wake an original Zwift Click before opening Virtual Gears and it connects
@@ -160,9 +162,9 @@ the iPhone and when advertising itself as a trainer.
 
     NOTE ON WHEEL CIRCUMFERENCE
     Virtual Gears cannot read a wheel circumference previously set in the Wahoo app.
-    If you use a custom value, enter the same value as Normal wheel circumference in
-    Virtual Gears Settings before shifting. Values from 1800 to 2400 mm are supported.
-    A value sent by the riding app takes precedence.
+    If you use a custom value, enter the same value as Wheel circumference in
+    Virtual Gears Settings before shifting. Common-size shortcuts and direct entry
+    support values from 1800 to 2400 mm. A value sent by the riding app takes precedence.
 
     NO ACCOUNTS, NO INTERNET, NO TRACKING
     The app has no networking code in it at all. Nothing about your ride leaves your
@@ -207,10 +209,10 @@ not part of the portrait upload set below.
 Upload these six, in this order:
 
 1. `riding.png` — the ride screen, which is what the app is for.
-2. `setup.png` — the beginner-first choice between a known groupset, entering
-   bike parts, or using the standard virtual ladder.
-3. `bike-setup.png` — cassette versus Zwift Cog/single sprocket and the physical
-   chainrings on the bike.
+2. `setup.png` — required first-run setup for the physical chainrings and
+   cassette.
+3. `bike-setup.png` — the directly visible Zwift Cog/other single-sprocket
+   choice and tooth count.
 4. `parked-gear.png` — the exact quiet, reachable chain position the app
    recommends.
 5. `gears.png` — the 24 virtual gears drawn as bars.
@@ -361,6 +363,13 @@ ordered **Finish setup** action, and changing simulated gears refreshes the
 parked-gear recommendation instead of preserving an unsafe chain position. This
 build includes refreshed public screenshots and 67 maintained app-owned UX
 states.
+
+Unreleased changes on the current branch replace that three-path guide with a
+required physical-bike-first flow: bike parts, then parked chain position.
+Standard 24 is selected automatically. Wheel circumference moves to optional
+Settings shortcuts with a 2105 mm default, and the maintained UX contract
+contains 65 app-owned states. Do not describe these changes as shipped until a
+later upload succeeds.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

@@ -340,7 +340,7 @@ final class DrivetrainTests: XCTestCase {
                 referenceRatio: reference,
                 selectedRatio: drivetrain.gears.first!.ratio
             ),
-            646.875,
+            657.8125,
             accuracy: 0.001
         )
         XCTAssertEqual(
@@ -350,7 +350,7 @@ final class DrivetrainTests: XCTestCase {
                 referenceRatio: reference,
                 selectedRatio: drivetrain.gears.last!.ratio
             ),
-            4_735.125,
+            4_815.1875,
             accuracy: 0.001
         )
         for gear in drivetrain.gears {

@@ -121,6 +121,17 @@ final class ConfigurationStore {
         clearParkedGear()
     }
 
+    func configureFirstRunBike(
+        chainringTeeth: [Int],
+        cogTeeth: [Int]
+    ) {
+        configuration.physical = PhysicalSetup(
+            chainringTeeth: chainringTeeth,
+            cogTeeth: cogTeeth
+        )
+        useStandardVirtualGears()
+    }
+
     /// Uses the parts the rider just chose for both the real bike and the
     /// simulated gearing. A single sprocket is not a cassette to simulate, so
     /// that setup keeps the physical answer and uses the standard virtual ladder.
@@ -180,7 +191,12 @@ final class ConfigurationStore {
         configuration.setNormalWheelCircumference(millimeters: millimeters)
     }
 
-    func completeSetupWizard() {
+    func useDefaultWheelCircumference() {
+        configuration.useDefaultWheelCircumference()
+    }
+
+    @discardableResult
+    func completeSetupWizard() -> Bool {
         configuration.completeSetupWizard()
     }
 

@@ -46,15 +46,13 @@ struct SetupView: View {
         }
     }
 
-    /// The row that lets a rider re-run the three-step guide later, for a new
-    /// bike or a groupset change, without having to find and set the
-    /// groupset, chain position and wheel size as three separate rows again.
+    @ViewBuilder
     private var setupStatusSection: some View {
-        Section {
-            if needsSetup {
+        if needsSetup {
+            Section {
                 Text(setupStatusMessage)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 NavigationLink {
                     if store.configuration.hasSafeGearing {
@@ -67,23 +65,14 @@ struct SetupView: View {
                         .fontWeight(.semibold)
                 }
                 .accessibilityIdentifier("action.finishSetup")
-            }
-
-            NavigationLink {
-                SetupGuideEntryView(store: store)
-            } label: {
-                Text(needsSetup ? "Start the full setup guide" : "Run setup guide again")
-            }
-        } header: {
-            Text(needsSetup ? "Finish setup" : "Setup")
-        } footer: {
-            Text(
-                needsSetup
-                    ? "Gearing comes first because it decides which parked gear "
+            } header: {
+                Text("Finish setup")
+            } footer: {
+                Text(
+                    "Gearing comes first because it decides which parked gear "
                         + "is safe. Then confirm where the chain is left."
-                    : "The guide walks through gearing, where the chain is parked, "
-                        + "and wheel size."
-            )
+                )
+            }
         }
     }
 
@@ -198,18 +187,25 @@ struct SetupView: View {
                 NormalWheelSizeView(store: store)
             } label: {
                 LabeledContent(
-                    "Normal wheel circumference",
-                    value: "\(store.configuration.neutralCircumferenceMillimeters) mm"
+                    "Wheel circumference",
+                    value: wheelCircumferenceValue
                 )
             }
         } header: {
             Text("Trainer wheel size")
         } footer: {
             Text(
-                "Used when your riding app does not send a wheel circumference. "
+                "Optional. Used when your riding app does not send a wheel circumference. "
                     + "A value sent by the riding app takes precedence."
             )
         }
+    }
+
+    private var wheelCircumferenceValue: String {
+        if let saved = store.configuration.normalWheelCircumferenceMillimeters {
+            return "\(saved) mm"
+        }
+        return "Default · \(store.configuration.neutralCircumferenceMillimeters) mm"
     }
 
     private var gearsSection: some View {
@@ -302,21 +298,10 @@ struct SetupView: View {
 
 }
 
-/// Re-running the guide from Settings pushes it instead of presenting a
-/// sheet, so it needs its own way to close: finishing pops it back to
-/// Settings, matching what tapping Back all the way out would have done.
-private struct SetupGuideEntryView: View {
-    @Bindable var store: ConfigurationStore
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        SetupWizardView(store: store, onFinish: { dismiss() })
-    }
-}
-
 private struct NormalWheelSizeView: View {
     @Bindable var store: ConfigurationStore
     @State private var enteredValue: String
+    @State private var isApplyingDefault = false
 
     init(store: ConfigurationStore) {
         self.store = store
@@ -330,9 +315,64 @@ private struct NormalWheelSizeView: View {
     var body: some View {
         Form {
             Section {
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 12) {
+                        ForEach(WheelCircumferenceShortcut.all) { shortcut in
+                            Button {
+                                apply(shortcut)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(shortcut.kind)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(shortcut.size)
+                                        .font(.headline)
+                                    Text("\(shortcut.millimeters) mm")
+                                        .font(.subheadline)
+                                }
+                                .frame(width: 112, alignment: .leading)
+                                .padding(12)
+                                .background(
+                                    selectedShortcut == shortcut
+                                        ? Color.accentColor.opacity(0.16)
+                                        : Color(.secondarySystemGroupedBackground),
+                                    in: .rect(cornerRadius: 12)
+                                )
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(
+                                            selectedShortcut == shortcut
+                                                ? Color.accentColor : .clear,
+                                            lineWidth: 2
+                                        )
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(
+                                "\(shortcut.kind), \(shortcut.size), "
+                                    + "\(shortcut.millimeters) millimetres"
+                            )
+                            .accessibilityAddTraits(
+                                selectedShortcut == shortcut ? .isSelected : []
+                            )
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .accessibilityIdentifier("wheel.shortcuts")
+                .scrollIndicators(.hidden)
+            } header: {
+                Text("Common size shortcuts")
+            }
+
+            Section {
                 TextField("Millimetres", text: $enteredValue)
                     .keyboardType(.numberPad)
                     .onChange(of: enteredValue) { _, value in
+                        if isApplyingDefault {
+                            isApplyingDefault = false
+                            return
+                        }
                         guard let millimeters = Int(value), isValid(millimeters)
                         else { return }
                         store.setNormalWheelCircumference(
@@ -346,17 +386,30 @@ private struct NormalWheelSizeView: View {
                     step: 1
                 ) {
                     LabeledContent(
-                        "Selected size",
+                        "Wheel circumference",
                         value: "\(store.configuration.neutralCircumferenceMillimeters) mm"
                     )
                 }
+
+                Button("Use default \(defaultMillimeters) mm") {
+                    store.useDefaultWheelCircumference()
+                    let defaultText = String(defaultMillimeters)
+                    if enteredValue != defaultText {
+                        isApplyingDefault = true
+                        enteredValue = defaultText
+                    }
+                }
+                .accessibilityIdentifier("wheel.useDefault")
+                .disabled(
+                    store.configuration.normalWheelCircumferenceMillimeters == nil
+                )
             } header: {
-                Text("Normal wheel circumference")
+                Text("Circumference")
             } footer: {
                 Text(
-                    "Choose 1800–2400 mm. Virtual Gears uses 2070 mm by default. "
-                        + "This value is the base for the gears and the size restored "
-                        + "when shifting stops, unless your riding app supplies its own."
+                    "Choose 1800–2400 mm. Virtual Gears uses \(defaultMillimeters) mm "
+                        + "(700×25 road) when no value is saved. A wheel circumference "
+                        + "from the riding app takes precedence."
                 )
             }
 
@@ -370,8 +423,25 @@ private struct NormalWheelSizeView: View {
                 }
             }
         }
-        .navigationTitle("Normal wheel size")
+        .navigationTitle("Wheel circumference")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var defaultMillimeters: Int {
+        Int(TrainerSafety.referenceCircumferenceMillimeters)
+    }
+
+    private var selectedShortcut: WheelCircumferenceShortcut? {
+        guard let entered = Int(enteredValue)
+        else { return nil }
+        return WheelCircumferenceShortcut.all.first {
+            $0.millimeters == entered
+        }
+    }
+
+    private func apply(_ shortcut: WheelCircumferenceShortcut) {
+        store.setNormalWheelCircumference(millimeters: shortcut.millimeters)
+        enteredValue = String(shortcut.millimeters)
     }
 
     private var wheelSize: Binding<Int> {
@@ -395,6 +465,23 @@ private struct NormalWheelSizeView: View {
     private func isValid(_ value: Int) -> Bool {
         (lowerBound...upperBound).contains(value)
     }
+}
+
+private struct WheelCircumferenceShortcut: Identifiable, Equatable {
+    let kind: String
+    let size: String
+    let millimeters: Int
+
+    var id: String { "\(kind)-\(size)" }
+
+    static let all = [
+        WheelCircumferenceShortcut(kind: "Road", size: "700×25", millimeters: 2_105),
+        WheelCircumferenceShortcut(kind: "Road", size: "700×28", millimeters: 2_136),
+        WheelCircumferenceShortcut(kind: "Gravel", size: "700×40", millimeters: 2_200),
+        WheelCircumferenceShortcut(kind: "MTB", size: "26×2.0", millimeters: 2_055),
+        WheelCircumferenceShortcut(kind: "MTB", size: "27.5×2.25", millimeters: 2_188),
+        WheelCircumferenceShortcut(kind: "MTB", size: "29×2.25", millimeters: 2_326),
+    ]
 }
 
 // MARK: - Trainer
@@ -2139,17 +2226,27 @@ struct ParkedGearView: View {
 /// on purpose: plenty of riders will run a single 31-tooth ring and ask for a
 /// twelve-speed groupset to be simulated on top of it.
 struct PhysicalChainringView: View {
-    @Bindable var store: ConfigurationStore
+    @Binding private var teeth: [Int]
+
+    init(store: ConfigurationStore) {
+        _teeth = Binding(
+            get: { store.configuration.physical.chainringTeeth },
+            set: { store.setPhysicalChainrings($0) }
+        )
+    }
+
+    init(teeth: Binding<[Int]>) {
+        _teeth = teeth
+    }
 
     var body: some View {
         Form {
             ForEach(DrivetrainCatalog.chainrings) { option in
                 ChoiceRow(
                     title: option.name,
-                    selected: option.teeth
-                        == store.configuration.physical.chainringTeeth
+                    selected: option.teeth == teeth
                 ) {
-                    store.setPhysicalChainrings(option.teeth)
+                    teeth = option.teeth
                 }
             }
         }
@@ -2159,7 +2256,18 @@ struct PhysicalChainringView: View {
 }
 
 struct PhysicalCassetteView: View {
-    @Bindable var store: ConfigurationStore
+    @Binding private var cogs: [Int]
+
+    init(store: ConfigurationStore) {
+        _cogs = Binding(
+            get: { store.configuration.physical.cogTeeth },
+            set: { store.setPhysicalCogs($0) }
+        )
+    }
+
+    init(cogs: Binding<[Int]>) {
+        _cogs = cogs
+    }
 
     var body: some View {
         Form {
@@ -2167,9 +2275,9 @@ struct PhysicalCassetteView: View {
                 ChoiceRow(
                     title: option.qualifiedName,
                     note: option.cogs.map(String.init).joined(separator: ", "),
-                    selected: option.cogs == store.configuration.physical.cogTeeth
+                    selected: option.cogs == cogs
                 ) {
-                    store.setPhysicalCogs(option.cogs)
+                    cogs = option.cogs
                 }
             }
         }

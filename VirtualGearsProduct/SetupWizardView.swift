@@ -1,409 +1,211 @@
 import SwiftUI
 import VirtualGearsCore
 
-/// The setup guide walks a rider through the three facts Virtual Gears needs
-/// before it can shift honestly, in the order they actually depend on each
-/// other: what gearing is on the bike, where the chain is parked, and what
-/// wheel size to assume. Doing this as one guided flow — instead of three
-/// separate rows scattered through Settings — means the second and third
-/// answers can be *computed* from the first, rather than asked as three
-/// unrelated questions.
-///
-/// The first screen starts with facts a beginner can recognize. A rider can
-/// choose a named groupset, enter the tooth counts printed on the bike, or keep
-/// the standard virtual ladder. Every path still records the physical bike so
-/// the parked-gear recommendation is based on real parts.
+/// First run asks only for the two physical facts virtual shifting cannot
+/// infer: what is on the bike and where the chain is left. Simulated gearing
+/// starts on Standard 24 and can be changed independently in Settings later.
 struct SetupWizardView: View {
     @Bindable var store: ConfigurationStore
     var onFinish: () -> Void
 
-    @State private var step: WizardStep = .approach
-    @State private var partsMode: PartsMode = .copyBike
-    @State private var bikeStep: WizardStep = .groupset
+    @State private var step: WizardStep = .bike
+    @State private var chainringTeeth: [Int]
+    @State private var cogTeeth: [Int]
+    @State private var cassetteCogs: [Int]
 
-    enum WizardStep: Int {
-        case approach, groupset, parts, parkedGear, wheelSize
+    private enum WizardStep {
+        case bike, parkedGear
     }
 
-    enum PartsMode {
-        case copyBike, standardVirtualGears
+    init(store: ConfigurationStore, onFinish: @escaping () -> Void) {
+        self.store = store
+        self.onFinish = onFinish
+        let physical = store.configuration.physical
+        _chainringTeeth = State(initialValue: physical.chainringTeeth)
+        _cogTeeth = State(initialValue: physical.cogTeeth)
+        _cassetteCogs = State(
+            initialValue: physical.isSingleSprocket
+                ? store.configuration.cassette.cogs : physical.cogTeeth
+        )
     }
 
     var body: some View {
         Group {
             switch step {
-            case .approach:
-                WizardApproachStep(
-                    chooseGroupset: {
-                        bikeStep = .groupset
-                        step = .groupset
-                    },
-                    enterParts: {
-                        partsMode = .copyBike
-                        bikeStep = .parts
-                        step = .parts
-                    },
-                    useStandardGears: {
-                        partsMode = .standardVirtualGears
-                        bikeStep = .parts
-                        step = .parts
-                    }
-                )
-            case .groupset:
-                WizardGroupsetStep(store: store, onNext: { advance() })
-            case .parts:
-                WizardBikePartsStep(
+            case .bike:
+                WizardBikeSetupStep(
                     store: store,
-                    copiesBikeGearing: partsMode == .copyBike,
-                    onNext: { advance() }
+                    chainringTeeth: $chainringTeeth,
+                    cogTeeth: $cogTeeth,
+                    cassetteCogs: $cassetteCogs,
+                    onUseBike: useBike
                 )
             case .parkedGear:
-                WizardParkedGearStep(store: store, onNext: { advance() })
-            case .wheelSize:
-                WizardWheelSizeStep(store: store, onFinish: finish)
+                WizardParkedGearStep(store: store, onFinish: finish)
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                if step == .approach {
-                    Button("Set up later") { finish() }
-                } else {
-                    Button("Back") { back() }
+            if step == .parkedGear {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { step = .bike }
                 }
             }
         }
-        .accessibilityIdentifier("screen.setupWizard")
-        .onDisappear {
-            // Covers a swipe-to-dismiss as well as Skip/Done: either way the
-            // guide has been seen and should not reopen on its own.
-            store.completeSetupWizard()
-        }
+        .interactiveDismissDisabled()
     }
 
-    private func advance() {
-        switch step {
-        case .approach: break
-        case .groupset: step = .parkedGear
-        case .parts: step = .parkedGear
-        case .parkedGear: step = .wheelSize
-        case .wheelSize: finish()
-        }
-    }
-
-    private func back() {
-        switch step {
-        case .approach: break
-        case .groupset, .parts: step = .approach
-        case .parkedGear: step = bikeStep
-        case .wheelSize: step = .parkedGear
-        }
+    private func useBike() {
+        store.configureFirstRunBike(
+            chainringTeeth: chainringTeeth,
+            cogTeeth: cogTeeth
+        )
+        step = .parkedGear
     }
 
     private func finish() {
-        store.completeSetupWizard()
+        guard store.completeSetupWizard() else { return }
         onFinish()
     }
 }
 
-private struct WizardApproachStep: View {
-    let chooseGroupset: () -> Void
-    let enterParts: () -> Void
-    let useStandardGears: () -> Void
+private struct WizardBikeSetupStep: View {
+    @Bindable var store: ConfigurationStore
+    @Binding var chainringTeeth: [Int]
+    @Binding var cogTeeth: [Int]
+    @Binding var cassetteCogs: [Int]
+    let onUseBike: () -> Void
 
     var body: some View {
         Form {
             Section {
                 Text(
-                    "Choose the easiest description of what you know. You can "
-                        + "change every answer later in Settings."
+                    "Tell us what is physically on the bike attached to the "
+                        + "trainer. Virtual Gears uses this only to calculate "
+                        + "the quiet, safe gear to leave the chain in."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            }
 
-            Section {
-                Button(action: chooseGroupset) {
-                    SetupPathLabel(
-                        title: "Choose my groupset",
-                        detail: "I know a name such as Shimano 105 or SRAM Rival.",
-                        systemImage: "list.bullet"
-                    )
-                }
-                .accessibilityIdentifier("wizard.path.groupset")
-                Button(action: enterParts) {
-                    SetupPathLabel(
-                        title: "Enter chainrings and cassette",
-                        detail: "I know the tooth counts, or my bike is not listed.",
-                        systemImage: "gearshape.2"
-                    )
-                }
-                .accessibilityIdentifier("wizard.path.parts")
-                Button(action: useStandardGears) {
-                    SetupPathLabel(
-                        title: "Use standard virtual gears",
-                        detail: "Use the ready-made 24-gear ladder for indoor riding.",
-                        systemImage: "slider.horizontal.3"
-                    )
-                }
-                .accessibilityIdentifier("wizard.path.standard")
-            } header: {
-                Text("How would you like to set up?")
-            }
-        }
-        .navigationTitle("Set up Virtual Gears")
-    }
-}
-
-private struct SetupPathLabel: View {
-    let title: String
-    let detail: String
-    let systemImage: String
-
-    var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .foregroundStyle(.primary)
-                Text(detail)
+                LabeledContent("Virtual gears", value: "Standard 24")
+                Text("Choose other virtual gears later in Settings.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-        } icon: {
-            Image(systemName: systemImage)
-                .frame(width: 24)
-        }
-    }
-}
-
-private struct WizardBikePartsStep: View {
-    @Bindable var store: ConfigurationStore
-    let copiesBikeGearing: Bool
-    let onNext: () -> Void
-
-    var body: some View {
-        Form {
-            Section {
-                Text(
-                    copiesBikeGearing
-                        ? "Choose what is on your bike. Virtual Gears will copy "
-                            + "those parts into the gearing it simulates."
-                        : "Virtual Gears will use its standard 24 gears. These "
-                            + "answers only tell it where your real chain is parked."
-                )
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            } header: {
+                Text("Your bike")
             }
 
             Section {
-                Picker("Back of the bike", selection: backOfBike) {
-                    Text("Cassette").tag(false)
-                    Text("Single sprocket").tag(true)
+                ChoiceRow(
+                    title: "Cassette",
+                    selected: !isSingleSprocket
+                ) {
+                    cogTeeth = cassetteCogs
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
+                .accessibilityIdentifier("wizard.rear.cassette")
 
+                ChoiceRow(
+                    title: "Zwift Cog or another single sprocket",
+                    note: "A Zwift Cog is normally 14T.",
+                    selected: isSingleSprocket
+                ) {
+                    if !isSingleSprocket {
+                        cogTeeth = PhysicalSetup.zwiftCogTeeth
+                    }
+                }
+                .accessibilityIdentifier("wizard.rear.singleSprocket")
+
+                if isSingleSprocket {
+                    Stepper(value: sprocketTeeth, in: 9...30) {
+                        LabeledContent("Sprocket", value: "\(cogTeeth[0])T")
+                    }
+                    .accessibilityIdentifier("wizard.sprocketTeeth")
+                }
+            } header: {
+                Text("Back of the bike")
+            }
+
+            Section {
                 NavigationLink {
-                    PhysicalChainringView(store: store)
+                    PhysicalChainringView(teeth: $chainringTeeth)
                 } label: {
                     LabeledContent(
                         "Chainrings",
-                        value: store.configuration.physical.chainringTeeth
-                            .map(String.init).joined(separator: "/")
+                        value: chainringTeeth.map(String.init).joined(separator: "/")
                     )
                 }
 
-                if store.configuration.physical.isSingleSprocket {
-                    Stepper(value: sprocketTeeth, in: 9...30) {
-                        LabeledContent(
-                            "Sprocket",
-                            value: "\(store.configuration.physical.cogTeeth[0])T"
-                        )
-                    }
-                } else {
+                if !isSingleSprocket {
                     NavigationLink {
-                        PhysicalCassetteView(store: store)
+                        PhysicalCassetteView(cogs: cassetteBinding)
                     } label: {
-                        LabeledContent(
-                            "Cassette",
-                            value: "\(store.configuration.physical.cogTeeth.count)-speed · "
-                                + "\(store.configuration.physical.cogTeeth.first ?? 0)-"
-                                + "\(store.configuration.physical.cogTeeth.last ?? 0)"
-                        )
+                        LabeledContent("Cassette", value: cassetteSummary)
                     }
                 }
             } header: {
-                Text("What is on the bike?")
-            } footer: {
-                Text(
-                    "A Zwift Cog is a single 14-tooth sprocket. Choose Single "
-                        + "sprocket if you use one, even though Virtual Gears "
-                        + "will simulate a full set of gears."
-                )
+                Text("Physical parts")
             }
         }
-        .navigationTitle("Your bike")
+        .accessibilityIdentifier("screen.setupWizard")
+        .navigationTitle("Set up Virtual Gears")
         .safeAreaInset(edge: .bottom) {
-            Button("Continue") {
-                if copiesBikeGearing {
-                    store.copyPhysicalBikeToSimulatedGears()
-                } else {
-                    store.useStandardVirtualGears()
-                }
-                onNext()
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .fontWeight(.semibold)
-            .padding()
-            .background(.bar)
+            Button("Use this bike setup", action: onUseBike)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .fontWeight(.semibold)
+                .padding()
+                .background(.bar)
+                .accessibilityIdentifier("wizard.useBikeSetup")
         }
     }
 
-    private var backOfBike: Binding<Bool> {
+    private var isSingleSprocket: Bool {
+        cogTeeth.count == 1
+    }
+
+    private var cassetteSummary: String {
+        guard let smallest = cogTeeth.first, let largest = cogTeeth.last else {
+            return "—"
+        }
+        return "\(cogTeeth.count)-speed · \(smallest)-\(largest)"
+    }
+
+    private var cassetteBinding: Binding<[Int]> {
         Binding(
-            get: { store.configuration.physical.isSingleSprocket },
-            set: { single in
-                store.setPhysicalCogs(
-                    single
-                        ? PhysicalSetup.zwiftCogTeeth
-                        : store.configuration.cassette.cogs
-                )
+            get: { cogTeeth },
+            set: {
+                cassetteCogs = $0
+                cogTeeth = $0
             }
         )
     }
 
     private var sprocketTeeth: Binding<Int> {
         Binding(
-            get: { store.configuration.physical.cogTeeth.first ?? 14 },
-            set: { store.setPhysicalCogs([$0]) }
+            get: { cogTeeth.first ?? PhysicalSetup.zwiftCogTeeth[0] },
+            set: { cogTeeth = [$0] }
         )
     }
 }
 
-/// One choice — the groupset — sets what is on the bike and what is
-/// simulated together, which is why this is a single list rather than the
-/// separate "physical parts" and "gearing to simulate" screens Settings has.
-/// Selecting a row applies it immediately and moves on, matching the rest of
-/// the app's "choosing is the action" pattern.
-private struct WizardGroupsetStep: View {
+private struct WizardParkedGearStep: View {
     @Bindable var store: ConfigurationStore
-    let onNext: () -> Void
-
-    /// True when the trainer's actual back cog is a single sprocket — a
-    /// Zwift Cog or otherwise — rather than the groupset's own cassette, a
-    /// common indoor-only setup. Asked once here, before the groupset list,
-    /// because it describes the trainer rather than the bike: it applies the
-    /// same way no matter which groupset gets picked below. Seeded from the
-    /// store rather than always starting false, so tapping Back after
-    /// already choosing a single sprocket shows that choice rather than
-    /// quietly reverting to "cassette" underneath an unchanged screen.
-    @State private var usesSingleSprocket: Bool
-    /// The tooth count for that sprocket. Defaults to 14 — a Zwift Cog —
-    /// since that is what most riders in this situation have, but the
-    /// stepper lets anyone with a different single-speed cog say so.
-    @State private var singleSprocketTeeth: Int
-
-    init(store: ConfigurationStore, onNext: @escaping () -> Void) {
-        self.store = store
-        self.onNext = onNext
-        _usesSingleSprocket = State(
-            initialValue: store.configuration.physical.isSingleSprocket
-        )
-        _singleSprocketTeeth = State(
-            initialValue: store.configuration.physical.cogTeeth.first
-                ?? PhysicalSetup.zwiftCogTeeth[0]
-        )
-    }
+    let onFinish: () -> Void
 
     var body: some View {
         Form {
             Section {
                 Text(
-                    "Pick the groupset on your bike. This sets both what the "
-                        + "bike is parked in and the gearing Virtual Gears "
-                        + "simulates."
+                    "Virtual Gears changes resistance from one fixed physical "
+                        + "gear. Move the chain once, then leave it there for "
+                        + "the whole ride."
                 )
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+            } header: {
+                Text("Before you ride")
             }
-            Section {
-                Toggle(
-                    "I ride a single sprocket, not a cassette",
-                    isOn: $usesSingleSprocket
-                )
-                .accessibilityIdentifier("wizard.singleSprocket")
-                if usesSingleSprocket {
-                    Stepper(value: $singleSprocketTeeth, in: 9...30) {
-                        LabeledContent("Sprocket", value: "\(singleSprocketTeeth)T")
-                    }
-                    .accessibilityIdentifier("wizard.sprocketTeeth")
-                }
-            } footer: {
-                Text(
-                    "A Zwift Cog is a single 14-tooth sprocket some indoor "
-                        + "setups use instead of a cassette, though yours "
-                        + "may be a different size. Virtual Gears will "
-                        + "still simulate the full groupset you pick below "
-                        + "— only the parked-gear advice changes."
-                )
-            }
-            ForEach(GroupsetBrand.allCases) { brand in
-                Section {
-                    ForEach(GroupsetCatalog.groupsets(brand: brand)) { set in
-                        ChoiceRow(
-                            title: set.name,
-                            spokenTitle: set.qualifiedName,
-                            note: note(for: set),
-                            selected: set.id == store.configuration.groupset?.id
-                        ) {
-                            store.adoptGroupsetForBikeAndGears(
-                                set,
-                                singleSprocketTeeth: usesSingleSprocket
-                                    ? singleSprocketTeeth : nil
-                            )
-                            onNext()
-                        }
-                    }
-                } header: {
-                    Text(brand.name)
-                }
-            }
-            Section {
-                Button("None of these, or my bike isn't listed") {
-                    onNext()
-                }
-            } footer: {
-                Text(
-                    "You can set up a single sprocket, a virtual ladder, or "
-                        + "your own chainrings and cassette afterwards in "
-                        + "Settings."
-                )
-            }
-        }
-        .navigationTitle("Your groupset")
-    }
 
-    /// Carries the toggle's effect down into the list itself, so scrolling
-    /// past the toggle never leaves a rider guessing what state it was left
-    /// in when they finally tap a row.
-    private func note(for set: Groupset) -> String {
-        let base = "\(set.speeds)-speed · \(set.note)"
-        guard usesSingleSprocket else { return base }
-        return base + " · paired with a \(singleSprocketTeeth)T sprocket"
-    }
-}
-
-/// The recommendation is computed from whatever was just chosen (or
-/// left as-is, if the rider skipped step 1), pre-selected so confirming it is
-/// a single tap — the same "recommend, then let them confirm" idea from the
-/// parked-gear screen in Settings, reused here so the guide asks it too.
-private struct WizardParkedGearStep: View {
-    @Bindable var store: ConfigurationStore
-    let onNext: () -> Void
-
-    var body: some View {
-        Form {
             Section {
                 Text(store.configuration.parkedGearAdviceText)
 
@@ -413,14 +215,7 @@ private struct WizardParkedGearStep: View {
                         .foregroundStyle(.orange)
                 }
             } header: {
-                Text("Where's the chain?")
-            } footer: {
-                Text(
-                    "Virtual Gears changes gear by changing the wheel size "
-                        + "the trainer works from, so it has to know the gear "
-                        + "it is working from. Park the chain once and leave "
-                        + "it there."
-                )
+                Text("Recommended")
             }
 
             Section {
@@ -435,14 +230,16 @@ private struct WizardParkedGearStep: View {
                     }
                 }
             } header: {
-                Text("Which gear is it in")
+                Text("Position your chain")
             }
         }
-        .navigationTitle("Gear the bike is in")
+        .accessibilityIdentifier("screen.setupWizard")
+        .navigationTitle("Position your chain")
         .safeAreaInset(edge: .bottom) {
-            Button("Continue") { onNext() }
+            Button("Finish setup", action: onFinish)
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .fontWeight(.semibold)
                 .disabled(
                     !store.configuration.hasSafeGearing
                         || store.configuration.parkedGear == nil
@@ -468,109 +265,22 @@ private struct WizardParkedGearStep: View {
     }
 
     private var candidates: [ParkedGear] {
-        ParkedGearAdvice.usableParkedGears(in: store.configuration.physical)
+        let suggestion = store.configuration.suggestedParkedGear
+        return ParkedGearAdvice.usableParkedGears(
+            in: store.configuration.physical
+        ).sorted { left, right in
+            if left == right { return false }
+            if left == suggestion { return true }
+            if right == suggestion { return false }
+            let leftWorks = isWorkable(left)
+            let rightWorks = isWorkable(right)
+            if leftWorks != rightWorks { return leftWorks }
+            return left.ratio < right.ratio
+        }
     }
 
     private func isWorkable(_ gear: ParkedGear) -> Bool {
         guard let drivetrain = store.configuration.drivetrain else { return true }
         return ParkedGearAdvice.isWorkable(gear, simulating: drivetrain)
-    }
-}
-
-/// The last fact the guide needs: the wheel size to assume when a
-/// riding app does not send its own. A typed value is offered alongside the
-/// Stepper — 1 mm taps across a 600 mm range is fine for nudging the 2070 mm
-/// default, but far too slow for anyone who already knows their exact number.
-private struct WizardWheelSizeStep: View {
-    @Bindable var store: ConfigurationStore
-    let onFinish: () -> Void
-
-    @State private var enteredValue: String
-
-    init(store: ConfigurationStore, onFinish: @escaping () -> Void) {
-        self.store = store
-        self.onFinish = onFinish
-        _enteredValue = State(
-            initialValue: String(
-                store.configuration.neutralCircumferenceMillimeters
-            )
-        )
-    }
-
-    var body: some View {
-        Form {
-            Section {
-                TextField("Millimetres", text: $enteredValue)
-                    .keyboardType(.numberPad)
-                    .onChange(of: enteredValue) { _, value in
-                        guard let millimeters = Int(value),
-                              isValid(millimeters)
-                        else { return }
-                        store.setNormalWheelCircumference(
-                            millimeters: millimeters
-                        )
-                    }
-
-                Stepper(
-                    value: wheelSize,
-                    in: lowerBound...upperBound,
-                    step: 1
-                ) {
-                    LabeledContent(
-                        "Wheel circumference",
-                        value: "\(store.configuration.neutralCircumferenceMillimeters) mm"
-                    )
-                }
-            } header: {
-                Text("Normal wheel size")
-            } footer: {
-                Text(
-                    "Used only when your riding app does not send its own "
-                        + "wheel circumference. Virtual Gears uses 2070 mm by "
-                        + "default, and this can be changed later in Settings."
-                )
-            }
-
-            if let value = Int(enteredValue), !isValid(value) {
-                Section {
-                    Label(
-                        "Enter a value from \(lowerBound) to \(upperBound) mm.",
-                        systemImage: "exclamationmark.triangle.fill"
-                    )
-                    .foregroundStyle(.orange)
-                }
-            }
-        }
-        .navigationTitle("Wheel size")
-        .safeAreaInset(edge: .bottom) {
-            Button("Done") { onFinish() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .fontWeight(.semibold)
-                .padding()
-                .background(.bar)
-        }
-    }
-
-    private var wheelSize: Binding<Int> {
-        Binding(
-            get: { store.configuration.neutralCircumferenceMillimeters },
-            set: { value in
-                store.setNormalWheelCircumference(millimeters: value)
-                enteredValue = String(value)
-            }
-        )
-    }
-
-    private var lowerBound: Int {
-        Int(TrainerSafety.supportedRidingAppCircumferenceMillimeters.lowerBound)
-    }
-
-    private var upperBound: Int {
-        Int(TrainerSafety.supportedRidingAppCircumferenceMillimeters.upperBound)
-    }
-
-    private func isValid(_ value: Int) -> Bool {
-        (lowerBound...upperBound).contains(value)
     }
 }

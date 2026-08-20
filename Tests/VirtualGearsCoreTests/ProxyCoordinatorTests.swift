@@ -50,7 +50,7 @@ final class ProxyCoordinatorTests: XCTestCase {
 
     private func makeConfiguration(
         virtualGears: Bool = true,
-        normalWheelSize: Int = 2_070
+        normalWheelSize: Int = 2_105
     ) -> AppConfiguration {
         var configuration = AppConfiguration()
         configuration.rememberKickr(named: "KICKR", id: trainer.selectedID!)
@@ -208,7 +208,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertEqual(afterNormalStop, 2_105)
 
         // The same ride, but interrupted instead of stopped. A fresh start so
-        // the ride begins on 2070 and the riding app moves it mid-ride, which
+        // the ride begins on 2105 and the riding app moves it mid-ride, which
         // is the case where the record can go stale.
         makeCoordinator()
         let survivingDefaults = defaults!
@@ -245,7 +245,7 @@ final class ProxyCoordinatorTests: XCTestCase {
     /// 700x25c (2105 mm) is an ordinary one. Gears built around anything above
     /// ~2098 mm used to reach outside the range proven safe on the trainer, so
     /// this size was carried into the next ride only by falling back to the
-    /// neutral 2070 mm. The proven range now reaches 5000 mm, which leaves room
+    /// neutral 2105 mm. The proven range now reaches 5000 mm, which leaves room
     /// to build the gears around the wheel the rider actually asked for, so it
     /// is kept.
     func testAParkedOrdinaryWheelSizeIsKeptForTheNextRide() async throws {

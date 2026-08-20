@@ -29,9 +29,10 @@ cannot work with, rather than leaving you to wonder why nothing happens.
 ### If you set a custom wheel circumference
 
 Virtual Gears cannot read the wheel circumference previously set through the
-Wahoo app. Set **Normal wheel circumference** in Virtual Gears Settings to the
-same value before shifting. The default is 2070 mm and the available range is
-1800–2400 mm. A wheel size supplied by the riding app takes precedence.
+Wahoo app. Set **Wheel circumference** in Virtual Gears Settings to the same
+value before shifting. With no saved value, the default is 2105 mm (700×25
+road). Common-size shortcuts and direct entry cover the supported 1800–2400 mm
+range. A wheel size supplied by the riding app takes precedence.
 
 Stopping shifting restores that normal value, or the latest value from the
 riding app, without disconnecting the riding app from Virtual Gears.
@@ -115,9 +116,10 @@ and the complete iPhone-to-Windows path has been ridden end to end.
 4. Tap **Start Shifting** when you want gears. Shift with the two large buttons
    on the phone.
 
-The first-run setup guide can be completed or deferred. Trainer pass-through
-does not depend on it, but virtual shifting needs safe gearing and a confirmed
-parked gear. Start and Stop control only virtual shifting. Virtual Gears remains
+The two-step first-run setup is required. It asks what is physically on the bike
+and then confirms the recommended parked chain position. Standard 24 virtual
+gears are selected automatically; other simulated gears can be chosen later in
+Settings. Start and Stop control only virtual shifting. Virtual Gears remains
 connected as a transparent trainer proxy, so stopping shifting does not pause,
 stop or disconnect the ride in your riding app.
 

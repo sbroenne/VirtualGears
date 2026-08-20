@@ -34,9 +34,9 @@ Most problems have a known answer already:
 - **The Start button says "Set the gear you are in".** Virtual Gears needs to
   know which gear the bike is parked in before it can build the gears. Open
   Settings, park the chain in the gear it recommends and confirm.
-- **Gears feel wrong after using the app.** Set **Normal wheel circumference**
+- **Gears feel wrong after using the app.** Set **Wheel circumference**
   in Virtual Gears Settings to the value you use in the Wahoo app. Virtual
-  Gears uses 2070 mm by default. See
+  Gears uses 2105 mm (700×25 road) by default. See
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
 - **A Windows riding app disconnected mid-ride and won't come back.** A weak
   Bluetooth link can time out, and some riding apps on Windows do not scan for

@@ -6,14 +6,10 @@ import XCTest
 /// manifest completeness test.
 private enum DesignedUXState: String, CaseIterable {
     // Setup wizard
-    case wizardApproach = "setup/approach"
-    case wizardBikeParts = "setup/bike-parts"
-    case wizardGroupsetCassette = "setup/groupset-cassette"
-    case wizardGroupsetSingleSprocket = "setup/groupset-single-sprocket"
+    case wizardBikeCassette = "setup/bike-cassette"
+    case wizardBikeSingleSprocket = "setup/bike-single-sprocket"
     case wizardParkedGearRecommended = "setup/parked-gear-recommended"
     case wizardParkedGearWarning = "setup/parked-gear-warning"
-    case wizardWheelSizeValid = "setup/wheel-size-valid"
-    case wizardWheelSizeInvalid = "setup/wheel-size-invalid"
     case wizardAccessibilityText = "setup/accessibility-text"
 
     // Startup
@@ -43,6 +39,8 @@ private enum DesignedUXState: String, CaseIterable {
     case settingsMissingParkedGear = "settings/missing-parked-gear"
     case settingsUnsafeGears = "settings/unsafe-gears"
     case settingsAccessibilityText = "settings/accessibility-text"
+    case wheelSizeDefault = "settings/wheel-size-default"
+    case wheelSizeShortcut = "settings/wheel-size-shortcut"
     case wheelSizeValid = "settings/wheel-size-valid"
     case wheelSizeInvalid = "settings/wheel-size-invalid"
     case trainerConnected = "equipment/trainer-connected"
@@ -93,10 +91,8 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
         for state in states { result[state] = test }
     }
     assign([
-        .wizardApproach, .wizardBikeParts,
-        .wizardGroupsetCassette, .wizardGroupsetSingleSprocket,
+        .wizardBikeCassette, .wizardBikeSingleSprocket,
         .wizardParkedGearRecommended, .wizardParkedGearWarning,
-        .wizardWheelSizeValid, .wizardWheelSizeInvalid,
     ], to: "testUXCoverageSetupWizardStates")
     assign([
         .startupSavedTrainerConnecting, .startupLookingForTrainer,
@@ -110,7 +106,8 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
     ], to: "testUXCoverageRideStates")
     assign([
         .settingsConnected, .settingsMissingParkedGear, .settingsUnsafeGears,
-        .wheelSizeValid, .wheelSizeInvalid, .trainerConnected,
+        .wheelSizeDefault, .wheelSizeShortcut, .wheelSizeValid,
+        .wheelSizeInvalid, .trainerConnected,
         .trainerSearching, .trainerResults, .trainerUnsupported,
         .trainerTimedOut, .trainerBluetoothIssue, .trainerStalled,
         .clickConnected, .clickLowBattery, .clickDuplicatePrompt,
@@ -376,110 +373,125 @@ final class VirtualGearsUITests: XCTestCase {
         assertVisibleElement(app.buttons["Stop virtual shifting"])
     }
 
-    /// The setup guide's three steps in order: choosing a groupset moves to
-    /// the parked-gear recommendation, confirming that gear moves to wheel
-    /// size, and Back retraces every step without losing what was chosen.
-    func testSetupGuideWalksGroupsetThenParkedGearThenWheelSize() {
+    func testSetupGuideWalksBikeThenParkedGear() {
         launch("-shotSetupWizard")
 
         assertVisible("screen.setupWizard")
         XCTAssertTrue(
             app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2)
         )
-        app.buttons["wizard.path.groupset"].tap()
-        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
-
-        let dura = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "Dura-Ace R9200")
-        ).firstMatch
-        XCTAssertTrue(dura.waitForExistence(timeout: 2))
-        dura.tap()
+        assertVisibleElement(app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "Standard 24")
+        ).firstMatch)
+        XCTAssertFalse(app.buttons["Set up later"].exists)
+        app.buttons["wizard.useBikeSetup"].tap()
 
         XCTAssertTrue(
-            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2)
+            app.navigationBars["Position your chain"].waitForExistence(timeout: 2)
         )
-        let continueButton = app.buttons["Continue"]
-        XCTAssertTrue(continueButton.waitForExistence(timeout: 2))
-        // A recommendation is pre-selected on arrival, so Continue is already
-        // enabled without the rider tapping a gear first.
-        XCTAssertTrue(continueButton.isEnabled)
-        continueButton.tap()
-
-        XCTAssertTrue(app.navigationBars["Wheel size"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 2))
+        let finish = app.buttons["Finish setup"]
+        XCTAssertTrue(finish.waitForExistence(timeout: 2))
+        XCTAssertTrue(finish.isEnabled)
 
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(
-            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2),
-            "Back from wheel size should return to the parked-gear step"
-        )
-
-        app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(
-            app.navigationBars["Your groupset"].waitForExistence(timeout: 2),
-            "Back from parked gear should return to the groupset step"
+            app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2),
+            "Back from chain position should return to the physical bike"
         )
     }
 
-    func testStandardVirtualGearsStillAskWhatIsOnTheBike() {
+    func testFirstRunOffersZwiftCogAndAnySingleSprocket() {
         launch("-shotSetupWizard")
 
-        app.buttons["wizard.path.standard"].tap()
-        XCTAssertTrue(app.navigationBars["Your bike"].waitForExistence(timeout: 2))
-        assertVisibleElement(app.staticTexts.matching(
-            NSPredicate(
-                format: "label CONTAINS[c] %@",
-                "answers only tell it where your real chain is parked"
-            )
-        ).firstMatch)
+        let single = app.buttons["wizard.rear.singleSprocket"]
+        assertVisibleElement(single)
+        XCTAssertTrue(single.label.contains("Zwift Cog"))
+        single.tap()
+        XCTAssertTrue(single.isSelected)
+        XCTAssertEqual(app.steppers["wizard.sprocketTeeth"].value as? String, "14")
+        app.buttons["wizard.sprocketTeeth-Increment"].tap()
+        XCTAssertEqual(app.steppers["wizard.sprocketTeeth"].value as? String, "15")
 
-        app.buttons["Single sprocket"].tap()
-        XCTAssertTrue(app.buttons["Single sprocket"].isSelected)
-        app.buttons["Continue"].tap()
+        app.buttons["wizard.useBikeSetup"].tap()
         XCTAssertTrue(
-            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2)
+            app.navigationBars["Position your chain"].waitForExistence(timeout: 2)
         )
-        XCTAssertTrue(
-            app.buttons["Continue"].isEnabled,
-            "Changing simulated gears must refresh the parked-gear recommendation"
-        )
-
-        app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(
-            app.navigationBars["Your bike"].waitForExistence(timeout: 2),
-            "Back from parked gear should return to the physical-bike step"
+        assertVisibleElement(
+            app.buttons.matching(
+                NSPredicate(format: "label CONTAINS %@", "/15")
+            ).firstMatch
         )
     }
 
-    /// Set up later on the first step ends the guide immediately without asking the
-    /// remaining two questions — the rider who taps it is choosing not to
-    /// answer any of them right now, not just the first one.
-    func testSetupGuideSkipEndsTheGuideWithoutFurtherSteps() {
+    func testFirstRunHasNoDismissAction() {
         launch("-shotSetupWizard")
 
         assertVisible("screen.setupWizard")
-        let skip = app.buttons["Set up later"]
-        XCTAssertTrue(skip.waitForExistence(timeout: 2))
-        skip.tap()
-        XCTAssertFalse(
-            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 1)
-        )
+        XCTAssertFalse(app.buttons["Set up later"].exists)
+        XCTAssertFalse(app.buttons["Cancel"].exists)
+        XCTAssertFalse(app.navigationBars.buttons["Back"].exists)
     }
 
-    /// Re-entering the guide from Settings is how a rider who already
-    /// finished it once — everyday fixtures included — gets back to it, so
-    /// the row must exist and open the same first step every time.
-    func testSetupGuideRowInSettingsReopensTheGuide() {
+    func testSettingsDoesNotOfferTheFirstRunWizardAgain() {
         launch("-shotSettings")
 
         assertVisible("screen.settings")
-        app.staticTexts["Run setup guide again"].firstMatch.tap()
+        XCTAssertFalse(app.staticTexts["Run setup guide again"].exists)
+        XCTAssertFalse(app.staticTexts["Start the full setup guide"].exists)
+    }
+
+    func testWheelCircumferenceShortcutsManualEntryAndDefault() {
+        launch("-shotSettings")
+        app.staticTexts["Wheel circumference"].firstMatch.tap()
         XCTAssertTrue(
-            app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2)
+            app.navigationBars["Wheel circumference"].waitForExistence(timeout: 2)
         )
 
+        let field = app.textFields["Millimetres"]
+        let shortcuts = app.scrollViews["wheel.shortcuts"]
+        let choices = [
+            ("Road, 700×25, 2105 millimetres", "2105"),
+            ("Road, 700×28, 2136 millimetres", "2136"),
+            ("Gravel, 700×40, 2200 millimetres", "2200"),
+            ("MTB, 26×2.0, 2055 millimetres", "2055"),
+            ("MTB, 27.5×2.25, 2188 millimetres", "2188"),
+            ("MTB, 29×2.25, 2326 millimetres", "2326"),
+        ]
+
+        for (label, expectedValue) in choices {
+            let button = app.buttons[label]
+            for _ in 0..<6 where !button.exists || !button.isHittable {
+                shortcuts.swipeLeft(velocity: .slow)
+            }
+            XCTAssertTrue(button.isHittable, "\(label) is not reachable")
+            button.tap()
+            XCTAssertEqual(field.value as? String, expectedValue)
+            XCTAssertTrue(button.isSelected)
+        }
+
+        field.tap()
+        field.typeText(
+            String(repeating: XCUIKeyboardKey.delete.rawValue, count: 8)
+        )
+        field.typeText("2180")
+        XCTAssertEqual(field.value as? String, "2180")
+        XCTAssertFalse(
+            app.buttons["MTB, 29×2.25, 2326 millimetres"].isSelected
+        )
+
+        let useDefault = app.buttons["wheel.useDefault"]
+        XCTAssertTrue(useDefault.isEnabled)
+        useDefault.tap()
+        XCTAssertEqual(field.value as? String, "2105")
+        expectation(
+            for: NSPredicate(format: "isEnabled == NO"),
+            evaluatedWith: useDefault
+        )
+        waitForExpectations(timeout: 2)
         app.navigationBars.buttons.firstMatch.tap()
-        assertVisible("screen.settings")
+        assertVisibleElement(app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "Default · 2105 mm")
+        ).firstMatch)
     }
 
     func testSettingsNavigatesToEveryDestination() {
@@ -886,73 +898,50 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2)
         )
-        capture(.wizardApproach)
+        assertVisibleElement(app.buttons["wizard.rear.cassette"])
+        capture(.wizardBikeCassette)
 
-        app.buttons["wizard.path.parts"].tap()
-        XCTAssertTrue(app.navigationBars["Your bike"].waitForExistence(timeout: 2))
-        assertVisibleElement(app.staticTexts["Chainrings"])
-        capture(.wizardBikeParts)
-        app.navigationBars.buttons.firstMatch.tap()
+        let singleSprocket = app.buttons["wizard.rear.singleSprocket"]
+        singleSprocket.tap()
+        XCTAssertTrue(singleSprocket.isSelected)
+        assertVisibleElement(app.steppers["wizard.sprocketTeeth"])
+        capture(.wizardBikeSingleSprocket)
 
-        app.buttons["wizard.path.groupset"].tap()
-        XCTAssertTrue(app.navigationBars["Your groupset"].waitForExistence(timeout: 2))
-        capture(.wizardGroupsetCassette)
-
-        let singleSprocket = app.switches["wizard.singleSprocket"].firstMatch
-        singleSprocket.coordinate(
-            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-        ).tap()
-        XCTAssertEqual(singleSprocket.value as? String, "1")
-        capture(.wizardGroupsetSingleSprocket)
-        singleSprocket.coordinate(
-            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)
-        ).tap()
-        XCTAssertEqual(singleSprocket.value as? String, "0")
-
-        let dura = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "Dura-Ace R9200")
-        ).firstMatch
-        assertVisibleElement(dura)
-        dura.tap()
+        app.buttons["wizard.rear.cassette"].tap()
+        app.buttons["wizard.useBikeSetup"].tap()
         XCTAssertTrue(
-            app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2)
+            app.navigationBars["Position your chain"].waitForExistence(timeout: 2)
         )
         assertVisibleElement(app.staticTexts.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "Park the chain on")
         ).firstMatch)
         capture(.wizardParkedGearRecommended)
 
-        let outOfReach = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "Puts some gears out of reach")
-        ).firstMatch
-        assertVisibleElement(outOfReach)
-        outOfReach.tap()
-        assertVisibleElement(app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", "cannot reach")
-        ).firstMatch)
-        capture(.wizardParkedGearWarning)
-
         let recommended = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "Recommended")
         ).firstMatch
         assertVisibleElement(recommended)
-        recommended.tap()
-        XCTAssertTrue(app.buttons["Continue"].isEnabled)
-        app.buttons["Continue"].tap()
-        XCTAssertTrue(app.navigationBars["Wheel size"].waitForExistence(timeout: 2))
-        assertVisibleElement(app.textFields["Millimetres"])
-        capture(.wizardWheelSizeValid)
+        let outOfReach = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "Puts some gears out of reach")
+        ).firstMatch
+        for _ in 0..<10 where !isFullyVisible(outOfReach) {
+            app.swipeUp(velocity: .slow)
+        }
+        assertVisibleElement(outOfReach)
+        outOfReach.tap()
+        let warning = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS[c] %@", "cannot reach")
+        ).firstMatch
+        for _ in 0..<10 where !isFullyVisible(warning) {
+            app.swipeDown(velocity: .slow)
+        }
+        assertVisibleElement(warning)
+        capture(.wizardParkedGearWarning)
 
-        let field = app.textFields["Millimetres"]
-        field.tap()
-        field.typeText("999")
-        app.swipeUp()
-        assertVisibleElement(app.staticTexts.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Enter a value from")
-        ).firstMatch)
-        capture(.wizardWheelSizeInvalid)
+        launch("-shotSetupWizard")
+        app.buttons["wizard.useBikeSetup"].tap()
+        XCTAssertTrue(app.buttons["Finish setup"].isEnabled)
         assertJourneyCoverage()
-
     }
 
     func testUXCoverageStartupStates() {
@@ -1077,11 +1066,29 @@ final class VirtualGearsUITests: XCTestCase {
 
 
         launch("-shotSettings")
-        app.staticTexts["Normal wheel circumference"].firstMatch.tap()
-        XCTAssertTrue(app.navigationBars["Normal wheel size"].waitForExistence(timeout: 2))
-        capture(.wheelSizeValid)
+        app.staticTexts["Wheel circumference"].firstMatch.tap()
+        XCTAssertTrue(
+            app.navigationBars["Wheel circumference"].waitForExistence(timeout: 2)
+        )
+        let useDefault = app.buttons["wheel.useDefault"]
+        XCTAssertFalse(useDefault.isEnabled)
+        capture(.wheelSizeDefault)
+
+        let road28 = app.buttons["Road, 700×28, 2136 millimetres"]
+        assertVisibleElement(road28)
+        road28.tap()
+        XCTAssertTrue(road28.isSelected)
+        capture(.wheelSizeShortcut)
+
         let field = app.textFields["Millimetres"]
+        XCTAssertEqual(field.value as? String, "2136")
         field.tap()
+        field.typeKey("a", modifierFlags: .command)
+        field.typeKey(.delete, modifierFlags: [])
+        field.typeText("2180")
+        XCTAssertFalse(road28.isSelected)
+        capture(.wheelSizeValid)
+
         field.typeKey("a", modifierFlags: .command)
         field.typeKey(.delete, modifierFlags: [])
         field.typeText("999")
@@ -1231,16 +1238,16 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2)
         )
-        let standardPath = app.buttons["wizard.path.standard"].firstMatch
-        for _ in 0..<3 where !standardPath.exists || !standardPath.isHittable {
+        let confirmBike = app.buttons["wizard.useBikeSetup"]
+        for _ in 0..<5 where !confirmBike.exists || !confirmBike.isHittable {
             app.swipeUp()
         }
-        assertVisibleElement(standardPath)
+        assertVisibleElement(confirmBike)
         capture(.wizardAccessibilityText)
 
         launch("-shotSettingsAccessibility")
         assertVisible("screen.settings")
-        assertVisibleElement(app.staticTexts["Run setup guide again"])
+        XCTAssertFalse(app.staticTexts["Run setup guide again"].exists)
         capture(.settingsAccessibilityText)
 
         launch("-shotRide", extraArguments: ["-AppleInterfaceStyle", "Dark"])
@@ -1507,6 +1514,16 @@ final class VirtualGearsUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    private func isFullyVisible(_ element: XCUIElement) -> Bool {
+        guard element.exists else { return false }
+        let frame = element.frame
+        guard frame.width > 1, frame.height > 1 else { return false }
+        let visibleFrame = frame.intersection(app.windows.firstMatch.frame)
+        guard !visibleFrame.isNull else { return false }
+        return visibleFrame.width * visibleFrame.height
+            / (frame.width * frame.height) >= 0.95
     }
 
 }

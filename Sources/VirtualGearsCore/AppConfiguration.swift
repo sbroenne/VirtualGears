@@ -28,18 +28,16 @@ public struct AppConfiguration: Codable, Equatable {
     /// most will.
     public var physical = PhysicalSetup.default
 
-    /// Whether the rider has been through the setup guide (groupset, chain
-    /// position, wheel size) at least once. Not the same as `canFinishSetup`:
-    /// a rider can dismiss the guide part-way through and finish setting
-    /// things up by hand in Settings, and this should not re-open on every
-    /// launch once they have seen it.
+    /// Whether the rider completed the mandatory first-run bike and chain setup.
+    /// This is set only by the final action; merely presenting or leaving the
+    /// guide never counts as completion.
     public var setupWizardCompleted = false
+    private var setupWizardVersion = 0
+    private static let currentSetupWizardVersion = 2
 
-    /// Reading is deliberately forgiving: a key that is not there falls back to
-    /// the default rather than throwing the whole saved setup away. The app has
-    /// no riders yet so there is nothing to migrate today, but a setup a rider
-    /// has already made is the one thing worth never losing, so every new field
-    /// added from here on stays optional on the way in.
+    /// Reading is deliberately forgiving: a missing key falls back rather than
+    /// throwing away the rider's saved setup. Legacy completion is migrated
+    /// separately because the old guide also marked itself complete when skipped.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         func string(_ key: CodingKeys, _ fallback: String) throws -> String {
@@ -71,15 +69,27 @@ public struct AppConfiguration: Codable, Equatable {
         physical = try container.decodeIfPresent(
             PhysicalSetup.self, forKey: .physical
         ) ?? .default
-        setupWizardCompleted = try container.decodeIfPresent(
+        let storedSetupWizardCompleted = try container.decodeIfPresent(
             Bool.self, forKey: .setupWizardCompleted
         ) ?? false
+        let storedSetupWizardVersion = try container.decodeIfPresent(
+            Int.self, forKey: .setupWizardVersion
+        ) ?? 0
+        if storedSetupWizardVersion >= Self.currentSetupWizardVersion {
+            setupWizardCompleted = storedSetupWizardCompleted
+            setupWizardVersion = storedSetupWizardVersion
+        } else {
+            // The old guide marked itself complete when skipped and also
+            // auto-selected a parked gear before final confirmation. No legacy
+            // field proves both new mandatory steps were deliberately finished.
+            setupWizardCompleted = false
+            setupWizardVersion = 0
+        }
         normalWheelCircumferenceMillimeters = try container.decodeIfPresent(
             Int.self, forKey: .normalWheelCircumferenceMillimeters
         )
     }
-    /// Nil in configurations saved before this setting existed. The computed
-    /// value below turns that into the long-standing 2070 mm default.
+    /// Nil means the rider did not override the 2105 mm (700x25) default.
     public private(set) var normalWheelCircumferenceMillimeters: Int?
 
     /// There is nothing to complete. A trainer worth remembering and gears the
@@ -109,6 +119,10 @@ public struct AppConfiguration: Codable, Equatable {
         ) else { return false }
         normalWheelCircumferenceMillimeters = millimeters
         return true
+    }
+
+    public mutating func useDefaultWheelCircumference() {
+        normalWheelCircumferenceMillimeters = nil
     }
 
     public var chainring: ChainringOption {
@@ -181,10 +195,17 @@ public struct AppConfiguration: Codable, Equatable {
         if let suggestedParkedGear { physical.park(in: suggestedParkedGear) }
     }
 
-    /// Marks the setup guide as seen, whether the rider finished every step
-    /// or dismissed it early. Either way it should not reopen on its own.
-    public mutating func completeSetupWizard() {
+    /// Marks the mandatory first-run guide complete after the rider confirms
+    /// both the physical bike and parked gear.
+    @discardableResult
+    public mutating func completeSetupWizard() -> Bool {
+        guard hasSafeGearing,
+              parkedGear != nil,
+              !parkedGearPutsGearsOutOfReach
+        else { return false }
         setupWizardCompleted = true
+        setupWizardVersion = Self.currentSetupWizardVersion
+        return true
     }
 
     /// Nil when the chosen parts cover a wider spread than the trainer can copy.
@@ -265,9 +286,8 @@ public struct AppConfiguration: Codable, Equatable {
     }
 
     /// Setup is not finished until the rider has said which gear the bike is
-    /// parked in. There is nothing to fall back to and nothing to preserve —
-    /// the app has never shipped — and guessing it quietly moves every gear the
-    /// rider feels, so it is asked rather than assumed.
+    /// parked in. Guessing it quietly moves every gear the rider feels, so it is
+    /// asked rather than assumed.
     public var canFinishSetup: Bool {
         hasValidKickr && parkedGear != nil && hasSafeCircumference
     }

@@ -185,18 +185,26 @@ final class AppConfigurationTests: XCTestCase {
     /// a rider's saved setup.
     // MARK: - Setup guide
 
-    func testAFreshConfigurationHasNotSeenTheSetupGuide() {
+    func testAFreshConfigurationHasNotCompletedTheSetupGuide() {
         let configuration = AppConfiguration()
         XCTAssertFalse(configuration.setupWizardCompleted)
     }
 
-    func testCompletingTheSetupGuideMarksItSeen() {
+    func testCompletingTheSetupGuideMarksItComplete() {
         var configuration = AppConfiguration()
-        configuration.completeSetupWizard()
+        configuration.parkInSuggestion()
+        XCTAssertTrue(configuration.completeSetupWizard())
         XCTAssertTrue(configuration.setupWizardCompleted)
     }
 
-    func testDecodingAConfigurationWithNoSetupWizardKeyFallsBackToNotSeen() throws {
+    func testSetupGuideCannotCompleteWithoutAConfirmedParkedGear() {
+        var configuration = AppConfiguration()
+
+        XCTAssertFalse(configuration.completeSetupWizard())
+        XCTAssertFalse(configuration.setupWizardCompleted)
+    }
+
+    func testDecodingAConfigurationWithNoSetupWizardKeyFallsBackToIncomplete() throws {
         var configuration = AppConfiguration()
         configuration.completeSetupWizard()
         var data = try JSONEncoder().encode(configuration)
@@ -210,6 +218,40 @@ final class AppConfigurationTests: XCTestCase {
             AppConfiguration.self, from: data
         )
         XCTAssertFalse(decoded.setupWizardCompleted)
+    }
+
+    func testLegacyDeferredGuideMustRunTheMandatorySetup() throws {
+        let configuration = AppConfiguration()
+        var object = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(configuration)
+        ) as! [String: Any]
+        object["setupWizardCompleted"] = true
+        object.removeValue(forKey: "setupWizardVersion")
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertFalse(decoded.setupWizardCompleted)
+    }
+
+    func testLegacyGuideRunsAgainButKeepsItsBikeSetup() throws {
+        var configuration = AppConfiguration()
+        configuration.parkInSuggestion()
+        configuration.completeSetupWizard()
+        var object = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(configuration)
+        ) as! [String: Any]
+        object.removeValue(forKey: "setupWizardVersion")
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertFalse(decoded.setupWizardCompleted)
+        XCTAssertNotNil(decoded.parkedGear)
     }
 
     func testDecodingAConfigurationWithNoCustomLadderKeyFallsBackToDefault() throws {
@@ -229,9 +271,10 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertFalse(decoded.usesCustomLadder)
     }
 
-    func testNormalWheelSizeDefaultsTo2070Millimeters() {
+    func testNormalWheelSizeDefaultsTo700x25Circumference() {
         let configuration = AppConfiguration()
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertNil(configuration.normalWheelCircumferenceMillimeters)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
     }
 
     func testNormalWheelSizeCanBeChangedInsideTheSupportedRange() {
@@ -252,7 +295,17 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertFalse(
             configuration.setNormalWheelCircumference(millimeters: 2_401)
         )
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
+    }
+
+    func testNormalWheelSizeCanReturnToTheDefault() {
+        var configuration = AppConfiguration()
+        configuration.setNormalWheelCircumference(millimeters: 2_200)
+
+        configuration.useDefaultWheelCircumference()
+
+        XCTAssertNil(configuration.normalWheelCircumferenceMillimeters)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
     }
 
     /// Gears wider than the trainer can copy must block a ride rather than be
@@ -397,7 +450,7 @@ final class AppConfigurationTests: XCTestCase {
 
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertFalse(configuration.usesHeadwind)
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
         // Fields added later fall back to their defaults rather than throwing
         // the whole saved setup away.
         XCTAssertEqual(

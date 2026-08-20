@@ -56,12 +56,12 @@ for whatever you confirm, the parked gear can be chosen purely for quiet.
 
 ## Where the gears sit
 
-Every gear is scaled away from the **Normal wheel circumference** in Settings,
-2070 mm by default, and from the gear the bike is parked in. The default ladder
-reaches about four times easier and 2.3 times harder while keeping gear 12 as the
-starting point. A drivetrain too wide to fit, or a parked gear that would put
-part of the ladder out of the trainer's reach, is refused at setup rather than
-mid-ride.
+Every gear is scaled away from the optional **Wheel circumference** in Settings,
+2105 mm (700×25 road) by default, and from the gear the bike is parked in. The
+default ladder reaches about four times easier and 2.3 times harder while
+keeping gear 12 as the starting point. A drivetrain too wide to fit, or a parked
+gear that would put part of the ladder out of the trainer's reach, is refused at
+setup rather than mid-ride.
 
 The starting gear is a declared number rather than one derived from the safety
 limits, so editing an unrelated limit cannot quietly move which gear you begin

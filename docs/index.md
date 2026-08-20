@@ -53,18 +53,19 @@ speed. Both remain optional and never hold up a ride.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
-  <img src="screenshots/setup.png" width="30%" alt="Beginner setup offering groupset, bike-parts, and standard virtual-gear paths">
-  <img src="screenshots/bike-setup.png" width="30%" alt="Physical bike setup for chainrings and a cassette or single sprocket">
+  <img src="screenshots/setup.png" width="30%" alt="First-run setup asking for the physical chainrings and cassette">
+  <img src="screenshots/bike-setup.png" width="30%" alt="First-run setup with Zwift Cog or another single sprocket selected">
 </p>
 
 ## What you get
 
-### Start with what you know
+### Start with the bike
 
-The setup guide does not expect you to know a groupset model. Choose the easiest
-path: pick a named groupset, enter the chainrings and cassette printed on the
-bike, or use the ready-made 24 virtual gears. A Zwift Cog is selected as a
-single sprocket and defaults to its usual 14 teeth.
+Required first-run setup asks only what is physically on the bike: its
+chainrings and either its cassette or its Zwift Cog/other single sprocket. A
+Zwift Cog defaults to its usual 14 teeth. Virtual Gears then recommends where to
+leave the chain and starts with Standard 24 virtual gears. Named groupsets and
+custom virtual gears remain available later in Settings.
 
 Settings keeps unfinished setup in one ordered card. Gearing is fixed first,
 because that determines which physical parked gear is safe; the chain position
@@ -159,19 +160,20 @@ switching to another fan.
 ### A trainer proxy, with shifting when you want it
 
 Open the app. It looks for your trainer, connects to it and appears to your
-riding app on its own. The setup guide can be completed then or deferred;
-trainer pass-through does not depend on it. **Start Shifting** engages the
-gears once gearing and the parked gear are ready; **Stop Shifting** removes them
-without stopping or disconnecting the ride in your riding app.
+riding app on its own. On first run, finish the two required setup steps:
+describe the physical bike, then confirm the recommended chain position.
+**Start Shifting** engages the gears once that is done; **Stop Shifting** removes
+them without stopping or disconnecting the ride in your riding app.
 
 The only question it asks is which device, and only when it finds more than one
 trainer, Click or Headwind. A single device is simply used. Bluetooth signal
 strength does not measure distance reliably, so multiple devices are listed by
 name rather than ranked or guessed.
 
-The normal wheel circumference is 2070 mm by default and can be changed in
-Settings from 1800 to 2400 mm. Virtual Gears uses it when the riding app sends no
-wheel size; a size from the riding app takes precedence.
+Wheel circumference is optional in Settings. With no saved value, Virtual Gears
+uses 2105 mm (700×25 road). Common road, gravel and MTB shortcuts or direct
+entry can set any supported value from 1800 to 2400 mm. A size from the riding
+app takes precedence.
 
 If no trainer is available, **Try Demo** opens a clearly marked simulated ride.
 It includes the ride screen, shifting, gear choices, Settings and example Click,

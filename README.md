@@ -58,10 +58,11 @@ work but have not been tested.
 1. Wake the KICKR by turning the pedals.
 2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
    available to your riding app.
-3. In the setup guide, choose whichever description you know: your groupset
-   name, the tooth counts on the bike, or the standard 24 virtual gears. If the
-   trainer uses a Zwift Cog or another single sprocket, say so there.
-4. Park the chain in the exact gear Virtual Gears recommends and confirm it.
+3. Tell the required first-run setup what is physically on the bike: chainrings,
+   and either a cassette or a Zwift Cog/other single sprocket. Your first ride
+   uses Standard 24 virtual gears automatically.
+4. Move the chain to the quiet, reachable gear Virtual Gears recommends and
+   confirm it.
 5. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
    may show the iPhone's name instead.
 6. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
@@ -140,10 +141,10 @@ with physical hardware.
       <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen showing gear 12 of 24 and large Easier and Harder controls">
     </a>
     <a href="docs/screenshots/setup.png">
-      <img src="docs/screenshots/setup.png" width="28%" alt="Beginner setup offering groupset, bike-parts, and standard virtual-gear paths">
+      <img src="docs/screenshots/setup.png" width="28%" alt="First-run setup asking for the physical chainrings and cassette">
     </a>
     <a href="docs/screenshots/bike-setup.png">
-      <img src="docs/screenshots/bike-setup.png" width="28%" alt="Physical bike setup for chainrings and a cassette or single sprocket">
+      <img src="docs/screenshots/bike-setup.png" width="28%" alt="First-run setup with Zwift Cog or another single sprocket selected">
     </a>
   </p>
   <p align="center">
@@ -181,9 +182,11 @@ Every gear change waits for confirmation from the trainer.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app. Virtual Gears supplies and displays the gears itself.
 - **Virtual Gears cannot read the trainer's current wheel circumference.** It
-  uses the **Normal wheel circumference** saved in Settings, 2070 mm by default,
-  unless the riding app supplies another size. If you use a custom value in the
-  Wahoo app, enter the same value in Virtual Gears before shifting.
+  uses the optional **Wheel circumference** saved in Settings, or the 2105 mm
+  (700×25 road) default, unless the riding app supplies another size. Common
+  wheel-size shortcuts and direct millimetre entry are available. If you use a
+  custom value in the Wahoo app, enter the same value in Virtual Gears before
+  shifting.
 - **A riding app on Windows may not reconnect on its own after a Bluetooth
   drop.** If the wireless link between your phone and the computer times out
   mid-ride, some Windows riding apps do not scan for the phone again by

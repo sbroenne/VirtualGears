@@ -230,6 +230,7 @@ private struct ScreenshotFixtureView: View {
     private func stage() {
         guard scenario != .demo else { return }
         var configuration = AppConfiguration()
+        configuration.parkInSuggestion()
         // Every fixture here represents a rider who has already been through
         // setup once, not a first launch — so the guide should not pop up
         // and steal the screenshot. The wizard fixture is the one exception:
@@ -263,7 +264,10 @@ private struct ScreenshotFixtureView: View {
         }
         // The screenshot rider has already parked the bike and confirmed the
         // gear, which is the state every screen after setup is drawn in.
-        if scenario != .unparked {
+        if scenario == .unparked {
+            configuration.physical.parkedChainringTeeth = nil
+            configuration.physical.parkedCogTeeth = nil
+        } else {
             configuration.parkInSuggestion()
         }
         store.configuration = configuration

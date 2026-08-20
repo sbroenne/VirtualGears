@@ -59,7 +59,7 @@ xcodebuild test \
 the simulator has Bluetooth hardware. `DesignedUXState` is the maintained
 coverage contract: it lists every intentionally designed, app-owned screen,
 modal, loading state, warning, error and recovery state. The journey tests cover
-all 67 entries and retain a stable `UX-...` screenshot for each one. The
+all 65 entries and retain a stable `UX-...` screenshot for each one. The
 completeness test fails if a state is not assigned to an executable journey.
 
 The matrix includes the setup guide, startup, ride, Settings, every equipment
@@ -135,7 +135,7 @@ connected across Stop.
 
 `AppConfiguration.normalWheelCircumferenceMillimeters` is optional on disk so
 configurations saved by older builds still decode. Its effective value defaults
-to 2070 mm and accepts 1800–2400 mm. A standard wheel-size command from the
+to 2105 mm (700×25 road) and accepts 1800–2400 mm. A standard wheel-size command from the
 riding app always takes precedence.
 
 ## Documentation website
