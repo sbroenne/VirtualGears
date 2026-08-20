@@ -296,7 +296,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (11). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (15). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -347,6 +347,20 @@ hardware-proven combination of advertising FTMS and Cycling Power together and
 making both live measurements readable and notifiable. The iPhone stays awake
 while the trainer proxy is available so computer riding apps can discover it
 before connecting.
+
+Build 1.0 (14) was uploaded to TestFlight on 18 August 2026. It adds the setup
+guide, custom virtual-gear ladders, exact normal wheel-circumference entry, and
+separate physical cassette or single-sprocket setup. It also includes defensive
+Bluetooth recovery and the first complete designed-state UX matrix.
+
+Build 1.0 (15) was uploaded to TestFlight on 20 August 2026. It makes first-time
+setup beginner-friendly with three paths: choose a groupset, enter the bike's
+parts, or use standard virtual gears. Every path records whether the bike uses a
+cassette, Zwift Cog, or another 9–30T single sprocket. Settings now presents one
+ordered **Finish setup** action, and changing simulated gears refreshes the
+parked-gear recommendation instead of preserving an unsafe chain position. This
+build includes refreshed public screenshots and 67 maintained app-owned UX
+states.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
