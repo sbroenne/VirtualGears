@@ -370,6 +370,11 @@ parked chain position. Standard 24 is selected automatically. Wheel
 circumference moves to optional Settings shortcuts with a 2105 mm default, and
 the maintained UX contract contains 65 app-owned states.
 
+Build 1.0 (17) was uploaded to TestFlight on 21 August 2026. It removes the
+white panels behind the setup wizard's main actions, groups physical chainring
+choices into numerically ordered one-ring and two-ring lists, and removes the
+redundant parked-chain reminder from the startup screen.
+
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
 Connect on the next metadata change.
