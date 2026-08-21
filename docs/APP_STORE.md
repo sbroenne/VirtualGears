@@ -364,12 +364,11 @@ parked-gear recommendation instead of preserving an unsafe chain position. This
 build includes refreshed public screenshots and 67 maintained app-owned UX
 states.
 
-Unreleased changes on the current branch replace that three-path guide with a
-required physical-bike-first flow: bike parts, then parked chain position.
-Standard 24 is selected automatically. Wheel circumference moves to optional
-Settings shortcuts with a 2105 mm default, and the maintained UX contract
-contains 65 app-owned states. Do not describe these changes as shipped until a
-later upload succeeds.
+Build 1.0 (16) was uploaded to TestFlight on 21 August 2026. It replaces that
+three-path guide with a required physical-bike-first flow: bike parts, then
+parked chain position. Standard 24 is selected automatically. Wheel
+circumference moves to optional Settings shortcuts with a 2105 mm default, and
+the maintained UX contract contains 65 app-owned states.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
