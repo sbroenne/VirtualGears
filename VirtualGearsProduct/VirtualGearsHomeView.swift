@@ -145,12 +145,14 @@ struct StartupView: View {
     @Bindable var headwind: HeadwindCentralService
     @Bindable var coordinator: ProxyCoordinator
     var beginsDiscovery = true
+    var startsWithTrainerChoice = false
     var onTryDemo: () -> Void = {}
     @State private var showsSettings = false
     /// Set when more than one trainer is found, which is the one situation
     /// where the rider has to say which is theirs.
     @State private var mustChoose = false
     @State private var trainerScanSettled = false
+    @State private var showsSetupWizard = false
 
     var body: some View {
         NavigationStack {
@@ -168,12 +170,6 @@ struct StartupView: View {
                         searching
                         retryButton
                     }
-                    // Fixed in the layout regardless of state, so it never
-                    // appears or disappears under the button above it. It used
-                    // to live only inside the searching and chooser cards, so
-                    // the button jumped the instant the trainer connected and
-                    // this reminder vanished with the rest of that card.
-                    chainReminder
                     demoEntry
                 }
                 .frame(maxWidth: 560)
@@ -201,7 +197,22 @@ struct StartupView: View {
                     )
                 }
             }
+            .sheet(isPresented: $showsSetupWizard) {
+                NavigationStack {
+                    SetupWizardView(
+                        store: store,
+                        onFinish: { showsSetupWizard = false }
+                    )
+                }
+            }
             .task {
+                if startsWithTrainerChoice {
+                    trainerScanSettled = true
+                    mustChoose = true
+                }
+                if !store.configuration.setupWizardCompleted {
+                    showsSetupWizard = true
+                }
                 if beginsDiscovery {
                     await begin()
                 }
@@ -307,18 +318,6 @@ struct StartupView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// The one thing the app cannot do for the rider.
-    private var chainReminder: some View {
-        Label(
-            "Use the smaller front ring if your bike has one. Pick a rear gear "
-                + "that keeps the chain straight, and leave it there.",
-            systemImage: "link"
-        )
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .padding(.top, 4)
     }
 
     private var demoEntry: some View {
@@ -477,31 +476,68 @@ struct StartupView: View {
     /// The same control starts shifting and tries again after a failure. After a
     /// failure "Start Shifting" reads as though nothing had been attempted,
     /// which is exactly the doubt the card above it has just resolved.
+    ///
+    /// When the only missing piece is the parked gear, this button used to sit
+    /// there greyed out, naming exactly what to do while giving no way to do
+    /// it — the rider had to notice the unrelated Settings gear icon on their
+    /// own. Now it opens Settings itself, so the instruction it gives is also
+    /// the thing tapping it does.
     private var retryButton: some View {
         Button {
-            headwind.applySavedControlPreference()
-            coordinator.startShifting(configuration: store.configuration)
+            if needsParkedGear {
+                if store.configuration.setupWizardCompleted {
+                    showsSettings = true
+                } else {
+                    showsSetupWizard = true
+                }
+            } else {
+                headwind.applySavedControlPreference()
+                coordinator.startShifting(configuration: store.configuration)
+            }
         } label: {
             Label(
                 retryTitle,
                 systemImage: canStart
                     ? (failureMessage == nil ? "bicycle" : "arrow.clockwise")
-                    : "hourglass"
+                    : (needsParkedGear ? "gearshape" : "hourglass")
             )
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity, minHeight: 64)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(!canStart)
-        .accessibilityHint(
-            canStart ? "Starts virtual shifting" : "Your trainer is not connected yet"
-        )
+        .disabled(!canStart && !needsParkedGear)
+        .accessibilityHint(canStart ? "Starts virtual shifting" : blockedHint)
+    }
+
+    /// True when the parked gear is the only thing standing between here and
+    /// starting, regardless of whether the trainer has connected yet — so the
+    /// button stays actionable even before the trainer is found.
+    private var needsParkedGear: Bool {
+        store.configuration.parkedGear == nil
     }
 
     private var retryTitle: String {
-        guard canStart else { return "Waiting for trainer" }
+        guard canStart else { return waitingTitle }
         return failureMessage == nil ? "Start Shifting" : "Try Again"
+    }
+
+    /// Naming the actual blocker matters: a rider told to wait for a trainer
+    /// that is sitting there connected has no way to discover that the missing
+    /// thing is which gear the bike is parked in.
+    private var waitingTitle: String {
+        store.configuration.parkedGear == nil
+            ? "Set the gear you are in"
+            : "Waiting for trainer"
+    }
+
+    private var blockedHint: String {
+        store.configuration.parkedGear == nil
+            ? (store.configuration.setupWizardCompleted
+                ? "Opens Settings so you can set which gear the bike is parked in"
+                : "Opens the setup guide so you can set which gear the bike "
+                    + "is parked in")
+            : "Your trainer is not connected yet"
     }
 
     // MARK: - Starting
@@ -1521,6 +1557,7 @@ struct ShiftingView: View {
                         "Your riding app set the wheel size. "
                             + "Your gears are built around it."
                     )
+                    .accessibilityIdentifier("note.ridingAppWheelSize")
             }
         }
         .font(.caption)

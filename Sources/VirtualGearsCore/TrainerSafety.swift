@@ -25,7 +25,9 @@ import Foundation
 public enum TrainerSafety {
     /// The wheel size the trainer is left sitting at, and the size every gear is
     /// scaled away from.
-    public static let referenceCircumferenceMillimeters: Double = 2_070
+    /// The default when neither the rider nor the riding app supplied a value.
+    /// 2105 mm is the documented circumference for a 700x25 road wheel.
+    public static let referenceCircumferenceMillimeters: Double = 2_105
 
     /// The wheel sizes a riding app may set, and the promise the tests enforce:
     /// every gear must build at every size in here.

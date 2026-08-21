@@ -43,24 +43,51 @@ xcodebuild test \
   -parallel-testing-enabled NO
 ```
 
+Run the dense setup and Settings journeys on the smaller supported simulator:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone 17e' \
+  -parallel-testing-enabled NO \
+  -only-testing:VirtualGearsUITests/VirtualGearsUITests/testUXCoverageSetupWizardStates \
+  -only-testing:VirtualGearsUITests/VirtualGearsUITests/testUXCoverageSettingsAndEquipmentStates
+```
+
 `VirtualGearsUITests` launches deterministic debug fixtures rather than pretending
-the simulator has Bluetooth hardware. Its 30 scenarios cover every primary
-screen, portrait and landscape status visibility, Accessibility Dynamic Type,
-startup failure, trainer reconnect, a riding app waiting, low Click battery,
-pending shifts, accepted Click press feedback, navigation, stop confirmation and
-cancellation, gear-mode switching, Headwind controls and Demo Mode interactions
-in both shift directions. Six of them are regression guards with measured
-assertions rather than existence checks: the ride status must be wide enough to
-be read as words rather than collapsing to an icon, cancelling the stop
-confirmation must return to the ride, every equipment status must sit on one
-row, a low Click battery must be drawn at warning weight, the Easier/Harder
-buttons in Demo Mode must be drawn with the same distinct visual weight as the
-ride screen's (sampled by pixel colour, since button styling isn't exposed via
-the accessibility tree), and the chain-position reminder must never appear or
-disappear across startup states (it previously vanished the instant the
-trainer connected, making the button above it jump). Screenshots are
-attached to every test result. Protocol
-behavior and equipment lifecycle remain covered by the package tests and
+the simulator has Bluetooth hardware. `DesignedUXState` is the maintained
+coverage contract: it lists every intentionally designed, app-owned screen,
+modal, loading state, warning, error and recovery state. The journey tests cover
+all 65 entries and retain a stable `UX-...` screenshot for each one. The
+completeness test fails if a state is not assigned to an executable journey.
+
+The matrix includes the setup guide, startup, ride, Settings, every equipment
+destination, virtual and physical gearing, Headwind and Demo Mode. It also
+includes Accessibility Dynamic Type for the wizard, Settings and ride;
+landscape ride and Headwind layouts; dark-mode ride and Headwind controls; and
+the dense wizard and Settings journeys on the smaller iPhone 17e. Assertions
+check the state-specific message and action, plus important layout and visual
+invariants. Whole-screen pixel comparisons are deliberately avoided; pixel
+sampling is used only when XCTest cannot expose a meaningful property such as
+button emphasis.
+
+To add or change a user-visible state:
+
+1. Add a debug-only `ScreenshotFixture` launch route that stages the real
+   production view and model. Do not build a visual copy for the test.
+2. Add the state to `DesignedUXState` and assign it to a journey in
+   `uxCoverageManifest`.
+3. In that journey, launch or navigate to the state, assert its defining message
+   and available recovery action, then call `capture(_:)`.
+4. Add an accessibility identifier only when the existing label is unstable or
+   SwiftUI combines several children into one element.
+5. Run the manifest test and all `testUXCoverage...` journeys. A state is not
+   covered until its named screenshot is attached to a passing result.
+
+OS-owned permission sheets and real Bluetooth timing are outside this simulator
+matrix. Every response Virtual Gears owns after those events is still represented.
+Protocol behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
 
 Open the iPhone project:
@@ -108,7 +135,7 @@ connected across Stop.
 
 `AppConfiguration.normalWheelCircumferenceMillimeters` is optional on disk so
 configurations saved by older builds still decode. Its effective value defaults
-to 2070 mm and accepts 1800–2400 mm. A standard wheel-size command from the
+to 2105 mm (700×25 road) and accepts 1800–2400 mm. A standard wheel-size command from the
 riding app always takes precedence.
 
 ## Documentation website
@@ -692,3 +719,59 @@ Some things that look duplicated are not, and should not be merged:
 - The fan reconnects through `resumeSavedConnection` rather than
   `retrieveAndConnect`. The two are equivalent today, but making them the
   same call would be a behaviour change wearing a refactor's clothes.
+
+## Why the gear ladder is walked rather than sorted
+
+The first version of `Drivetrain.build` paired every chainring with every cog,
+sorted the pile by ratio, pruned the cross-chained pairs and dropped exact
+duplicates. That is not how a drivetrain works, and the difference was
+measurable across the groupsets the app ships.
+
+Running both algorithms over all **72 builds** of the shipped groupsets — real
+chainring and cassette pairings only, no invented combinations:
+
+| Over 72 real groupset builds | Sorted pile | Synchro walk |
+|---|---|---|
+| Builds with a shift too small to feel | 12 | **0** |
+| Builds with a hole above 25% | 5 | **0** |
+| Smallest step anywhere | 0.4% | **5.9%** |
+| Largest step anywhere | 37% | 25% |
+| Easiest and hardest gear kept | always | always |
+
+Both defects disappear rather than being patched. A walked drivetrain cannot
+invent a hole, because it only ever moves one cog at a time, and cannot produce
+a step under the perception floor, because the ring transition refuses one.
+
+The walk is the same idea as Shimano Synchronized Shift and SRAM AXS Sequential:
+rings ascending, cogs descending, one cog per press, and at the end of a ring's
+window a jump to the ring above landing on whichever cog gives a step closest to
+the cassette step just taken. Research backing the constants: Di2 shift points
+are a programmable table rather than a formula, a front shift is always paired
+with a one-to-two cog compensating rear shift, and steps below roughly 5% cannot
+be felt.
+
+An earlier measurement across the old 616-combination catalogue produced far
+uglier numbers, but its worst cases came from 8-speed and triple drivetrains that
+have since been removed. Quoting them would have overstated the problem, so the
+table above uses real parts only.
+
+### Gear counts
+
+The walk produces **cassette speeds + 3 to + 6** gears, with 60 of the 72 builds
+landing on exactly +3 or +4. For 11-speed that is 14 to 16, which matches real
+Di2. Wider ring gaps genuinely produce more distinct gears, so `RideabilityTests`
+pins that band rather than forcing every build into 14 to 16.
+
+### The parked gear
+
+The bike never shifts, so what the rider feels is the parked ratio multiplied by
+the circumference the app sets. The app previously assumed the parked ratio
+equalled its own starting gear. `WheelCircumferenceScaler.effectiveCircumference`
+already computed `W / referenceRatio x selectedRatio`, so the fix was to pass the
+parked ratio in place of the reference. When the two are equal the behaviour is
+byte-identical to before, which is why this never showed up as a regression.
+
+The workable parked-ratio window is
+`hardestRatio / scaleRange.upperBound ... easiestRatio / scaleRange.lowerBound`.
+For the virtual ladder that is 2.011 to 2.50; for the default 105 drivetrain it
+is 1.665 to 4.167.

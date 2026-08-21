@@ -5,9 +5,12 @@ import XCTest
 /// exist because those rules were being satisfied in one place and quietly
 /// skipped in another, which left anyone installing the app unable to ride.
 final class AppConfigurationTests: XCTestCase {
+    /// A rider who has chosen a trainer and confirmed which gear the bike is
+    /// parked in — the two things a ride genuinely needs.
     private func trainerReady() -> AppConfiguration {
         var configuration = AppConfiguration()
         configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        configuration.parkInSuggestion()
         return configuration
     }
 
@@ -29,6 +32,16 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertTrue(configuration.canFinishSetup)
         XCTAssertTrue(configuration.setupComplete)
+    }
+
+    /// A trainer on its own is not enough any more. The app also has to know
+    /// which gear the bike is left sitting in, because that is what every
+    /// virtual gear is scaled from and guessing it moves the whole ladder.
+    func testATrainerAloneIsNotEnoughWithoutTheParkedGear() {
+        var configuration = AppConfiguration()
+        configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        XCTAssertTrue(configuration.hasValidKickr)
+        XCTAssertFalse(configuration.canFinishSetup)
     }
 
     func testRememberingATrainerStoresSomethingTheAppCanReconnectTo() {
@@ -95,16 +108,173 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertTrue(configuration.usesVirtualGears)
         XCTAssertNotNil(configuration.drivetrain)
         XCTAssertTrue(configuration.hasSafeCircumference)
-        XCTAssertEqual(configuration.drivetrainName, "Virtual gears")
+        XCTAssertEqual(configuration.drivetrainName, "Standard 24")
         XCTAssertEqual(
             configuration.gearSummary,
-            "24 gears · extra-low climbing range"
+            "24 gears · 0.75 to 5.49, the common virtual ladder"
         )
     }
 
-    func testNormalWheelSizeDefaultsTo2070Millimeters() {
+    /// A rider who never opened Custom still has parameters to fall back on
+    /// if they later switch, and they start from the same numbers as Standard
+    /// so switching to Custom for the first time changes nothing on its own.
+    func testUnusedCustomLadderDefaultsMatchStandard() {
         let configuration = AppConfiguration()
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertFalse(configuration.usesCustomLadder)
+        XCTAssertEqual(configuration.customLadder.gearCount, 24)
+        XCTAssertEqual(configuration.customLadder.easiestRatioHundredths, 75)
+        XCTAssertEqual(configuration.customLadder.hardestRatioHundredths, 549)
+    }
+
+    /// Switching to Custom is what `gearLadder` should read once it happens,
+    /// and the ladder it builds should have the rider's own gear count.
+    func testSwitchingToCustomBuildsTheLadderFromTheRidersOwnParameters() {
+        var configuration = trainerReady()
+        configuration.customLadder = CustomGearLadder(
+            gearCount: 12,
+            easiestRatioHundredths: 100,
+            hardestRatioHundredths: 300
+        )
+        configuration.gearLadderID = GearLadderCatalog.customLadderID
+
+        XCTAssertTrue(configuration.usesCustomLadder)
+        XCTAssertEqual(configuration.gearLadder.gearCount, 12)
+        XCTAssertEqual(configuration.gearLadder.ratiosHundredths.first, 100)
+        XCTAssertEqual(configuration.gearLadder.ratiosHundredths.last, 300)
+        XCTAssertNotNil(configuration.drivetrain)
+        XCTAssertTrue(configuration.hasSafeCircumference)
+    }
+
+    /// The same safety check that catches an impossible real drivetrain also
+    /// has to catch an impossible custom ladder — a rider typing in a wide
+    /// range should be told plainly, not left with a ride that fails later.
+    func testACustomLadderThatIsTooWideForTheTrainerIsRejected() {
+        var configuration = trainerReady()
+        configuration.customLadder = CustomGearLadder(
+            gearCount: 24,
+            easiestRatioHundredths: 20,
+            hardestRatioHundredths: 2_000
+        )
+        configuration.gearLadderID = GearLadderCatalog.customLadderID
+
+        XCTAssertNil(configuration.drivetrain)
+        XCTAssertFalse(configuration.hasSafeCircumference)
+        XCTAssertFalse(configuration.canFinishSetup)
+    }
+
+    func testUnsafeParkedGearDoesNotMakeSafeGearingLookInvalid() throws {
+        var configuration = trainerReady()
+        let drivetrain = try XCTUnwrap(configuration.drivetrain)
+        let unsuitable = try XCTUnwrap(
+            ParkedGearAdvice.usableParkedGears(in: configuration.physical)
+                .first {
+                    !ParkedGearAdvice.isWorkable($0, simulating: drivetrain)
+                }
+        )
+
+        configuration.park(in: unsuitable)
+
+        XCTAssertTrue(configuration.hasSafeGearing)
+        XCTAssertTrue(configuration.parkedGearPutsGearsOutOfReach)
+        XCTAssertFalse(configuration.hasSafeCircumference)
+        XCTAssertFalse(configuration.canFinishSetup)
+    }
+
+    /// A saved configuration from before Custom existed has no `customLadder`
+    /// key at all. Decoding must fall back rather than throw away the rest of
+    /// a rider's saved setup.
+    // MARK: - Setup guide
+
+    func testAFreshConfigurationHasNotCompletedTheSetupGuide() {
+        let configuration = AppConfiguration()
+        XCTAssertFalse(configuration.setupWizardCompleted)
+    }
+
+    func testCompletingTheSetupGuideMarksItComplete() {
+        var configuration = AppConfiguration()
+        configuration.parkInSuggestion()
+        XCTAssertTrue(configuration.completeSetupWizard())
+        XCTAssertTrue(configuration.setupWizardCompleted)
+    }
+
+    func testSetupGuideCannotCompleteWithoutAConfirmedParkedGear() {
+        var configuration = AppConfiguration()
+
+        XCTAssertFalse(configuration.completeSetupWizard())
+        XCTAssertFalse(configuration.setupWizardCompleted)
+    }
+
+    func testDecodingAConfigurationWithNoSetupWizardKeyFallsBackToIncomplete() throws {
+        var configuration = AppConfiguration()
+        configuration.completeSetupWizard()
+        var data = try JSONEncoder().encode(configuration)
+        var object = try JSONSerialization.jsonObject(
+            with: data
+        ) as! [String: Any]
+        object.removeValue(forKey: "setupWizardCompleted")
+        data = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self, from: data
+        )
+        XCTAssertFalse(decoded.setupWizardCompleted)
+    }
+
+    func testLegacyDeferredGuideMustRunTheMandatorySetup() throws {
+        let configuration = AppConfiguration()
+        var object = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(configuration)
+        ) as! [String: Any]
+        object["setupWizardCompleted"] = true
+        object.removeValue(forKey: "setupWizardVersion")
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertFalse(decoded.setupWizardCompleted)
+    }
+
+    func testLegacyGuideRunsAgainButKeepsItsBikeSetup() throws {
+        var configuration = AppConfiguration()
+        configuration.parkInSuggestion()
+        configuration.completeSetupWizard()
+        var object = try JSONSerialization.jsonObject(
+            with: JSONEncoder().encode(configuration)
+        ) as! [String: Any]
+        object.removeValue(forKey: "setupWizardVersion")
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertFalse(decoded.setupWizardCompleted)
+        XCTAssertNotNil(decoded.parkedGear)
+    }
+
+    func testDecodingAConfigurationWithNoCustomLadderKeyFallsBackToDefault() throws {
+        var configuration = AppConfiguration()
+        configuration.rememberKickr(named: "KICKR CORE", id: UUID())
+        var data = try JSONEncoder().encode(configuration)
+        var object = try JSONSerialization.jsonObject(
+            with: data
+        ) as! [String: Any]
+        object.removeValue(forKey: "customLadder")
+        data = try JSONSerialization.data(withJSONObject: object)
+
+        let decoded = try JSONDecoder().decode(
+            AppConfiguration.self, from: data
+        )
+        XCTAssertEqual(decoded.customLadder, .default)
+        XCTAssertFalse(decoded.usesCustomLadder)
+    }
+
+    func testNormalWheelSizeDefaultsTo700x25Circumference() {
+        let configuration = AppConfiguration()
+        XCTAssertNil(configuration.normalWheelCircumferenceMillimeters)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
     }
 
     func testNormalWheelSizeCanBeChangedInsideTheSupportedRange() {
@@ -125,7 +295,17 @@ final class AppConfigurationTests: XCTestCase {
         XCTAssertFalse(
             configuration.setNormalWheelCircumference(millimeters: 2_401)
         )
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
+    }
+
+    func testNormalWheelSizeCanReturnToTheDefault() {
+        var configuration = AppConfiguration()
+        configuration.setNormalWheelCircumference(millimeters: 2_200)
+
+        configuration.useDefaultWheelCircumference()
+
+        XCTAssertNil(configuration.normalWheelCircumferenceMillimeters)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
     }
 
     /// Gears wider than the trainer can copy must block a ride rather than be
@@ -205,10 +385,18 @@ final class AppConfigurationTests: XCTestCase {
                 configuration.cassetteID = cassette.id
                 guard configuration.drivetrain != nil else { continue }
 
-                XCTAssertEqual(
-                    configuration.drivetrainName,
-                    "\(chainring.name) · \(cassette.name)"
-                )
+                if let groupset = configuration.groupset {
+                    XCTAssertEqual(
+                        configuration.drivetrainName,
+                        "\(groupset.qualifiedName) · "
+                            + "\(chainring.name) \(cassette.name)"
+                    )
+                } else {
+                    XCTAssertEqual(
+                        configuration.drivetrainName,
+                        "\(chainring.name) · \(cassette.name)"
+                    )
+                }
                 for description in expectedDescriptions
                 where configuration.gearSummary.contains(description) {
                     observedDescriptions.insert(description)
@@ -262,6 +450,14 @@ final class AppConfigurationTests: XCTestCase {
 
         XCTAssertTrue(configuration.hasValidKickr)
         XCTAssertFalse(configuration.usesHeadwind)
-        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_070)
+        XCTAssertEqual(configuration.neutralCircumferenceMillimeters, 2_105)
+        // Fields added later fall back to their defaults rather than throwing
+        // the whole saved setup away.
+        XCTAssertEqual(
+            configuration.gearLadderID,
+            GearLadderCatalog.defaultLadderID
+        )
+        XCTAssertEqual(configuration.physical, .default)
+        XCTAssertNil(configuration.parkedGear)
     }
 }

@@ -21,12 +21,51 @@ The iPhone screen stays awake for as long as this trainer proxy is available.
 iOS changes Bluetooth advertising after the phone locks, which can make a
 waiting trainer disappear from riding apps on Windows and other computers.
 
+## The gear your bike is parked in
+
+Your bike does not shift at all. It sits in one gear for the whole ride, and that
+gear is half of what your legs feel:
+
+    feel  =  parked gear ratio  x  the wheel size we set
+
+Virtual Gears only controls the second half, so it has to be told the first.
+Skipping the question does not make it go away — it just means assuming an
+answer. And "a quiet, straight chain line" is true of a lot of very different
+gears:
+
+| Parked in | Ratio | If the app had assumed 2.4 |
+|---|---|---|
+| 31-tooth ring, Zwift Cog | 2.21 | about 8% easier than shown |
+| Small ring, middle cog | 2.43 | almost exactly right |
+| Big ring, middle cog | 3.33 | about 39% harder than shown |
+| Big ring, smallest cog | 4.55 | 90% harder — the easy half of the ladder would not exist |
+
+The step *sizes* stay right either way, because the scaling is relative. What
+moves is the whole ladder, which is why this would never look like a bug: the
+shifting feels fine, the gears are simply not the ones on screen.
+
+So Virtual Gears asks once, and makes the good answer the default. It works out
+the quietest gear that still keeps every gear reachable — the trainer's wheel-size
+command tops out at 6553.5 mm, which puts a hard floor under how easy a parked
+gear can be — and recommends that. Confirm it, or say what you actually used.
+
+Indoors the trainer is the loudest thing in the room and its flywheel speed comes
+from the parked ratio, so a middle cog on the small ring runs around half the
+flywheel speed of the big ring on the smallest cog. Because the app compensates
+for whatever you confirm, the parked gear can be chosen purely for quiet.
+
 ## Where the gears sit
 
-Every gear is scaled away from the **Normal wheel circumference** in Settings,
-2070 mm by default. The default ladder reaches about four times easier and 2.3
-times harder while keeping gear 12 as the starting point. A drivetrain too wide
-to fit is refused at setup rather than mid-ride.
+Every gear is scaled away from the optional **Wheel circumference** in Settings,
+2105 mm (700×25 road) by default, and from the gear the bike is parked in. The
+default ladder reaches about four times easier and 2.3 times harder while
+keeping gear 12 as the starting point. A drivetrain too wide to fit, or a parked
+gear that would put part of the ladder out of the trainer's reach, is refused at
+setup rather than mid-ride.
+
+The starting gear is a declared number rather than one derived from the safety
+limits, so editing an unrelated limit cannot quietly move which gear you begin
+in.
 
 ## When the riding app has its own idea
 

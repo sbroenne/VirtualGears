@@ -53,18 +53,78 @@ speed. Both remain optional and never hold up a ride.
 
 <p align="center">
   <img src="screenshots/riding.png" width="30%" alt="The ride screen, showing gear 12 of 24 with the Headwind connected">
-  <img src="screenshots/gears.png" width="30%" alt="The 24 virtual gears drawn as bars">
-  <img src="screenshots/gears-real-bike.png" width="30%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
+  <img src="screenshots/setup.png" width="30%" alt="First-run setup asking for the physical chainrings and cassette">
+  <img src="screenshots/bike-setup.png" width="30%" alt="First-run setup with Zwift Cog or another single sprocket selected">
 </p>
 
 ## What you get
 
+### Start with the bike
+
+Required first-run setup asks only what is physically on the bike: its
+chainrings and either its cassette or its Zwift Cog/other single sprocket. A
+Zwift Cog defaults to its usual 14 teeth. Virtual Gears then recommends where to
+leave the chain and starts with Standard 24 virtual gears. Named groupsets and
+custom virtual gears remain available later in Settings.
+
+Settings keeps unfinished setup in one ordered card. Gearing is fixed first,
+because that determines which physical parked gear is safe; the chain position
+comes next.
+
+<p align="center">
+  <img src="screenshots/parked-gear.png" width="30%" alt="Parked-gear recommendation naming the exact chainring and cassette cog">
+  <img src="screenshots/gears.png" width="30%" alt="The 24 virtual gears drawn as bars">
+  <img src="screenshots/gears-real-bike.png" width="30%" alt="A real 50/34 with 11-34, drawn as sixteen gears">
+</p>
+
+### The physical fact it cannot guess
+
+Your bike never shifts. It sits on the trainer in a single gear for the whole
+ride, and Virtual Gears changes gear by changing the wheel size the trainer
+works from. What your legs feel is the parked gear multiplied by the wheel size
+we set — so the app has to know the parked gear, or every gear is scaled from a
+guess.
+
+"A quiet, straight chain line" is satisfied by gears more than twice as hard as
+each other, so this cannot be assumed. Instead the app names the gear to park in
+— the quietest one that still works with the gearing you chose — and you confirm
+or correct it in a tap. It is asked once and kept.
+
+Confirm something far from the recommendation and the app says plainly what it
+costs, and offers a one-tap return to the gear it suggested.
+
 ### Gears you can see
 
 Either a 24-step virtual ladder, tuned with extra room for easy climbing, or a
-copy of a real bike described by its chainrings and cassette. A real 50/34 with
-an 11-34 cassette gives sixteen gears, running 34x34 up to 50x11 — the gears you
-would really ride, not every possible pairing of a ring with a cog.
+real groupset from Shimano, SRAM or Campagnolo — with your own chainrings and
+cassette still available if your bike is not listed. A real 50/34 with an 11-34
+cassette gives sixteen gears, running 34x34 up to 50x11 — the gears you would
+really ride, not every possible pairing of a ring with a cog.
+
+### How the ladder is built
+
+A Zwift Click has two buttons, so one sequence has to cover a whole two-ring
+drivetrain. That is the same problem Shimano solved with Synchronized Shift and
+SRAM with AXS Sequential, so Virtual Gears builds its ladder the same way rather
+than inventing a method: start on the small ring at the easiest cog, move one cog
+per press, and at the shift point change ring while jumping the cassette by a
+compensating amount, so the step still feels like an ordinary cassette step.
+Big-big and small-small are never used.
+
+Two things fall out of that, and both are tested against every groupset the app
+ships: no shift is too small to feel, and the app never invents a gap the parts
+did not already have. Large jumps that come from your real cassette — an 11-34's
+30 to 34 step — are kept, because they are real.
+
+Campagnolo has no synchronised mode, so Virtual Gears models Campagnolo *gearing*
+and its shift points rather than claiming a Campagnolo algorithm that does not
+exist.
+
+Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+or Campagnolo. Those names are used only to describe the gearing being
+simulated.
+
+### Gears drawn, not listed
 
 Whichever you choose is drawn rather than listed: one bar per gear, easiest to
 hardest, on a scale where a tall step is a jump the legs will notice. How far
@@ -100,18 +160,20 @@ switching to another fan.
 ### A trainer proxy, with shifting when you want it
 
 Open the app. It looks for your trainer, connects to it and appears to your
-riding app on its own. There is no setup ritual. **Start Shifting** engages the
-gears; **Stop Shifting** removes them without stopping or disconnecting the ride
-in your riding app.
+riding app on its own. On first run, finish the two required setup steps:
+describe the physical bike, then confirm the recommended chain position.
+**Start Shifting** engages the gears once that is done; **Stop Shifting** removes
+them without stopping or disconnecting the ride in your riding app.
 
 The only question it asks is which device, and only when it finds more than one
 trainer, Click or Headwind. A single device is simply used. Bluetooth signal
 strength does not measure distance reliably, so multiple devices are listed by
 name rather than ranked or guessed.
 
-The normal wheel circumference is 2070 mm by default and can be changed in
-Settings from 1800 to 2400 mm. Virtual Gears uses it when the riding app sends no
-wheel size; a size from the riding app takes precedence.
+Wheel circumference is optional in Settings. With no saved value, Virtual Gears
+uses 2105 mm (700×25 road). Common road, gravel and MTB shortcuts or direct
+entry can set any supported value from 1800 to 2400 mm. A size from the riding
+app takes precedence.
 
 If no trainer is available, **Try Demo** opens a clearly marked simulated ride.
 It includes the ride screen, shifting, gear choices, Settings and example Click,

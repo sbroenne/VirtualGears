@@ -17,6 +17,10 @@ to know anything about virtual shifting.
 Leave the bike in a quiet, straight chain line and shift virtually instead.
 Nothing moves on the bike, so shifting is silent and cannot drop the chain.
 
+Because the bike stays in that one gear all ride, Virtual Gears asks you once
+which gear it is. That ratio is what every virtual gear is scaled from, so the
+app recommends the quietest gear that works and you confirm it in a tap.
+
 **[Read the full documentation](https://sbroenne.github.io/VirtualGears/)**
 
 ## Why it exists
@@ -54,15 +58,22 @@ work but have not been tested.
 1. Wake the KICKR by turning the pedals.
 2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
    available to your riding app.
-3. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
+3. Tell the required first-run setup what is physically on the bike: chainrings,
+   and either a cassette or a Zwift Cog/other single sprocket. Your first ride
+   uses Standard 24 virtual gears automatically.
+4. Move the chain to the quiet, reachable gear Virtual Gears recommends and
+   confirm it.
+5. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
    may show the iPhone's name instead.
-4. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
+6. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
    buttons.
 
-There is no setup wizard. Virtual Gears is a transparent trainer connection as
-soon as the KICKR is ready. **Start Shifting** engages the gears; **Stop Shifting**
-removes them without disconnecting or stopping the ride in your riding app. If it
-finds more than one trainer, it asks you to choose yours by name.
+Virtual Gears is a transparent trainer connection as soon as the KICKR is ready.
+The physical fact it cannot guess is the gear the bike is parked in, because a
+wrong guess would quietly make every gear wrong. **Start Shifting** engages the
+gears; **Stop Shifting** removes them without disconnecting or stopping the ride
+in your riding app. If it finds more than one trainer, it asks you to choose
+yours by name.
 
 The iPhone screen stays awake while the trainer proxy is available. This keeps
 Virtual Gears discoverable to riding apps on Windows and other computers before
@@ -80,10 +91,14 @@ with physical hardware.
 
 ## What it can do
 
-- **24 ready-made virtual gears**, with extra range for climbing.
+- **Ready-made virtual gears**, in ladders of 24 with extra range for climbing.
 - **App-independent shifting** for FTMS riding apps that have no virtual gears
   of their own.
-- **Real-bike gearing**, built from your chainrings and cassette.
+- **Real groupsets**, from Shimano, SRAM and Campagnolo, or your own chainrings
+  and cassette if your bike is not listed.
+- **Gears that shift the way an electronic groupset shifts**, one cog at a time
+  with the front change folded in, so there are no dead shifts and no invented
+  gaps.
 - **On-phone shifting** with large controls in portrait and landscape.
 - **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
   control and support for larger text.
@@ -123,13 +138,24 @@ with physical hardware.
   <br>
   <p align="center">
     <a href="docs/screenshots/riding.png">
-      <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen">
+      <img src="docs/screenshots/riding.png" width="28%" alt="Virtual Gears ride screen showing gear 12 of 24 and large Easier and Harder controls">
+    </a>
+    <a href="docs/screenshots/setup.png">
+      <img src="docs/screenshots/setup.png" width="28%" alt="First-run setup asking for the physical chainrings and cassette">
+    </a>
+    <a href="docs/screenshots/bike-setup.png">
+      <img src="docs/screenshots/bike-setup.png" width="28%" alt="First-run setup with Zwift Cog or another single sprocket selected">
+    </a>
+  </p>
+  <p align="center">
+    <a href="docs/screenshots/parked-gear.png">
+      <img src="docs/screenshots/parked-gear.png" width="28%" alt="Parked-gear recommendation naming the exact chainring and cassette cog">
     </a>
     <a href="docs/screenshots/gears.png">
       <img src="docs/screenshots/gears.png" width="28%" alt="The 24-step virtual gear ladder">
     </a>
-    <a href="docs/screenshots/gears-real-bike.png">
-      <img src="docs/screenshots/gears-real-bike.png" width="28%" alt="Virtual gears based on a real drivetrain">
+    <a href="docs/screenshots/headwind-control.png">
+      <img src="docs/screenshots/headwind-control.png" width="28%" alt="Wahoo Headwind manual fan controls with one-tap speed choices">
     </a>
   </p>
 </details>
@@ -156,9 +182,17 @@ Every gear change waits for confirmation from the trainer.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app. Virtual Gears supplies and displays the gears itself.
 - **Virtual Gears cannot read the trainer's current wheel circumference.** It
-  uses the **Normal wheel circumference** saved in Settings, 2070 mm by default,
-  unless the riding app supplies another size. If you use a custom value in the
-  Wahoo app, enter the same value in Virtual Gears before shifting.
+  uses the optional **Wheel circumference** saved in Settings, or the 2105 mm
+  (700×25 road) default, unless the riding app supplies another size. Common
+  wheel-size shortcuts and direct millimetre entry are available. If you use a
+  custom value in the Wahoo app, enter the same value in Virtual Gears before
+  shifting.
+- **A riding app on Windows may not reconnect on its own after a Bluetooth
+  drop.** If the wireless link between your phone and the computer times out
+  mid-ride, some Windows riding apps do not scan for the phone again by
+  themselves; you may need to restart the riding app to see Virtual Gears once
+  more. This is the riding app's own reconnect behaviour, not something Virtual
+  Gears controls.
 
 ## Support
 

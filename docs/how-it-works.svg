@@ -122,7 +122,7 @@
     <circle class="screen" cx="812" cy="179" r="40"/>
     <circle class="wire" cx="812" cy="179" r="40"/>
     <text class="label" x="812" y="288">Your trainer</text>
-    <text class="sub sizeLo" x="812" y="310">wheel size 2070 mm</text>
+    <text class="sub sizeLo" x="812" y="310">wheel size 2105 mm</text>
     <text class="sub sizeHi" x="812" y="310">wheel size 2613 mm</text>
   </g>
 

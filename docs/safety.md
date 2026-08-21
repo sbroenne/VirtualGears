@@ -85,17 +85,37 @@ happens; it appears only in the app's own log.
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.
 
+## The gear the bike is parked in has a floor
+
+The same 6553.5 mm command ceiling puts a limit on the other end of the
+calculation. Your bike is parked in one gear all ride and every virtual gear is
+scaled from it, so a parked gear that is too easy leaves the hardest gears
+unable to encode:
+
+    2400 mm  x  5.49 (hardest gear)  /  6553.5 mm  =  2.011
+
+Park below that and the top of the ladder stops working the moment a riding app
+sets a big wheel. This is why the app computes the gear it recommends instead of
+printing a fixed sentence: literal "small ring, middle cog" advice lands a 105 on
+34/17 = 2.00 and a GRX on 31/17 = 1.82, both under the floor.
+
+There is a limit at the other end too. Parked in the big ring on the smallest cog
+every gear still fits inside the command, but the easiest one would ask the
+trainer for a 238 mm wheel — a rider a riding app would draw as having stopped.
+Setup refuses a parked gear outside the workable window rather than letting the
+ride discover it.
+
 ## If you set a custom wheel circumference
 
 The KICKR does not expose its current wheel circumference through FTMS, so
-Virtual Gears cannot read that setting when it connects. It uses the **Normal
-wheel circumference** saved in Settings, 2070 mm by default, unless the riding
-app supplies a different wheel size.
+Virtual Gears cannot read that setting when it connects. It uses the optional
+**Wheel circumference** saved in Settings, or 2105 mm (700×25 road) when none is
+saved, unless the riding app supplies a different wheel size.
 
 If you use a custom value in the Wahoo app, enter the same value in Virtual
-Gears before shifting. Values from 1800 to 2400 mm are supported. Stopping
-shifting restores that saved normal value, or the latest value supplied by the
-riding app, while keeping the riding app connected.
+Gears before shifting. Common-size shortcuts and direct entry cover values from
+1800 to 2400 mm. Stopping shifting restores that saved value, or the latest
+value supplied by the riding app, while keeping the riding app connected.
 
 ## What it is not
 

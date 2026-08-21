@@ -53,7 +53,7 @@ the iPhone and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or your real-bike gearing.
+    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or real groupset gearing.
 
 ### Description
 
@@ -77,8 +77,23 @@ the iPhone and when advertising itself as a trainer.
     FTMS trainer connection; it does not support Zwift's native gear system.
 
     You get a full set of gears you can shift through mid-ride — either 24 evenly
-    spaced gears with an extra-low climbing range or an exact copy of the gears on
-    your real bike.
+    spaced gears with an extra-low climbing range or the gearing of a real
+    groupset from Shimano, SRAM or Campagnolo.
+
+    START WITH THE BIKE
+    Required first-run setup asks only what is physically on the bike: the
+    chainrings and either its cassette or a Zwift Cog/other single sprocket. Virtual
+    Gears then recommends where to leave the chain and starts with the ready-made
+    Standard 24 virtual gears. Named groupsets and custom gears remain available
+    later in Settings.
+
+    ONE PHYSICAL FACT CANNOT BE GUESSED
+    Your bike never shifts. It stays in one gear and Virtual Gears changes gear by
+    changing the wheel size the trainer works from, so what your legs feel is that
+    parked gear multiplied by the wheel size the app sets. Virtual Gears therefore
+    needs to know which gear your bike is parked in. It works out the quietest gear
+    that still keeps every gear reachable and recommends it. If setup is unfinished,
+    Settings gives one next action: fix gearing first, then confirm the parked gear.
 
     A TRAINER PROXY, WITH SHIFTING WHEN YOU WANT IT
     Open the app and it finds your trainer, connects to it and appears to your riding
@@ -91,8 +106,15 @@ the iPhone and when advertising itself as a trainer.
     GEARS YOU CAN SEE
     Your gears are drawn, not listed as numbers — one bar per gear, short bars for
     small steps and tall bars for the ones your legs will notice. Choose the 24
-    virtual gears, or pick your real chainrings and cassette and get exactly the gears
-    you would actually ride. Cross-chained and duplicate combinations are left out.
+    virtual gears, or pick the groupset your bike has — Shimano, SRAM or Campagnolo,
+    with your own chainrings and cassette available if it is not listed — and get the
+    gears you would actually ride. The ladder is walked the way an electronic
+    groupset shifts: one cog at a time, changing chainring at the right moment, so
+    cross-chained and repeated combinations never appear and no shift is too small
+    to feel.
+
+    Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+    or Campagnolo. Those names describe only the gearing being simulated.
 
     BUILT FOR RIDING, NOT FOR READING
     Two large shift buttons stay easy to hit without looking down or sitting up,
@@ -117,7 +139,8 @@ the iPhone and when advertising itself as a trainer.
     to compatible apps that have none of their own, without requiring a plugin or
     account. Apps that set their own wheel size are honoured — the gears are rebuilt
     around whatever size the app asks for. If an app sends no size, Virtual Gears uses
-    the Normal wheel circumference saved in Settings, 2070 mm by default.
+    the optional Wheel circumference saved in Settings, or the 2105 mm (700×25 road)
+    default.
 
     OPTIONAL SHIFT BUTTONS
     Wake an original Zwift Click before opening Virtual Gears and it connects
@@ -139,9 +162,9 @@ the iPhone and when advertising itself as a trainer.
 
     NOTE ON WHEEL CIRCUMFERENCE
     Virtual Gears cannot read a wheel circumference previously set in the Wahoo app.
-    If you use a custom value, enter the same value as Normal wheel circumference in
-    Virtual Gears Settings before shifting. Values from 1800 to 2400 mm are supported.
-    A value sent by the riding app takes precedence.
+    If you use a custom value, enter the same value as Wheel circumference in
+    Virtual Gears Settings before shifting. Common-size shortcuts and direct entry
+    support values from 1800 to 2400 mm. A value sent by the riding app takes precedence.
 
     NO ACCOUNTS, NO INTERNET, NO TRACKING
     The app has no networking code in it at all. Nothing about your ride leaves your
@@ -177,8 +200,8 @@ Issues and Discussions must stay enabled on the repository.
 
 ### Screenshots
 
-Required: **6.9-inch iPhone**. The six portrait images in `docs/screenshots/`
-are 1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
+Required: **6.9-inch iPhone**. The six portrait images listed below are
+1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
 uploaded as they are. Apple scales them down for smaller phones; one set is
 enough. The two landscape images are 2868 × 1320 documentation views; they are
 not part of the portrait upload set below.
@@ -186,12 +209,15 @@ not part of the portrait upload set below.
 Upload these six, in this order:
 
 1. `riding.png` — the ride screen, which is what the app is for.
-2. `gears.png` — the 24 virtual gears drawn as bars.
-3. `gears-real-bike.png` — a real 50/34 with 11-34 turned into sixteen gears.
-4. `headwind-control.png` — optional Automatic/Manual Headwind control with
+2. `setup.png` — required first-run setup for the physical chainrings and
+   cassette.
+3. `bike-setup.png` — the directly visible Zwift Cog/other single-sprocket
+   choice and tooth count.
+4. `parked-gear.png` — the exact quiet, reachable chain position the app
+   recommends.
+5. `gears.png` — the 24 virtual gears drawn as bars.
+6. `headwind-control.png` — optional Automatic/Manual Headwind control with
    one-tap speeds.
-5. `starting.png` — automatic reconnect plus the Bluetooth-free Try Demo entry.
-6. `settings.png` — the three remembered equipment rows and gear choice.
 
 ### Privacy answers ("App Privacy" section)
 
@@ -272,7 +298,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (11). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (15). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -323,6 +349,31 @@ hardware-proven combination of advertising FTMS and Cycling Power together and
 making both live measurements readable and notifiable. The iPhone stays awake
 while the trainer proxy is available so computer riding apps can discover it
 before connecting.
+
+Build 1.0 (14) was uploaded to TestFlight on 18 August 2026. It adds the setup
+guide, custom virtual-gear ladders, exact normal wheel-circumference entry, and
+separate physical cassette or single-sprocket setup. It also includes defensive
+Bluetooth recovery and the first complete designed-state UX matrix.
+
+Build 1.0 (15) was uploaded to TestFlight on 20 August 2026. It makes first-time
+setup beginner-friendly with three paths: choose a groupset, enter the bike's
+parts, or use standard virtual gears. Every path records whether the bike uses a
+cassette, Zwift Cog, or another 9–30T single sprocket. Settings now presents one
+ordered **Finish setup** action, and changing simulated gears refreshes the
+parked-gear recommendation instead of preserving an unsafe chain position. This
+build includes refreshed public screenshots and 67 maintained app-owned UX
+states.
+
+Build 1.0 (16) was uploaded to TestFlight on 21 August 2026. It replaces that
+three-path guide with a required physical-bike-first flow: bike parts, then
+parked chain position. Standard 24 is selected automatically. Wheel
+circumference moves to optional Settings shortcuts with a 2105 mm default, and
+the maintained UX contract contains 65 app-owned states.
+
+Build 1.0 (17) was uploaded to TestFlight on 21 August 2026. It removes the
+white panels behind the setup wizard's main actions, groups physical chainring
+choices into numerically ordered one-ring and two-ring lists, and removes the
+redundant parked-chain reminder from the startup screen.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

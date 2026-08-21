@@ -69,7 +69,10 @@ final class DemoRideStateTests: XCTestCase {
     func testTheDemoReportsTheRealWheelSizeForTheGear() throws {
         var state = DemoRideState(configuration: .demo)
         let drivetrain = try XCTUnwrap(AppConfiguration.demo.drivetrain)
-        let reference = drivetrain.referenceGear.ratio
+        // Gears are scaled from the gear the bike is actually parked in, not
+        // from the ladder's own starting gear. On the demo bike those differ,
+        // which is exactly the case that used to be silently wrong.
+        let reference = try XCTUnwrap(AppConfiguration.demo.parkedGear).ratio
 
         XCTAssertEqual(
             state.wheelSizeMillimeters,

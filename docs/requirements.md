@@ -29,9 +29,10 @@ cannot work with, rather than leaving you to wonder why nothing happens.
 ### If you set a custom wheel circumference
 
 Virtual Gears cannot read the wheel circumference previously set through the
-Wahoo app. Set **Normal wheel circumference** in Virtual Gears Settings to the
-same value before shifting. The default is 2070 mm and the available range is
-1800–2400 mm. A wheel size supplied by the riding app takes precedence.
+Wahoo app. Set **Wheel circumference** in Virtual Gears Settings to the same
+value before shifting. With no saved value, the default is 2105 mm (700×25
+road). Common-size shortcuts and direct entry cover the supported 1800–2400 mm
+range. A wheel size supplied by the riding app takes precedence.
 
 Stopping shifting restores that normal value, or the latest value from the
 riding app, without disconnecting the riding app from Virtual Gears.
@@ -115,9 +116,12 @@ and the complete iPhone-to-Windows path has been ridden end to end.
 4. Tap **Start Shifting** when you want gears. Shift with the two large buttons
    on the phone.
 
-There is no setup screen to complete first. Start and Stop control only virtual
-shifting. Virtual Gears remains connected as a transparent trainer proxy, so
-stopping shifting does not pause, stop or disconnect the ride in your riding app.
+The two-step first-run setup is required. It asks what is physically on the bike
+and then confirms the recommended parked chain position. Standard 24 virtual
+gears are selected automatically; other simulated gears can be chosen later in
+Settings. Start and Stop control only virtual shifting. Virtual Gears remains
+connected as a transparent trainer proxy, so stopping shifting does not pause,
+stop or disconnect the ride in your riding app.
 
 You can explore the app without any equipment by tapping **Try Demo** while it
 looks for a trainer. The simulated ride does not use Bluetooth or control
@@ -171,8 +175,21 @@ confirm it before switching to another Headwind.
 ## Choosing your gears
 
 The starting choice is a 24-step virtual ladder with extra room for easy
-climbing. If you would rather ride the gears of a real bike, describe it by its
-chainrings and cassette and the app builds that instead.
+climbing. If you would rather ride the gears of a real bike, pick a groupset
+from Shimano, SRAM or Campagnolo — or set the chainrings and cassette yourself
+if your bike is not listed — and the app builds that instead.
+
+The ladder is built the way Shimano Synchronized Shift and SRAM AXS Sequential
+build theirs: one cog per press, with the front change folded in and paired with
+a compensating rear jump. Campagnolo has no synchronised mode, so its entries
+model Campagnolo gearing and shift points rather than a Campagnolo algorithm.
+
+Virtual Gears also asks which gear your bike is parked in, because the bike never
+shifts and that ratio is what every virtual gear is scaled from. It recommends
+the quietest gear that works, so this is normally one tap.
+
+Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
+or Campagnolo.
 
 You can change this mid-ride without interrupting the riding app. The trainer
 must confirm the newly selected gear before the app shows it.

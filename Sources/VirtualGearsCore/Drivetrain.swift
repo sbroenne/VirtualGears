@@ -20,35 +20,28 @@ public enum DrivetrainError: Error, Equatable {
 
 public struct Drivetrain: Equatable, Sendable {
     /// An even ladder of twenty-four virtual ratios that belongs to no real
-    /// bike. The lower half extends farther than the common 0.75-based ladder
-    /// so first gear is genuinely easy without sacrificing the harder half.
-    /// Gear 12 of the ladder, ratio 2.40, is the gear the trainer sits at when
-    /// nothing has been shifted, and it is a product decision rather than a
-    /// calculated one.
-    ///
-    /// It used to be calculated: the ladder was centred inside whatever range
-    /// the trainer was believed to accept. That made the gears every rider
-    /// feels move whenever an unrelated safety number was edited — widening
-    /// that range once made the easiest gear 13% harder, silently. The starting
-    /// gear is now stated here and the range only has to be wide enough to hold
-    /// it.
-    public static let virtualReferenceIndex = 11
+    /// bike. See ``GearLadderCatalog`` for the ladders on offer.
+    public static let virtualReferenceIndex = GearLadderCatalog
+        .standardRange.startingIndex
 
-    public static let virtualRatiosHundredths = [
-        60, 68, 77, 88, 100, 113, 129, 146,
-        165, 187, 212, 240, 261, 282, 303, 324,
-        349, 374, 399, 424, 454, 484, 514, 549,
-    ]
+    public static let virtualRatiosHundredths = GearLadderCatalog
+        .standardRange.ratiosHundredths
 
     /// Built as ratios out of one hundred rather than real teeth, because these
     /// gears are not parts anyone can buy.
     public static func virtualLadder(
+        ratiosHundredths: [Int] = GearLadderCatalog.standardRange
+            .ratiosHundredths,
+        startingIndex: Int = GearLadderCatalog.standardRange.startingIndex,
         scaleRange: ClosedRange<Double> = TrainerSafety.supportedScaleRange
     ) throws -> Drivetrain {
-        let gears = try virtualRatiosHundredths
+        let gears = try ratiosHundredths
             .sorted()
             .map { try VirtualGear(chainring: $0, cog: 100) }
-        let reference = virtualReferenceIndex
+        guard gears.indices.contains(startingIndex) else {
+            throw DrivetrainError.invalidReferenceIndex(startingIndex)
+        }
+        let reference = startingIndex
         let referenceRatio = gears[reference].ratio
         let easiest = gears[0].ratio / referenceRatio
         let hardest = gears[gears.count - 1].ratio / referenceRatio
@@ -67,15 +60,54 @@ public struct Drivetrain: Equatable, Sendable {
         )
     }
 
-    /// Builds the drivetrain a rider actually described, using only the gears
-    /// they would really ride.
+    /// The gear ratio every ride starts in.
     ///
-    /// Pairing every chainring with every cog is wrong twice over. It invents
-    /// badly cross-chained gears nobody uses, such as the small ring on the
-    /// smallest cog, and it counts the same ratio twice: 34/17 and 50/25 both
-    /// give 2.0, so on the handlebar they would be two gear numbers that feel
-    /// identical. Cross-chained pairs are dropped and equal ratios are merged,
-    /// which is why a 2x12 gives about sixteen gears rather than twenty-four.
+    /// Stated, not calculated. It used to be derived: the gears were positioned
+    /// wherever they best fitted inside the range the trainer was believed to
+    /// accept, which meant editing an unrelated safety number moved the gear
+    /// every rider starts in. Widening the riding-app wheel range from 2400 to
+    /// 2600 mm shifted a compact twelve-speed rider a full ten per cent harder,
+    /// silently. That range has already been changed once, to make FulGaz work.
+    ///
+    /// 2.40 is gear 12 of the virtual ladder and is what a 34 tooth ring on a
+    /// 14 tooth cog gives — the neutral gear other virtual shifting systems
+    /// settle on too. The range now only has to be wide enough to hold the
+    /// gears around it.
+    public static let startingRatio = 2.40
+
+    /// How many cogs at each end of the cassette a chainring cannot reach.
+    ///
+    /// This is a physical answer, not a proportion of the cassette. The chain
+    /// can only run at so much of an angle before it rubs, and that angle is
+    /// roughly the same whether the cassette has eight cogs or thirteen. The
+    /// old rule removed a fixed *fraction* of the cassette instead, so on a
+    /// small cassette it deleted the very cogs that bridge the two chainrings
+    /// and left a hole in the middle of the gears.
+    public static let crossChainCogLimit = 2
+
+    /// The smallest ratio change a rider can feel. Below roughly five per cent
+    /// the gear number on the screen moves, a command goes out to the trainer,
+    /// and the bike does nothing.
+    public static let perceptibleStepFraction = 0.05
+
+    /// Builds the gears the way an electronic groupset shifts them.
+    ///
+    /// A Zwift Click has exactly two buttons, so a whole two-chainring
+    /// drivetrain has to collapse into one sequence. Shimano and SRAM already
+    /// solved that problem — Synchronized Shift and AXS Sequential — and this
+    /// copies their answer rather than inventing one: start on the small ring
+    /// and the largest cog, move one cog per press, and at the shift point
+    /// change chainring *and* jump the cassette by a compensating amount so the
+    /// change feels like a normal cassette step.
+    ///
+    /// The previous approach paired every chainring with every cog, sorted the
+    /// pile by ratio, pruned the cross-chained pairs and dropped exact
+    /// duplicates. Measured across the seventy-two builds of the groupsets this
+    /// app ships, that produced a shift too small to feel on twelve of them —
+    /// the smallest was 0.4% — and a hole wider than a quarter on five. Walking
+    /// the drivetrain instead removes both causes rather than patching them: a
+    /// walk cannot invent a hole, and it cannot take a step smaller than the
+    /// transition rule allows.
     public static func build(
         chainrings: [Int],
         cassetteCogs: [Int],
@@ -99,30 +131,22 @@ public struct Drivetrain: Equatable, Sendable {
         )
 
         var combinations: [VirtualGear] = []
-        let rings = chainrings.sorted()
-        for (position, chainring) in rings.enumerated() {
-            for cog in usableCogs(
-                cassetteCogs,
-                forRingAt: position,
-                ringCount: rings.count
-            ) {
-                combinations.append(try VirtualGear(chainring: chainring, cog: cog))
-            }
-        }
-        combinations.sort(by: gearOrder)
-
-        var unique: [VirtualGear] = []
-        for gear in combinations
-        where !unique.contains(where: { hasEqualRatio($0, gear) }) {
-            unique.append(gear)
+        for pair in synchronisedSequence(
+            rings: chainrings.sorted(),
+            cogs: cassetteCogs.sorted(by: >)
+        ) {
+            combinations.append(
+                try VirtualGear(chainring: pair.chainring, cog: pair.cog)
+            )
         }
 
-        guard let reference = centredReferenceIndex(
-            of: unique,
+        guard let reference = startingGearIndex(
+            of: combinations,
             scaleRange: scaleRange
         ) else {
             throw DrivetrainError.rangeTooWideForTrainer(
-                span: (unique.last?.ratio ?? 0) / (unique.first?.ratio ?? 1),
+                span: (combinations.last?.ratio ?? 0)
+                    / (combinations.first?.ratio ?? 1),
                 widest: scaleRange.upperBound / scaleRange.lowerBound
             )
         }
@@ -130,47 +154,97 @@ public struct Drivetrain: Equatable, Sendable {
         return try Drivetrain(
             chainrings: chainrings,
             cassetteCogs: cassetteCogs,
-            allowedCombinations: unique,
+            allowedCombinations: combinations,
             referenceIndex: reference
         )
     }
 
-    /// The cogs a rider would really use with one chainring. The chain has to
-    /// run at an angle to reach across the cassette, so a small ring is ridden
-    /// on the larger cogs and a big ring on the smaller ones. Ignoring that is
-    /// what produced gears like a 34 tooth ring on an 11 tooth cog, which no
-    /// rider would ever choose and which made the handlebar readout describe a
-    /// bike nobody owns.
-    private static func usableCogs(
-        _ cogs: [Int],
-        forRingAt position: Int,
-        ringCount: Int
-    ) -> [Int] {
-        guard ringCount > 1 else { return cogs }
-        // Largest cog first, so index 0 is the easiest gear on the cassette.
-        let ordered = cogs.sorted(by: >)
-        let last = ordered.count - 1
-        // The smallest ring sits at the easy end of the cassette and the
-        // largest at the hard end, with any middle ring spread in between.
-        let centre = Double(last)
-            * Double(position) / Double(ringCount - 1)
-        // Rings share the cassette, so each reaches over roughly the same span
-        // regardless of how many there are; more rings simply means each covers
-        // less of it and the whole drivetrain covers more ground.
-        let reach = max(1.0, Double(ordered.count) * 1.2 / Double(ringCount))
-        let lower = max(0, Int((centre - reach).rounded(.up)))
-        let upper = min(last, Int((centre + reach).rounded(.down)))
-        guard lower <= upper else { return [ordered[min(max(0, Int(centre)), last)]] }
-        return Array(ordered[lower...upper])
+    /// One press of the shift button, one step along here.
+    ///
+    /// Chainrings arrive smallest first and cogs largest first, so the walk
+    /// starts at the easiest gear anyone would ride and finishes at the hardest.
+    /// Every step is strictly harder than the one before, which is what makes a
+    /// two-button controller make sense.
+    static func synchronisedSequence(
+        rings: [Int],
+        cogs: [Int]
+    ) -> [(chainring: Int, cog: Int)] {
+        guard let firstRing = rings.first, !cogs.isEmpty else { return [] }
+        guard rings.count > 1 else {
+            return cogs.map { (chainring: firstRing, cog: $0) }
+        }
+
+        let last = cogs.count - 1
+        // Never ban so much of a small cassette that a chainring loses the cogs
+        // that bridge it to the next one — that is the mistake the old
+        // proportional rule made, only inverted.
+        let limit = min(min(crossChainCogLimit, max(1, cogs.count / 4)), last)
+
+        // Which part of the cassette each chainring is allowed to reach. The
+        // smallest ring keeps the easy end, the largest keeps the hard end, and
+        // neither is allowed near the other's corner — that is what stops
+        // small-small and big-big appearing.
+        func window(forRingAt position: Int) -> ClosedRange<Int> {
+            let lower = position == 0 ? 0 : limit
+            let upper = position == rings.count - 1 ? last : last - limit
+            return lower...max(lower, upper)
+        }
+
+        func ratio(_ position: Int, _ cogIndex: Int) -> Double {
+            Double(rings[position]) / Double(cogs[cogIndex])
+        }
+
+        var sequence: [(ring: Int, cog: Int)] = [(0, 0)]
+        var ring = 0
+        var cog = 0
+
+        while true {
+            // Still cogs left on this chainring: take one.
+            if cog + 1 <= window(forRingAt: ring).upperBound {
+                cog += 1
+                sequence.append((ring, cog))
+                continue
+            }
+
+            // Out of cassette. Change chainring, and land on the cog that makes
+            // the change feel like the cassette step just taken. This is the
+            // compensating rear shift a real electronic groupset pairs with
+            // every front change.
+            let current = ratio(ring, cog)
+            let wanted = cog > 0 ? current / ratio(ring, cog - 1) : 1.10
+            var moved = false
+
+            for next in (ring + 1)..<rings.count {
+                var landing: Int?
+                var closest = Double.infinity
+                for candidate in window(forRingAt: next) {
+                    let step = ratio(next, candidate) / current
+                    // A step nobody can feel is not a gear.
+                    guard step >= 1 + perceptibleStepFraction else { continue }
+                    let error = abs(Foundation.log(step / wanted))
+                    if error < closest {
+                        closest = error
+                        landing = candidate
+                    }
+                }
+                guard let landing else { continue }
+                ring = next
+                cog = landing
+                sequence.append((ring, cog))
+                moved = true
+                break
+            }
+
+            if !moved { break }
+        }
+
+        return sequence.map { (chainring: rings[$0.ring], cog: cogs[$0.cog]) }
     }
 
-    /// The starting gear is the one the trainer's real wheel size maps onto, so
-    /// every other gear is scaled away from it. The trainer accepts a limited
-    /// range, and that range is lopsided: a gear can be made about 2.3 times
-    /// harder than the reference but 3.2 times easier. Centring on the middle
-    /// gear therefore wastes the margin, so the reference is placed where the
-    /// tighter of the two ends has the most room left.
-    private static func centredReferenceIndex(
+    /// The gear the ride starts in: the one nearest ``startingRatio`` whose
+    /// whole ladder the trainer can still cover. Declared rather than derived,
+    /// so editing an unrelated safety number cannot move it.
+    static func startingGearIndex(
         of gears: [VirtualGear],
         scaleRange: ClosedRange<Double>
     ) -> Int? {
@@ -180,25 +254,19 @@ public struct Drivetrain: Equatable, Sendable {
         else {
             return nil
         }
-        let headroom = Foundation.log(scaleRange.upperBound)
-        let legroom = -Foundation.log(scaleRange.lowerBound)
-        guard headroom > 0, legroom > 0 else { return nil }
 
-        // How much of the available room the worst end would use, as a fraction.
-        // Anything above 1 does not fit.
-        func worstUse(_ ratio: Double) -> Double {
-            max(
-                Foundation.log(hardest / ratio) / headroom,
-                Foundation.log(ratio / easiest) / legroom
-            )
+        func fits(_ ratio: Double) -> Bool {
+            scaleRange.contains(easiest / ratio)
+                && scaleRange.contains(hardest / ratio)
         }
 
-        guard let best = gears.indices.min(by: {
-            worstUse(gears[$0].ratio) < worstUse(gears[$1].ratio)
-        }) else {
-            return nil
+        func distance(_ ratio: Double) -> Double {
+            abs(Foundation.log(ratio / startingRatio))
         }
-        return worstUse(gears[best].ratio) <= 1 ? best : nil
+
+        return gears.indices
+            .filter { fits(gears[$0].ratio) }
+            .min { distance(gears[$0].ratio) < distance(gears[$1].ratio) }
     }
 
     public let chainrings: [Int]

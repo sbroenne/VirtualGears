@@ -10,6 +10,10 @@ public struct PendingGearChange: Equatable, Sendable {
 public struct ConfirmedGearEngine: Equatable, Sendable {
     public let drivetrain: Drivetrain
     public let wheelSizeMillimeters: Double
+    /// The gear the bike is physically parked in. Every gear is scaled away
+    /// from this, not from the starting gear, because this is what the rider's
+    /// legs actually multiply the wheel size by.
+    public let parkedGear: ParkedGear?
 
     public private(set) var requestedIndex: Int
     public private(set) var confirmedIndex: Int
@@ -19,7 +23,8 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
 
     public init(
         drivetrain: Drivetrain,
-        wheelSizeMillimeters: Double
+        wheelSizeMillimeters: Double,
+        parkedGear: ParkedGear? = nil
     ) throws {
         // Where a riding app's wheel size is accepted or turned away. This is
         // the only place that decides it, so the answer cannot differ between
@@ -29,7 +34,13 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
         else {
             throw VirtualGearError.outsideSupportedRange
         }
-        let referenceRatio = drivetrain.referenceGear.ratio
+        // Without a confirmed parked gear the old assumption is the only one
+        // available: that the bike happens to be sitting in the starting gear.
+        // Setup will not finish without one, so this is a floor, not a default.
+        let referenceRatio = parkedGear?.ratio ?? drivetrain.referenceGear.ratio
+        guard referenceRatio > 0 else {
+            throw VirtualGearError.invalidCircumferenceInputs
+        }
         var changes: [PendingGearChange] = []
         for (index, gear) in drivetrain.gears.enumerated() {
             let circumference =
@@ -55,10 +66,16 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
         self.drivetrain = drivetrain
         self.wheelSizeMillimeters =
             wheelSizeMillimeters
+        self.parkedGear = parkedGear
         requestedIndex = drivetrain.referenceIndex
         confirmedIndex = drivetrain.referenceIndex
         pendingChange = nil
         self.changes = changes
+    }
+
+    /// The ratio every gear is scaled away from.
+    public var parkedRatio: Double {
+        parkedGear?.ratio ?? drivetrain.referenceGear.ratio
     }
 
     /// True when the trainer has caught up with everything asked of it.
@@ -87,7 +104,8 @@ public struct ConfirmedGearEngine: Equatable, Sendable {
     ) throws -> Self {
         var result = try Self(
             drivetrain: drivetrain,
-            wheelSizeMillimeters: wheelSizeMillimeters
+            wheelSizeMillimeters: wheelSizeMillimeters,
+            parkedGear: parkedGear
         )
         result.requestedIndex = confirmedIndex
         result.confirmedIndex = confirmedIndex

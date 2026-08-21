@@ -79,7 +79,8 @@ public struct DemoRideState: Equatable, Sendable {
             try? ConfirmedGearEngine(
                 drivetrain: $0,
                 wheelSizeMillimeters:
-                    TrainerSafety.referenceCircumferenceMillimeters
+                    TrainerSafety.referenceCircumferenceMillimeters,
+                parkedGear: configuration.parkedGear
             )
         }
     }
@@ -205,6 +206,9 @@ public extension AppConfiguration {
             named: "Simulated Headwind",
             id: UUID(uuidString: "D3000000-0000-0000-0000-000000000003")!
         )
+        // The demo bike is parked in the gear the app would recommend, so the
+        // demo shows the same gears a rider who followed the advice will get.
+        configuration.parkInSuggestion()
         return configuration
     }
 }

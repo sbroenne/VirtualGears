@@ -98,22 +98,25 @@ final class DrivetrainTests: XCTestCase {
     }
 
     /// Two combinations can land on the identical ratio, and two gear numbers
-    /// that feel the same would be two shifts that do nothing.
+    /// that feel the same would be two shifts that do nothing. Walking the
+    /// drivetrain cannot produce one: every step is strictly harder than the
+    /// last, by more than a rider can feel.
     func testBuildKeepsOnlyOneGearPerDistinctRatio() throws {
         let drivetrain = try Drivetrain.build(
-            chainrings: [50, 25],
-            cassetteCogs: [10, 20]
+            chainrings: [50, 34],
+            cassetteCogs: [11, 12, 13, 14, 15, 17, 19, 21, 24, 27, 30, 34]
         )
 
-        XCTAssertEqual(
-            drivetrain.gears.map { "\($0.chainring)x\($0.cog)" },
-            ["25x20", "25x10", "50x10"]
-        )
+        let ratios = drivetrain.gears.map(\.ratio)
+        XCTAssertEqual(Set(ratios).count, ratios.count)
+        for (previous, next) in zip(ratios, ratios.dropFirst()) {
+            XCTAssertGreaterThan(next, previous)
+        }
     }
 
-    /// The trainer can be pushed about 2.3x harder than the starting gear but
-    /// about 4.1x easier. There is more room downwards, so on a wide mountain setup
-    /// the starting gear sits above the middle of the range, not on it.
+    /// The starting gear is the one nearest the declared 2.40, not wherever the
+    /// range happened to leave room. On a wide mountain setup that puts it above
+    /// the middle of the ladder rather than on it.
     func testBuildPlacesStartingGearWhereBothEndsFit() throws {
         let drivetrain = try Drivetrain.build(
             chainrings: [32],
@@ -337,7 +340,7 @@ final class DrivetrainTests: XCTestCase {
                 referenceRatio: reference,
                 selectedRatio: drivetrain.gears.first!.ratio
             ),
-            517.5,
+            657.8125,
             accuracy: 0.001
         )
         XCTAssertEqual(
@@ -347,7 +350,7 @@ final class DrivetrainTests: XCTestCase {
                 referenceRatio: reference,
                 selectedRatio: drivetrain.gears.last!.ratio
             ),
-            4_735.125,
+            4_815.1875,
             accuracy: 0.001
         )
         for gear in drivetrain.gears {

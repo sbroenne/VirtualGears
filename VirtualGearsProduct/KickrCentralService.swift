@@ -735,9 +735,16 @@ final class KickrCentralService: NSObject {
 
 #if DEBUG
 extension KickrCentralService {
-    func stageScreenshot(name: String, state: ProductConnectionState) {
+    func stageScreenshot(
+        name: String,
+        state: ProductConnectionState,
+        candidates: [BluetoothCandidate] = [],
+        stalled: Bool = false
+    ) {
         selectedID = ScreenshotFixture.kickrID
         selectedName = name
+        self.candidates = candidates
+        connectionIsStalled = stalled
         hasFTMSControl = state == .ready
         self.state = state
     }

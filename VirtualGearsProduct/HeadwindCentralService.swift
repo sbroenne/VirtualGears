@@ -621,17 +621,28 @@ final class HeadwindCentralService: NSObject {
 
 #if DEBUG
 extension HeadwindCentralService {
-    func stageScreenshot(name: String, speed: Int) {
+    func stageScreenshot(
+        name: String,
+        speed: Int,
+        candidates: [BluetoothCandidate] = [],
+        state: ProductConnectionState = .ready,
+        manual: Bool = true,
+        pending: Bool = false,
+        error: String? = nil,
+        stalled: Bool = false
+    ) {
         selectedID = ScreenshotFixture.headwindID
         selectedName = name
-        state = .ready
-        mode = .manual
+        self.candidates = candidates
+        self.state = state
+        mode = manual ? .manual : .heartRate
         manualSpeed = speed
         desiredManualSpeed = speed
-        requestedManual = true
+        requestedManual = manual
         lastSensorMode = .heartRate
-        commandError = nil
-        isCommandPending = false
+        commandError = error
+        isCommandPending = pending
+        connectionIsStalled = stalled
     }
 }
 #endif
