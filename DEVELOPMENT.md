@@ -22,6 +22,19 @@ foreground reconnect and interrupted-ride reset work until the demo is closed.
 The demo therefore checks product navigation and local gear behavior only; it
 does not add any physical-hardware evidence.
 
+Build 1.0 (17) exposed a real-device discovery regression on 2026-08-21: Settings
+found one original Zwift Click but remained on "Checking for others" and never
+saved it, so the Ready to shift screen correctly had no configured Click status
+to show. The discovery deadline had been owned by a SwiftUI change callback that
+could miss scanning starting during first appearance. It is now keyed to both
+the service's scan generation and current scanning state, including scans that
+start before the view's change observer is installed. Startup now runs Click and
+Headwind discovery independently and applies the trainer's tested selection
+rule to both: one result connects automatically, while multiple results are not
+guessed. The corrected development build was installed over USB on the same
+iPhone 17 Pro that exposed the regression; after waking the original Click with
+a button press, it was saved, connected automatically and appeared in the app.
+
 ## Build and test
 
 Run the hardware-independent test suite:

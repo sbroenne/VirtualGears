@@ -179,6 +179,17 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertEqual(ridingApp.label, "Riding app, Waiting for connection")
     }
 
+    func testSingleDiscoveredClickIsSavedInsteadOfCheckingForever() {
+        launch("-shotSettingsClickSingleCandidate")
+        assertVisible("screen.settings")
+        app.staticTexts["Zwift Click"].firstMatch.tap()
+
+        XCTAssertTrue(
+            app.staticTexts["Your Click"].waitForExistence(timeout: 12),
+            "A sole Click was not selected when the discovery window ended"
+        )
+    }
+
     func testRideShowsAllStatusIconsAndPrimaryControls() {
         launch("-shotRide")
 
