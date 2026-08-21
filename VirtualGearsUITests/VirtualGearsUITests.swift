@@ -755,13 +755,33 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Chainrings on the bike"].waitForExistence(timeout: 2)
         )
+        assertVisibleElement(app.staticTexts["One chainring"])
+        let ring38 = app.buttons.matching(
+            NSPredicate(format: "label == %@", "38")
+        ).firstMatch
+        let ring40 = app.buttons.matching(
+            NSPredicate(format: "label == %@", "40")
+        ).firstMatch
+        assertVisibleElement(ring38)
+        assertVisibleElement(ring40)
+        XCTAssertLessThan(ring38.frame.minY, ring40.frame.minY)
         let defaultChainring = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "50/34")
         ).firstMatch
         let otherChainring = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "38")
         ).firstMatch
+        for _ in 0..<3 where !app.staticTexts["Two chainrings"].exists {
+            app.swipeUp()
+        }
+        assertVisibleElement(app.staticTexts["Two chainrings"])
+        for _ in 0..<3 where !defaultChainring.exists {
+            app.swipeUp()
+        }
         XCTAssertTrue(defaultChainring.isSelected)
+        for _ in 0..<3 where !otherChainring.isHittable {
+            app.swipeDown()
+        }
         XCTAssertFalse(otherChainring.isSelected)
         otherChainring.tap()
         XCTAssertTrue(otherChainring.isSelected)
@@ -1386,24 +1406,18 @@ final class VirtualGearsUITests: XCTestCase {
         app.launch()
     }
 
-    func testTheChainReminderNeverAppearsOrDisappearsAcrossStartupStates() {
-        // It used to live only inside the searching and chooser cards, so it
-        // vanished the instant the trainer connected and the button above it
-        // jumped up to fill the gap. It must now be part of the fixed layout,
-        // present in every startup state.
-        // Once a gear is confirmed the reminder names it, which is what makes
-        // it checkable against the bike.
+    func testStartupDoesNotRepeatTheChainPositionAfterSetup() {
         let reminderText = "Chain on 34 at the front and 15 at the back, and "
             + "leave it there."
 
         launch("-shotStarting")
-        assertVisibleElement(app.staticTexts[reminderText])
+        XCTAssertFalse(app.staticTexts[reminderText].exists)
 
         launch("-shotReady")
-        assertVisibleElement(app.staticTexts[reminderText])
+        XCTAssertFalse(app.staticTexts[reminderText].exists)
 
         launch("-shotFailed")
-        assertVisibleElement(app.staticTexts[reminderText])
+        XCTAssertFalse(app.staticTexts[reminderText].exists)
     }
 
     /// Samples the average colour of an element as it is actually rendered.

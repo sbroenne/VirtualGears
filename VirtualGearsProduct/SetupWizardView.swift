@@ -154,7 +154,6 @@ private struct WizardBikeSetupStep: View {
                 .controlSize(.large)
                 .fontWeight(.semibold)
                 .padding()
-                .background(.bar)
                 .accessibilityIdentifier("wizard.useBikeSetup")
         }
     }
@@ -246,7 +245,6 @@ private struct WizardParkedGearStep: View {
                         || store.configuration.parkedGearPutsGearsOutOfReach
                 )
                 .padding()
-                .background(.bar)
         }
         .onAppear {
             if store.configuration.parkedGear == nil {

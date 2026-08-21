@@ -2241,17 +2241,35 @@ struct PhysicalChainringView: View {
 
     var body: some View {
         Form {
-            ForEach(DrivetrainCatalog.chainrings) { option in
-                ChoiceRow(
-                    title: option.name,
-                    selected: option.teeth == teeth
-                ) {
-                    teeth = option.teeth
+            Section("One chainring") {
+                ForEach(options(withRingCount: 1)) { option in
+                    choice(for: option)
+                }
+            }
+
+            Section("Two chainrings") {
+                ForEach(options(withRingCount: 2)) { option in
+                    choice(for: option)
                 }
             }
         }
         .navigationTitle("Chainrings on the bike")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func options(withRingCount count: Int) -> [ChainringOption] {
+        DrivetrainCatalog.chainrings
+            .filter { $0.teeth.count == count }
+            .sorted { $0.teeth.lexicographicallyPrecedes($1.teeth) }
+    }
+
+    private func choice(for option: ChainringOption) -> some View {
+        ChoiceRow(
+            title: option.name,
+            selected: option.teeth == teeth
+        ) {
+            teeth = option.teeth
+        }
     }
 }
 
