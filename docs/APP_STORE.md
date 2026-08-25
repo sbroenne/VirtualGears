@@ -259,8 +259,10 @@ Before changing `CURRENT_PROJECT_VERSION`, archiving or uploading:
 5. If available, also connect the original Zwift Click and Headwind. Record
    exactly what was tested in `DEVELOPMENT.md`.
 
-No physical iPad was available on 25 August 2026; `devicectl` listed only the
-paired iPhone and Apple Watch. The universal upload is therefore blocked.
+An iPad Air (`iPad14,10`, iPadOS 26.6.1) was connected by USB and paired on
+25 August 2026. Deployment remains blocked because Developer Mode is disabled;
+enabling it requires an on-device restart and confirmation. No iPad Bluetooth
+behavior has been validated yet, so the universal upload remains blocked.
 
 In Xcode:
 

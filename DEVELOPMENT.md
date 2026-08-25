@@ -164,18 +164,30 @@ widths and regular full-screen iPad widths. The same geometry-driven layout is
 used when an iPad window becomes compact, but Split View and Stage Manager still
 need the physical iPad check below. CoreBluetooth behavior must also be checked
 on physical hardware.
-On 25 August 2026:
+
+On 25 August 2026 the iPad was connected by USB and paired successfully:
 
 ```text
 xcrun devicectl list devices
-Apple Watch Ultra — available (paired)
-iPhone 17 Pro — available (paired)
+iPad Air (2) — iPad14,10 — iPadOS 26.6.1 (23G83)
+UDID 00008112-001C381E3441A01E — wired — available (paired)
 ```
 
-No iPad was connected. Therefore build 18 remains unchanged and no archive or
-TestFlight upload was made.
+The signed development build could not yet be installed because Developer Mode
+was disabled on the iPad. Xcode reported:
 
-Before the first universal upload, connect a physical iPad and record:
+```text
+Developer Mode disabled
+To use iPad Air (2) for development, enable Developer Mode in
+Settings → Privacy & Security.
+```
+
+Enabling Developer Mode requires an on-device restart and confirmation. No app
+or Bluetooth behavior has therefore been validated on this iPad yet. Build 18
+remains unchanged and no archive or TestFlight upload was made.
+
+Before the first universal upload, enable Developer Mode, unlock this paired
+iPad, install the current development build and record:
 
 1. Full-screen, portrait and landscape launch; compact Split View and a Stage
    Manager window; Accessibility Dynamic Type on setup, Settings and ride.
