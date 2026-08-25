@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import VirtualGearsCore
 
@@ -646,6 +647,16 @@ private struct ShiftingSetupView: View {
             if store.configuration.usesClick {
                 click.autoConnectSavedDevice()
             }
+#if DEBUG
+            if ScreenshotFixture.current == .settingsClickSingleCandidate {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                click.stageDiscoveredCandidate(BluetoothCandidate(
+                    id: ScreenshotFixture.clickID,
+                    name: "Zwift Click"
+                ))
+            }
+#endif
         }
         .onChange(of: click.latestButtonEvent) { _, event in
             guard click.identificationCandidateID != nil, let event else { return }
@@ -1681,9 +1692,14 @@ private struct DeviceDiscoverySection: View {
     let select: (BluetoothCandidate) -> Void
 
     @State private var discovery = DeviceDiscoveryState()
-    @State private var searchTask: Task<Void, Never>?
+    @State private var searchDeadline: Date?
 
     private let searchDuration = DeviceDiscoveryPolicy.searchDuration
+    private let searchTicks = Timer.publish(
+        every: 0.25,
+        on: .main,
+        in: .common
+    ).autoconnect()
 
     init(
         deviceName: String,
@@ -1823,6 +1839,12 @@ private struct DeviceDiscoverySection: View {
         ), initial: true) { _, clock in
             updateSearchClock(clock)
         }
+        .onReceive(searchTicks) { now in
+            guard let searchDeadline, now >= searchDeadline,
+                  isScanning else { return }
+            self.searchDeadline = nil
+            finishSearch()
+        }
         .onChange(of: candidates.count) { _, count in
             discovery.observe(candidateCount: count)
         }
@@ -1835,8 +1857,7 @@ private struct DeviceDiscoverySection: View {
             }
         }
         .onDisappear {
-            searchTask?.cancel()
-            searchTask = nil
+            searchDeadline = nil
             if discovery.phase != .idle || isScanning {
                 cancelScanning()
             }
@@ -1872,20 +1893,11 @@ private struct DeviceDiscoverySection: View {
     }
 
     private func updateSearchClock(_ clock: DiscoveryClock) {
-        searchTask?.cancel()
-        searchTask = nil
-        guard clock.isScanning else { return }
-        searchTask = Task { @MainActor in
-            do {
-                try await Task.sleep(for: searchDuration)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled, isScanning,
-                  scanGeneration == clock.scanGeneration else { return }
-            searchTask = nil
-            finishSearch()
-        }
+        searchDeadline = clock.isScanning
+            ? Date.now.addingTimeInterval(
+                TimeInterval(searchDuration.components.seconds)
+            )
+            : nil
     }
 
     private func finishSearch() {

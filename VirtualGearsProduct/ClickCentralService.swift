@@ -567,6 +567,10 @@ extension ClickCentralService {
     func stageScreenshotPressedButton(_ button: ZwiftClickButton) {
         pressedButton = button
     }
+
+    func stageDiscoveredCandidate(_ candidate: BluetoothCandidate) {
+        candidates = [candidate]
+    }
 }
 #endif
 

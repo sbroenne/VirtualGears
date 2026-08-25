@@ -185,6 +185,11 @@ final class VirtualGearsUITests: XCTestCase {
         app.staticTexts["Zwift Click"].firstMatch.tap()
 
         XCTAssertTrue(
+            app.staticTexts["Found one. Checking for others…"]
+                .waitForExistence(timeout: 4),
+            "The fixture did not discover its sole Click after scanning began"
+        )
+        XCTAssertTrue(
             app.staticTexts["Your Click"].waitForExistence(timeout: 12),
             "A sole Click was not selected when the discovery window ended"
         )
