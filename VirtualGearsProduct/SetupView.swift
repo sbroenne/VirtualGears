@@ -1681,6 +1681,7 @@ private struct DeviceDiscoverySection: View {
     let select: (BluetoothCandidate) -> Void
 
     @State private var discovery = DeviceDiscoveryState()
+    @State private var searchTask: Task<Void, Never>?
 
     private let searchDuration = DeviceDiscoveryPolicy.searchDuration
 
@@ -1816,18 +1817,11 @@ private struct DeviceDiscoverySection: View {
                 beginSearch()
             }
         }
-        .task(id: DiscoveryClock(
+        .onChange(of: DiscoveryClock(
             scanGeneration: scanGeneration,
             isScanning: isScanning
-        )) {
-            guard isScanning else { return }
-            do {
-                try await Task.sleep(for: searchDuration)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled, isScanning else { return }
-            finishSearch()
+        ), initial: true) { _, clock in
+            updateSearchClock(clock)
         }
         .onChange(of: candidates.count) { _, count in
             discovery.observe(candidateCount: count)
@@ -1841,6 +1835,8 @@ private struct DeviceDiscoverySection: View {
             }
         }
         .onDisappear {
+            searchTask?.cancel()
+            searchTask = nil
             if discovery.phase != .idle || isScanning {
                 cancelScanning()
             }
@@ -1872,6 +1868,23 @@ private struct DeviceDiscoverySection: View {
         startScanning()
         if !isScanning {
             handleConnectionState(connectionState)
+        }
+    }
+
+    private func updateSearchClock(_ clock: DiscoveryClock) {
+        searchTask?.cancel()
+        searchTask = nil
+        guard clock.isScanning else { return }
+        searchTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: searchDuration)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, isScanning,
+                  scanGeneration == clock.scanGeneration else { return }
+            searchTask = nil
+            finishSearch()
         }
     }
 

@@ -190,6 +190,15 @@ therefore physically verified, but app-owned layouts, multitasking and Bluetooth
 behavior have not been claimed as physically validated. Build 18 remains
 unchanged and no archive or TestFlight upload was made.
 
+The first physical Click discovery attempt found the original Click but remained
+on "Found one. Checking for others…" after the search window. A direct Mac probe
+then found the same Click at -59 dBm, connected, reported a 100% battery and read
+its button presses, ruling out a sleeping or unavailable accessory. The settings
+discovery deadline now uses an explicit task owned by the view state rather than
+a SwiftUI `.task(id:)`, so candidate-driven view updates cannot discard the
+deadline. The single-candidate regression passes on iPhone and iPad simulators;
+the corrected build still requires a physical iPad retest.
+
 Before the first universal upload, unlock this paired iPad, enable **Settings →
 Developer → Enable UI Automation** for the automated checks where available,
 and record:
