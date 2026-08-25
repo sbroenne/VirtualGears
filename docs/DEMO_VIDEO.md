@@ -45,7 +45,7 @@ iPad Air running iPadOS 26.6.1 before build 19; that evidence is recorded in
 **Delete the app from the phone first.** Deleting it takes its Bluetooth
 permission with it, so the prompt appears again on the next launch, and the app
 starts with no remembered trainer — exactly what an App Review device sees.
-Then install build 1.0 (19) after it appears in TestFlight, but **do not open
+Then install the latest TestFlight build, currently 1.0 (19), but **do not open
 it**. The
 recording has to start from the Home screen.
 

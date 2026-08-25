@@ -3,13 +3,13 @@
 Everything Apple will ask you for, written out so you can copy and paste it.
 Work top to bottom.
 
-!!! warning "Universal release is ready to upload"
+!!! warning "Universal build uploaded; not submitted for review"
 
     The universal iPhone/iPad target, iPad screenshots and shared-device wording
-    below are prepared repository metadata, not a claim about the live listing.
-    Build 18 remains the current TestFlight build until build 19 finishes
-    uploading and processing. The physical iPad Bluetooth gate in Stage 5 passed
-    on 25 August 2026.
+    are complete. Build 19 was uploaded on 25 August 2026, is available to the internal
+    `Insiders` TestFlight group, and is attached to App Store version 1.0. The
+    physical iPad Bluetooth gate in Stage 5 passed. The version has not been
+    submitted for App Review.
 
 ---
 
@@ -68,118 +68,74 @@ iPhone and iPad and when advertising itself as a trainer.
     Your trainer has no gears. Your riding app may not offer virtual shifting.
     Virtual Gears fixes both.
 
-    Newer trainers gained virtual shifting in 2024. The Wahoo KICKR V5 did not, and
-    Wahoo has confirmed it never will — the older hardware cannot support it. Many
-    riding apps do not provide virtual shifting either.
+    Virtual Gears sits between your trainer and riding app. It appears as a normal
+    Bluetooth FTMS trainer, so compatible riding apps need no special virtual-shifting
+    support. Your riding app still controls the route and hills; Virtual Gears adds
+    the gears.
 
-    Virtual Gears was built and physically tested with a KICKR V5. Other direct-drive
-    KICKR models are expected to work but have not yet been physically tested. KICKR
-    SNAP and KICKR BIKE are not supported.
-
-    Virtual Gears sits between both. It appears to compatible riding apps as a normal
-    FTMS trainer, so they need no special virtual-shifting support. Your riding app still
-    controls the route and its hills; Virtual Gears adds the gears.
-
-    NOT ZWIFT-NATIVE VIRTUAL SHIFTING
-    Virtual Gears supplies and displays its own gears on your iPhone or iPad through an ordinary
-    FTMS trainer connection; it does not support Zwift's native gear system.
-
-    You get a full set of gears you can shift through mid-ride — either 24 evenly
-    spaced gears with an extra-low climbing range or the gearing of a real
-    groupset from Shimano, SRAM or Campagnolo.
+    Built and physically tested with Wahoo KICKR V5. Other direct-drive KICKR models
+    are expected to work but have not been physically tested. KICKR SNAP, KICKR BIKE
+    and trainers from other brands are not supported.
 
     START WITH THE BIKE
-    Required first-run setup asks only what is physically on the bike: the
-    chainrings and either its cassette or a Zwift Cog/other single sprocket. Virtual
-    Gears then recommends where to leave the chain and starts with the ready-made
-    Standard 24 virtual gears. Named groupsets and custom gears remain available
-    later in Settings.
+    First-run setup asks what is physically on your bike: its chainrings and cassette,
+    Zwift Cog or other single sprocket. Virtual Gears recommends where to leave the
+    chain and starts with ready-made Standard 24 virtual gears. Named Shimano, SRAM
+    and Campagnolo groupsets and custom gearing remain available in Settings.
 
-    ONE PHYSICAL FACT CANNOT BE GUESSED
-    Your bike never shifts. It stays in one gear and Virtual Gears changes gear by
-    changing the wheel size the trainer works from, so what your legs feel is that
-    parked gear multiplied by the wheel size the app sets. Virtual Gears therefore
-    needs to know which gear your bike is parked in. It works out the quietest gear
-    that still keeps every gear reachable and recommends it. If setup is unfinished,
-    Settings gives one next action: fix gearing first, then confirm the parked gear.
+    SHIFT WITHOUT DISCONNECTING
+    Open the app and it finds your KICKR, connects, and makes the trainer available to
+    your riding app automatically. Tap Start Shifting to engage the gears. Tap Stop
+    Shifting to restore normal trainer gearing without disconnecting or stopping the
+    ride in your riding app.
 
-    A TRAINER PROXY, WITH SHIFTING WHEN YOU WANT IT
-    Open the app and it finds your trainer, connects to it and appears to your riding
-    app on its own. Tap Start Shifting to engage the gears and Stop Shifting to remove
-    them without disconnecting or stopping the ride in your riding app. Optional original Zwift Click and
-    Wahoo Headwind accessories are found and remembered automatically too. If more than
-    one matching device is found, Virtual Gears asks rather than guessing. If Clicks have
-    identical names, pressing a button identifies the one you want.
+    This is not Zwift-native virtual shifting. Virtual Gears supplies and displays its
+    own gears on your iPhone or iPad through an ordinary FTMS connection.
 
     GEARS YOU CAN SEE
-    Your gears are drawn, not listed as numbers — one bar per gear, short bars for
-    small steps and tall bars for the ones your legs will notice. Choose the 24
-    virtual gears, or pick the groupset your bike has — Shimano, SRAM or Campagnolo,
-    with your own chainrings and cassette available if it is not listed — and get the
-    gears you would actually ride. The ladder is walked the way an electronic
-    groupset shifts: one cog at a time, changing chainring at the right moment, so
-    cross-chained and repeated combinations never appear and no shift is too small
-    to feel.
+    The gear ladder is drawn rather than shown as a bare number: short bars for small
+    steps and taller bars for changes your legs will notice. Use 24 wide-range virtual
+    gears or copy a real groupset. Cross-chained and duplicate combinations are left
+    out.
 
-    Virtual Gears is not affiliated with or endorsed by Zwift, Wahoo, Shimano, SRAM
-    or Campagnolo. Those names describe only the gearing being simulated.
+    BUILT FOR RIDING
+    Two large shift buttons are easy to hit without looking down, while the current
+    gear is the largest thing on screen. Hold a button to keep shifting. A gear appears
+    only after the trainer confirms it, and every gear stays inside a range tested on
+    a real KICKR V5.
 
-    BUILT FOR RIDING, NOT FOR READING
-    Two large shift buttons stay easy to hit without looking down or sitting up,
-    while the current gear is the biggest thing on screen. Hold one to keep shifting.
-    The screen stays awake while the trainer proxy is available, including before
-    shifting starts and after shifting stops.
-
-    ACCESSIBLE RIDE CONTROLS
     VoiceOver reads the current gear and announces confirmed changes. The gear readout
-    is adjustable with VoiceOver gestures: swipe up for a harder gear and down for an
-    easier one. The app uses standard system controls and respects larger text, Reduce
+    supports adjustable VoiceOver gestures. The app respects larger text, Reduce
     Motion and Differentiate Without Color.
 
     TRY IT WITHOUT A TRAINER
-    Tap Try Demo for a clearly marked simulated ride without Bluetooth. Shift through
-    the gear ladder and watch the trainer's wheel size change with every gear. Compare
-    virtual and real-bike gearing, and try example Click, Headwind and riding-app
-    controls. Demo choices never replace saved equipment.
+    Tap Try Demo for a clearly marked simulated ride without Bluetooth. Explore the
+    production gear picker, large ride controls, virtual and real-bike gearing, and
+    example equipment status. Demo choices never replace saved equipment.
 
-    WORKS WITH THE APPS YOU ALREADY USE
-    Virtual Gears appears as an ordinary FTMS indoor trainer. That adds virtual shifting
-    to compatible apps that have none of their own, without requiring a plugin or
-    account. Apps that set their own wheel size are honoured — the gears are rebuilt
-    around whatever size the app asks for. If an app sends no size, Virtual Gears uses
-    the optional Wheel circumference saved in Settings, or the 2105 mm (700×25 road)
-    default.
+    OPTIONAL ZWIFT CLICK
+    Wake an original Zwift Click and Virtual Gears finds and remembers it automatically.
+    It shifts alongside the on-screen buttons and visibly presses the matching control,
+    but is never required.
 
-    OPTIONAL SHIFT BUTTONS
-    Wake an original Zwift Click before opening Virtual Gears and it connects
-    automatically. It shifts alongside the on-screen buttons and visibly presses
-    the matching control, but is never required.
+    OPTIONAL KICKR HEADWIND
+    Connect a Wahoo KICKR HEADWIND and leave control with its own sensor or choose a
+    manual speed from the ride screen. The fan is optional and never blocks a ride.
 
-    OPTIONAL HEADWIND CONTROL
-    Turn on a Wahoo KICKR HEADWIND before opening Virtual Gears and it connects
-    automatically. Leave fan speed with the Headwind's own sensor, or choose a manual
-    speed from the ride screen. The fan is optional and never blocks a ride.
-
-    CAREFUL WITH YOUR TRAINER
-    A gear is only shown after your trainer confirms it. Every gear stays inside a
-    range tested on a real trainer.
+    COMPATIBLE RIDING APPS
+    Virtual Gears works as an ordinary FTMS indoor trainer. Apps that set a wheel size
+    are honoured: gears are rebuilt around that size. Otherwise the app uses your
+    optional saved circumference or a 2105 mm default.
 
     NOT AN ERG APP
-    Workouts that set a target power are refused. Virtual Gears controls how hard a
-    gear feels, not your wattage.
+    Workouts that set target power are refused. Virtual Gears controls how hard a gear
+    feels, not your wattage.
 
-    NOTE ON WHEEL CIRCUMFERENCE
-    Virtual Gears cannot read a wheel circumference previously set in the Wahoo app.
-    If you use a custom value, enter the same value as Wheel circumference in
-    Virtual Gears Settings before shifting. Common-size shortcuts and direct entry
-    support values from 1800 to 2400 mm. A value sent by the riding app takes precedence.
+    NO ACCOUNTS, INTERNET OR TRACKING
+    The app has no networking code. Nothing about your ride leaves your device.
 
-    NO ACCOUNTS, NO INTERNET, NO TRACKING
-    The app has no networking code in it at all. Nothing about your ride leaves your
-    device.
-
-    Requires a compatible Wahoo KICKR. Built and physically tested with KICKR V5.
-    Virtual Gears is not made by, endorsed by or affiliated with Wahoo Fitness.
+    Virtual Gears is not affiliated with or endorsed by Wahoo, Zwift, Shimano, SRAM or
+    Campagnolo. Those names describe compatible hardware or simulated gearing only.
 
 ### Keywords (100 characters max, comma separated, no spaces)
 
@@ -238,8 +194,8 @@ Required iPad set: **13-inch iPad**. The matching portrait images under
 6. `headwind-control.png`
 
 These assets prove the app-owned layout at App Store dimensions. They do not
-prove Bluetooth behavior. Upload them only with the first universal build after
-the physical iPad gate below passes.
+prove Bluetooth behavior. All six were uploaded to the 13-inch iPad screenshot
+set with build 19 after the physical iPad gate below passed.
 
 ### Privacy answers ("App Privacy" section)
 
@@ -270,6 +226,13 @@ KICKR flow above, including connected Click shifts, normal wheel-size restoratio
 and riding-app continuity across Stop. The physical Bluetooth gate is complete;
 simulator coverage remains the evidence for the automated layout matrix.
 
+Build 19 was archived and uploaded successfully on 25 August 2026. App Store
+Connect reports it as `Validated`, with minimum iOS 17.0, arm64 architecture and
+device family `iPhone, iPad`. It is `Ready to Submit` in TestFlight, belongs to
+the internal `Insiders` group, and is attached to App Store version 1.0. The
+universal promotional text, description, review notes and six iPad screenshots
+were saved live. The version remains unsubmitted for review.
+
 In Xcode:
 
 1. Choose **Any iOS Device** as the destination (not a simulator).
@@ -277,18 +240,18 @@ In Xcode:
 3. When the Organizer opens: **Distribute App** → **App Store Connect** → **Upload**.
 4. Accept the automatic signing offers.
 
-The build appears in App Store Connect after 5–15 minutes of processing. Attach it
-to the version, then **Add for Review** → **Submit**.
+The build appears in App Store Connect after processing. Attach it to the
+version, then use **Add for Review** → **Submit** only when the release should be
+sent to App Review.
 
 ## Stage 6 — The review notes (do not skip this)
 
 The reviewer does not need a smart trainer to inspect the app, but App Review
 still asked for a screen recording. Both matter.
 
-This is the note block to make live with the universal build after the physical
-iPad gate. Until then, keep the current iPhone-only note in **App Review
-Information → Notes**. It answers, in order, the seven questions App Review
-asked when they rejected 1.0 (5) under Guideline 2.1:
+This note block was saved live with build 19 after the physical iPad gate. It
+answers, in order, the seven questions App Review asked when they rejected
+1.0 (5) under Guideline 2.1:
 
     VIRTUAL GEARS - APP REVIEW NOTES
 
@@ -343,7 +306,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (18). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (19). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -434,15 +397,12 @@ saved Click. The corrected development build was physically checked on the
 iPhone 17 Pro with the original Click that exposed the regression. Build 17
 should not be submitted for App Review; use build 18.
 
-The live App Store description still carries the old "starts the session"
-sentence. It is corrected in this file and needs the same edit in App Store
-Connect on the next metadata change.
-
 Build 19 makes the target universal for iPhone and iPad while
 keeping iOS/iPadOS 17 as the minimum. It adds all four iPad orientations without
 requiring full screen, caps ride controls at deliberate iPad sizes, and runs the
 UI suite on iPhone 17 Pro, iPad mini and iPad Pro 13-inch simulators. The
-physical iPad gate above is complete, so build 19 is eligible for upload.
+physical iPad gate above passed before build 19 was uploaded. Its universal
+description and screenshots are now live in the editable App Store version.
 
 Uploading without opening Xcode:
 
