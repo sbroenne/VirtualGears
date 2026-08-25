@@ -40,7 +40,8 @@ user-generated content — do not exist in this app. There is nothing to film.
 **Delete the app from the phone first.** Deleting it takes its Bluetooth
 permission with it, so the prompt appears again on the next launch, and the app
 starts with no remembered trainer — exactly what an App Review device sees.
-Then install 1.0 (6) again from TestFlight, but **do not open it**. The
+Then install the latest TestFlight build, currently 1.0 (18), but **do not open
+it**. The
 recording has to start from the Home screen.
 
 Also:
@@ -172,4 +173,5 @@ video:
 >
 > No hardware is needed to review the app: tap "Try Demo" on the first screen.
 
-The build attached to the version is now 1.0 (6), not the rejected 1.0 (5).
+Attach build 1.0 (18), not the rejected 1.0 (5), to the version before
+resubmitting.

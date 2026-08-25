@@ -78,58 +78,75 @@ struct VirtualGearsHomeView: View {
         let needsClick = !store.configuration.usesClick
         let needsHeadwind = !store.configuration.usesHeadwind
 
-        needsClick ? click.startScanning() : click.autoConnectSavedDevice()
-        needsHeadwind
-            ? headwind.startScanning() : headwind.autoConnectSavedDevice()
-        guard needsClick || needsHeadwind else { return }
+        async let clickDiscovery: Void = discoverClick(ifNeeded: needsClick)
+        async let headwindDiscovery: Void = discoverHeadwind(ifNeeded: needsHeadwind)
+        _ = await (clickDiscovery, headwindDiscovery)
+    }
 
-        // The first Bluetooth permission prompt can outlive the view's initial
-        // task turn. Start the discovery window only after scanning really began.
+    private func waitUntilScanning(
+        _ isScanning: @escaping () -> Bool
+    ) async -> Bool {
         for _ in 0..<300 {
-            let clickStarted = !needsClick || click.isScanning
-            let headwindStarted = !needsHeadwind || headwind.isScanning
-            if clickStarted && headwindStarted { break }
+            if isScanning() { return true }
             do {
                 try await Task.sleep(for: .milliseconds(100))
             } catch {
-                return
+                return false
             }
         }
-        guard !Task.isCancelled else { return }
-        let clickScanGeneration = click.scanGeneration
-        let headwindScanGeneration = headwind.scanGeneration
+        return false
+    }
+
+    private func discoverClick(ifNeeded needed: Bool) async {
+        guard needed else {
+            click.autoConnectSavedDevice()
+            return
+        }
+        click.startScanning()
+        guard await waitUntilScanning({ click.isScanning }) else { return }
+        let generation = click.scanGeneration
         do {
             try await Task.sleep(for: DeviceDiscoveryPolicy.searchDuration)
         } catch {
             return
         }
-
-        if needsClick, !store.configuration.usesClick,
-           click.scanGeneration == clickScanGeneration {
-            if click.candidates.count == 1, let candidate = click.candidates.first {
-                store.configuration.rememberClick(
-                    named: candidate.name,
-                    id: candidate.id
-                )
-                click.selectAndConnect(candidate.id)
-            } else {
-                click.stopScanning(reconnectSavedDevice: false)
-            }
+        guard !store.configuration.usesClick,
+              click.scanGeneration == generation else { return }
+        let seen = click.candidates.map { DiscoveredTrainer(id: $0.id) }
+        guard case let .connect(id) = TrainerPicker.choice(from: seen),
+              let candidate = click.candidates.first(where: { $0.id == id })
+        else {
+            click.stopScanning(reconnectSavedDevice: false)
+            return
         }
+        store.configuration.rememberClick(named: candidate.name, id: candidate.id)
+        click.selectAndConnect(candidate.id)
+    }
 
-        if needsHeadwind, !store.configuration.usesHeadwind,
-           headwind.scanGeneration == headwindScanGeneration {
-            if headwind.candidates.count == 1,
-               let candidate = headwind.candidates.first {
-                store.configuration.rememberHeadwind(
-                    named: candidate.name,
-                    id: candidate.id
-                )
-                headwind.selectAndConnect(candidate.id)
-            } else {
-                headwind.stopScanning(reconnectSavedDevice: false)
-            }
+    private func discoverHeadwind(ifNeeded needed: Bool) async {
+        guard needed else {
+            headwind.autoConnectSavedDevice()
+            return
         }
+        headwind.startScanning()
+        guard await waitUntilScanning({ headwind.state == .scanning }) else { return }
+        let generation = headwind.scanGeneration
+        do {
+            try await Task.sleep(for: DeviceDiscoveryPolicy.searchDuration)
+        } catch {
+            return
+        }
+        guard !store.configuration.usesHeadwind,
+              headwind.scanGeneration == generation else { return }
+        let seen = headwind.candidates.map { DiscoveredTrainer(id: $0.id) }
+        guard case let .connect(id) = TrainerPicker.choice(from: seen),
+              let candidate = headwind.candidates.first(where: { $0.id == id })
+        else {
+            headwind.stopScanning(reconnectSavedDevice: false)
+            return
+        }
+        store.configuration.rememberHeadwind(named: candidate.name, id: candidate.id)
+        headwind.selectAndConnect(candidate.id)
     }
 }
 

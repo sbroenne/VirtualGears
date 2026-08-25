@@ -519,6 +519,7 @@ private struct TrainerSetupView: View {
                 candidates: kickr.candidates,
                 selectedID: kickr.selectedID,
                 isScanning: kickr.isScanning,
+                scanGeneration: kickr.scanGeneration,
                 connectionState: kickr.state,
                 initialPhase: stagedDiscoveryPhase(for: .trainer),
                 startScanning: kickr.startScanning,
@@ -606,6 +607,7 @@ private struct ShiftingSetupView: View {
                 candidates: click.candidates,
                 selectedID: click.selectedID,
                 isScanning: click.isScanning,
+                scanGeneration: click.scanGeneration,
                 connectionState: click.state,
                 initialPhase: stagedDiscoveryPhase(for: .click),
                 startScanning: click.startScanning,
@@ -740,6 +742,7 @@ private struct HeadwindSetupView: View {
                 candidates: headwind.candidates,
                 selectedID: headwind.selectedID,
                 isScanning: headwind.state == .scanning,
+                scanGeneration: headwind.scanGeneration,
                 connectionState: headwind.state,
                 initialPhase: stagedDiscoveryPhase(for: .headwind),
                 startScanning: headwind.startScanning,
@@ -1656,6 +1659,7 @@ private struct DeviceDiscoverySection: View {
     let candidates: [BluetoothCandidate]
     let selectedID: UUID?
     let isScanning: Bool
+    let scanGeneration: Int
     let connectionState: ProductConnectionState
     let startScanning: () -> Void
     let stopScanning: () -> Void
@@ -1666,8 +1670,6 @@ private struct DeviceDiscoverySection: View {
     let select: (BluetoothCandidate) -> Void
 
     @State private var discovery = DeviceDiscoveryState()
-    @State private var timeoutTask: Task<Void, Never>?
-    @State private var timeoutScheduled = false
 
     private let searchDuration = DeviceDiscoveryPolicy.searchDuration
 
@@ -1679,6 +1681,7 @@ private struct DeviceDiscoverySection: View {
         candidates: [BluetoothCandidate],
         selectedID: UUID?,
         isScanning: Bool,
+        scanGeneration: Int,
         connectionState: ProductConnectionState,
         initialPhase: DeviceDiscoveryState.Phase = .idle,
         startScanning: @escaping () -> Void,
@@ -1696,6 +1699,7 @@ private struct DeviceDiscoverySection: View {
         self.candidates = candidates
         self.selectedID = selectedID
         self.isScanning = isScanning
+        self.scanGeneration = scanGeneration
         self.connectionState = connectionState
         var initialDiscovery = DeviceDiscoveryState()
         switch initialPhase {
@@ -1801,8 +1805,18 @@ private struct DeviceDiscoverySection: View {
                 beginSearch()
             }
         }
-        .onChange(of: isScanning) { _, scanning in
-            if scanning { scheduleTimeoutIfNeeded() }
+        .task(id: DiscoveryClock(
+            scanGeneration: scanGeneration,
+            isScanning: isScanning
+        )) {
+            guard isScanning else { return }
+            do {
+                try await Task.sleep(for: searchDuration)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled, isScanning else { return }
+            finishSearch()
         }
         .onChange(of: candidates.count) { _, count in
             discovery.observe(candidateCount: count)
@@ -1812,13 +1826,10 @@ private struct DeviceDiscoverySection: View {
         }
         .onChange(of: hasSavedDevice) { _, saved in
             if saved {
-                timeoutTask?.cancel()
-                timeoutScheduled = false
                 discovery.reset()
             }
         }
         .onDisappear {
-            timeoutTask?.cancel()
             if discovery.phase != .idle || isScanning {
                 cancelScanning()
             }
@@ -1846,33 +1857,14 @@ private struct DeviceDiscoverySection: View {
     }
 
     private func beginSearch() {
-        timeoutTask?.cancel()
-        timeoutScheduled = false
         discovery.start()
         startScanning()
-        if isScanning {
-            scheduleTimeoutIfNeeded()
-        } else {
+        if !isScanning {
             handleConnectionState(connectionState)
         }
     }
 
-    private func scheduleTimeoutIfNeeded() {
-        guard !timeoutScheduled else { return }
-        timeoutScheduled = true
-        timeoutTask = Task { @MainActor in
-            do {
-                try await Task.sleep(for: searchDuration)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled else { return }
-            finishSearch()
-        }
-    }
-
     private func finishSearch() {
-        timeoutScheduled = false
         stopScanning()
         if candidates.count == 1, let candidate = candidates.first,
            candidate.compatibility.isUsable {
@@ -1888,17 +1880,18 @@ private struct DeviceDiscoverySection: View {
               !isScanning else { return }
         if case let .unavailable(reason) = state,
            !reason.localizedCaseInsensitiveContains("starting") {
-            timeoutTask?.cancel()
-            timeoutScheduled = false
             discovery.finish(candidateCount: candidates.count)
         }
     }
 
     private func choose(_ candidate: BluetoothCandidate) {
-        timeoutTask?.cancel()
-        timeoutScheduled = false
         select(candidate)
     }
+}
+
+private struct DiscoveryClock: Equatable {
+    let scanGeneration: Int
+    let isScanning: Bool
 }
 
 private struct CandidateRow: View {

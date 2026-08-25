@@ -298,7 +298,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (15). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (18). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -374,6 +374,20 @@ Build 1.0 (17) was uploaded to TestFlight on 21 August 2026. It removes the
 white panels behind the setup wizard's main actions, groups physical chainring
 choices into numerically ordered one-ring and two-ring lists, and removes the
 redundant parked-chain reminder from the startup screen.
+
+Physical testing of build 17 found that a newly discovered sole Zwift Click
+could remain on "Found one. Checking for others..." because the Settings view
+could miss the moment Bluetooth scanning began and therefore never start its
+eight-second selection window. Startup also waited for Click and Headwind
+discovery together, so one accessory failing to start scanning could delay the
+other. Build 1.0 (18) was uploaded to TestFlight on 21 August 2026. It gives each
+accessory its own discovery window and uses
+the trainer's existing rule: one result is saved and connected automatically;
+more than one requires a choice. Settings ties its window to the scan generation
+itself, and a UI regression test waits for one discovered Click to become the
+saved Click. The corrected development build was physically checked on the
+iPhone 17 Pro with the original Click that exposed the regression. Build 17
+should not be submitted for App Review; use build 18.
 
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store

@@ -119,6 +119,7 @@ enum ScreenshotFixture: String {
     case settingsBluetoothIssue = "-shotSettingsBluetoothIssue"
     case settingsStalled = "-shotSettingsStalled"
     case settingsClickLowBattery = "-shotSettingsClickLowBattery"
+    case settingsClickSingleCandidate = "-shotSettingsClickSingleCandidate"
     case settingsClickDuplicates = "-shotSettingsClickDuplicates"
     case settingsClickIdentifying = "-shotSettingsClickIdentifying"
     case settingsUnsafeGears = "-shotSettingsUnsafeGears"
@@ -187,7 +188,8 @@ private struct ScreenshotFixtureView: View {
                  .settingsUnsupported, .settingsTimedOut,
                  .settingsBluetoothIssue, .settingsStalled,
                  .settingsClickLowBattery, .settingsClickDuplicates,
-                 .settingsClickIdentifying, .settingsUnsafeGears,
+                 .settingsClickSingleCandidate, .settingsClickIdentifying,
+                 .settingsUnsafeGears,
                  .settingsAccessibility:
                 NavigationStack {
                     SetupView(
@@ -244,10 +246,12 @@ private struct ScreenshotFixtureView: View {
                 id: ScreenshotFixture.kickrID
             )
         }
-        configuration.rememberClick(
-            named: "Zwift Click",
-            id: ScreenshotFixture.clickID
-        )
+        if scenario != .settingsClickSingleCandidate {
+            configuration.rememberClick(
+                named: "Zwift Click",
+                id: ScreenshotFixture.clickID
+            )
+        }
         configuration.rememberHeadwind(
             named: "KICKR HEADWIND 4D21",
             id: ScreenshotFixture.headwindID
@@ -325,11 +329,18 @@ private struct ScreenshotFixtureView: View {
                 name: "Zwift Click"
             ),
         ]
+        let clickCandidates = scenario == .settingsClickSingleCandidate
+            ? [BluetoothCandidate(
+                id: ScreenshotFixture.clickID,
+                name: "Zwift Click"
+            )]
+            : (scenario == .settingsClickDuplicates
+                || scenario == .settingsClickIdentifying ? duplicateClicks : [])
         click.stageScreenshot(
             name: configuration.clickName,
             batteryLevel: scenario == .settingsClickLowBattery ? 15 : 82,
-            candidates: scenario == .settingsClickDuplicates
-                || scenario == .settingsClickIdentifying ? duplicateClicks : [],
+            candidates: clickCandidates,
+            state: scenario == .settingsClickSingleCandidate ? .scanning : .ready,
             identifying: scenario == .settingsClickIdentifying
                 ? ScreenshotFixture.clickID : nil
         )

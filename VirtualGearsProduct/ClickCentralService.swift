@@ -97,6 +97,9 @@ final class ClickCentralService: NSObject {
     private var repeatTask: Task<Void, Never>?
     private var isSuspendedForDemo = false
     private var resumesAfterDemoDisconnect = false
+#if DEBUG
+    private var usesStagedScan = false
+#endif
     private var edgeTracker = ZwiftClickEdgeTracker()
     private var heldButton: ZwiftClickButton?
     private var isHolding = false
@@ -114,6 +117,13 @@ final class ClickCentralService: NSObject {
 
     func startScanning() {
         guard !isSuspendedForDemo else { return }
+#if DEBUG
+        if usesStagedScan {
+            scanGeneration += 1
+            state = .scanning
+            return
+        }
+#endif
         desiredConnection = false
         reconnectTask?.cancel()
         scanWhenPoweredOn = true
@@ -550,6 +560,7 @@ extension ClickCentralService {
         self.batteryLevel = batteryLevel
         connectionIsStalled = stalled
         identificationCandidateID = identifying
+        usesStagedScan = state == .scanning
         self.state = state
     }
 
