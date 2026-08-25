@@ -302,6 +302,7 @@ private struct NormalWheelSizeView: View {
     @Bindable var store: ConfigurationStore
     @State private var enteredValue: String
     @State private var isApplyingDefault = false
+    @FocusState private var wheelSizeFieldIsFocused: Bool
 
     init(store: ConfigurationStore) {
         self.store = store
@@ -368,6 +369,7 @@ private struct NormalWheelSizeView: View {
             Section {
                 TextField("Millimetres", text: $enteredValue)
                     .keyboardType(.numberPad)
+                    .focused($wheelSizeFieldIsFocused)
                     .onChange(of: enteredValue) { _, value in
                         if isApplyingDefault {
                             isApplyingDefault = false
@@ -425,6 +427,15 @@ private struct NormalWheelSizeView: View {
         }
         .navigationTitle("Wheel circumference")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    wheelSizeFieldIsFocused = false
+                }
+                .accessibilityIdentifier("wheel.dismissKeyboard")
+            }
+        }
     }
 
     private var defaultMillimeters: Int {

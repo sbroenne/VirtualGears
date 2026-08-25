@@ -35,6 +35,11 @@ Their wording, and what it means here:
 The remaining items in their list — account registration, purchases,
 user-generated content — do not exist in this app. There is nothing to film.
 
+The existing recording remains valid evidence for the physically tested iPhone
+path. Before uploading the universal iPhone/iPad build, repeat the core
+connect/advertise/shift/stop flow on a physical iPad and record the iPad model
+and iPadOS version in `DEVELOPMENT.md`. Simulator footage is not a substitute.
+
 ## Before you start
 
 **Delete the app from the phone first.** Deleting it takes its Bluetooth

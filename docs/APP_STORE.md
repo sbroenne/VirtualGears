@@ -3,6 +3,13 @@
 Everything Apple will ask you for, written out so you can copy and paste it.
 Work top to bottom.
 
+!!! warning "Universal release is not uploaded yet"
+
+    The universal iPhone/iPad target, iPad screenshots and shared-device wording
+    below are prepared repository metadata, not a claim about the live listing.
+    Build 18 remains the current TestFlight build. Do not increment or upload a
+    universal build until the physical iPad Bluetooth gate in Stage 5 passes.
+
 ---
 
 ## Stage 1 — Join the Apple Developer Program
@@ -43,7 +50,7 @@ itself whenever `main` changes, so the policy cannot drift out of date.
 | User access | Full Access |
 
 Apple accepted `Virtual Gears` as the public name. The app uses the same name on
-the iPhone and when advertising itself as a trainer.
+iPhone and iPad and when advertising itself as a trainer.
 
 ## Stage 4 — Fill in the listing
 
@@ -53,7 +60,7 @@ the iPhone and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on your iPhone with 24 virtual gears or real groupset gearing.
+    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on iPhone or iPad with 24 virtual gears or real groupset gearing.
 
 ### Description
 
@@ -73,7 +80,7 @@ the iPhone and when advertising itself as a trainer.
     controls the route and its hills; Virtual Gears adds the gears.
 
     NOT ZWIFT-NATIVE VIRTUAL SHIFTING
-    Virtual Gears supplies and displays its own gears on the iPhone through an ordinary
+    Virtual Gears supplies and displays its own gears on your iPhone or iPad through an ordinary
     FTMS trainer connection; it does not support Zwift's native gear system.
 
     You get a full set of gears you can shift through mid-ride — either 24 evenly
@@ -125,7 +132,7 @@ the iPhone and when advertising itself as a trainer.
     ACCESSIBLE RIDE CONTROLS
     VoiceOver reads the current gear and announces confirmed changes. The gear readout
     is adjustable with VoiceOver gestures: swipe up for a harder gear and down for an
-    easier one. The app uses standard iPhone controls and respects larger text, Reduce
+    easier one. The app uses standard system controls and respects larger text, Reduce
     Motion and Differentiate Without Color.
 
     TRY IT WITHOUT A TRAINER
@@ -168,7 +175,7 @@ the iPhone and when advertising itself as a trainer.
 
     NO ACCOUNTS, NO INTERNET, NO TRACKING
     The app has no networking code in it at all. Nothing about your ride leaves your
-    iPhone.
+    device.
 
     Requires a compatible Wahoo KICKR. Built and physically tested with KICKR V5.
     Virtual Gears is not made by, endorsed by or affiliated with Wahoo Fitness.
@@ -200,7 +207,7 @@ Issues and Discussions must stay enabled on the repository.
 
 ### Screenshots
 
-Required: **6.9-inch iPhone**. The six portrait images listed below are
+Required iPhone set: **6.9-inch iPhone**. The six portrait images listed below are
 1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
 uploaded as they are. Apple scales them down for smaller phones; one set is
 enough. The two landscape images are 2868 × 1320 documentation views; they are
@@ -219,6 +226,20 @@ Upload these six, in this order:
 6. `headwind-control.png` — optional Automatic/Manual Headwind control with
    one-tap speeds.
 
+Required iPad set: **13-inch iPad**. The matching portrait images under
+`docs/app-store/ipad-13/` are 2064 × 2752 simulator captures:
+
+1. `riding.png`
+2. `setup.png`
+3. `bike-setup.png`
+4. `parked-gear.png`
+5. `gears.png`
+6. `headwind-control.png`
+
+These assets prove the app-owned layout at App Store dimensions. They do not
+prove Bluetooth behavior. Upload them only with the first universal build after
+the physical iPad gate below passes.
+
 ### Privacy answers ("App Privacy" section)
 
 Answer **"No, we do not collect data from this app."** That is accurate: nothing is
@@ -226,6 +247,20 @@ collected and there is no networking code. This matches `PrivacyInfo.xcprivacy` 
 the app.
 
 ## Stage 5 — Upload the build
+
+Before changing `CURRENT_PROJECT_VERSION`, archiving or uploading:
+
+1. Confirm `xcrun devicectl list devices` shows a physical iPad.
+2. Install the development build on that iPad.
+3. Connect to the physical KICKR, complete setup and advertise Virtual Gears to a
+   riding app.
+4. Start shifting, confirm easier and harder changes, stop shifting, and confirm
+   the normal wheel circumference is restored without dropping the riding app.
+5. If available, also connect the original Zwift Click and Headwind. Record
+   exactly what was tested in `DEVELOPMENT.md`.
+
+No physical iPad was available on 25 August 2026; `devicectl` listed only the
+paired iPhone and Apple Watch. The universal upload is therefore blocked.
 
 In Xcode:
 
@@ -242,14 +277,15 @@ to the version, then **Add for Review** → **Submit**.
 The reviewer does not need a smart trainer to inspect the app, but App Review
 still asked for a screen recording. Both matter.
 
-This is what is live in **App Review Information → Notes**. It answers, in
-order, the seven questions App Review asked when they rejected 1.0 (5) under
-Guideline 2.1:
+This is the note block to make live with the universal build after the physical
+iPad gate. Until then, keep the current iPhone-only note in **App Review
+Information → Notes**. It answers, in order, the seven questions App Review
+asked when they rejected 1.0 (5) under Guideline 2.1:
 
     VIRTUAL GEARS - APP REVIEW NOTES
 
     WHAT THE APP DOES, AND FOR WHOM (point 3)
-    A Wahoo KICKR indoor bicycle trainer has no gears. Virtual Gears adds them. The iPhone connects to the trainer as a Bluetooth client and at the same time presents itself to a riding app on a computer as a standard FTMS indoor bike. It passes the riding app's resistance instructions through to the trainer and relays the trainer's data back, and applies the rider's chosen gear by rescaling the trainer's wheel-circumference setting. That is what produces the gears. Audience: indoor cyclists whose trainer or riding app offers no gear shifting. It solves that without buying a new trainer.
+    A Wahoo KICKR indoor bicycle trainer has no gears. Virtual Gears adds them. The iPhone or iPad connects to the trainer as a Bluetooth client and at the same time presents itself to a riding app on a computer as a standard FTMS indoor bike. It passes the riding app's resistance instructions through to the trainer and relays the trainer's data back, and applies the rider's chosen gear by rescaling the trainer's wheel-circumference setting. That is what produces the gears. Audience: indoor cyclists whose trainer or riding app offers no gear shifting. It solves that without buying a new trainer.
 
     HOW TO SET UP AND REACH THE MAIN FEATURES (point 4)
     No account, login, credentials or sample files are needed. No hardware is needed either.
@@ -257,11 +293,12 @@ Guideline 2.1:
     With hardware: switch the KICKR on and open the app. It finds and connects on its own. Then point any FTMS riding app on a computer at "Virtual Gears" and shift with the on-screen buttons or an original Zwift Click.
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
-    iPhone 17 Pro, iOS 26.6.
+    Physically tested: iPhone 17 Pro, iOS 26.6.
+    Simulator-tested interface: iPad mini (A17 Pro) and iPad Pro 13-inch (M5), portrait and landscape. Physical iPad Bluetooth validation is required before this universal metadata is made live.
     Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS and Windows, plus RealVelo and MyWhoosh on Windows.
 
     EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)
-    None. The app contains no networking code at all. There are no servers, accounts, analytics, adverts, tracking, payment processors, data providers or AI services. Everything happens on the device and over local Bluetooth. Nothing leaves the phone.
+    None. The app contains no networking code at all. There are no servers, accounts, analytics, adverts, tracking, payment processors, data providers or AI services. Everything happens on the device and over local Bluetooth. Nothing leaves the device.
 
     REGIONAL DIFFERENCES (point 6)
     None. The app behaves identically in every region. It has no region-specific features, content or pricing behaviour.
@@ -392,6 +429,13 @@ should not be submitted for App Review; use build 18.
 The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
 Connect on the next metadata change.
+
+The next development change makes the target universal for iPhone and iPad while
+keeping iOS/iPadOS 17 as the minimum. It adds all four iPad orientations without
+requiring full screen, caps ride controls at deliberate iPad sizes, and runs the
+UI suite on iPhone 17 Pro, iPad mini and iPad Pro 13-inch simulators. Build 18 is
+unchanged. The universal build must not be numbered or uploaded until the
+physical iPad gate above is recorded as complete.
 
 Uploading without opening Xcode:
 
