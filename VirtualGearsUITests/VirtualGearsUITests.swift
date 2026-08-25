@@ -919,8 +919,7 @@ final class VirtualGearsUITests: XCTestCase {
 
         app.buttons["Fan"].tap()
         assertVisible("screen.demo-headwind")
-        app.buttons["Manual"].tap()
-        assertVisibleElement(app.buttons["50 percent"])
+        selectDemoManualFanControl()
     }
 
     func testDemoShiftButtonsAreDrawnLikeTheRideScreensAreWithDistinctWeight() {
@@ -1379,10 +1378,26 @@ final class VirtualGearsUITests: XCTestCase {
         app.buttons["Fan"].tap()
         assertVisible("screen.demo-headwind")
         capture(.demoHeadwindAutomatic)
-        app.buttons["Manual"].tap()
-        assertVisibleElement(app.buttons["50 percent"])
+        selectDemoManualFanControl()
         capture(.demoHeadwindManual)
         assertJourneyCoverage()
+    }
+
+    private func selectDemoManualFanControl() {
+        let manual = app.buttons["Manual"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 3))
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline, !manual.isHittable {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertTrue(manual.isHittable, "Manual fan control is not tappable")
+        manual.tap()
+        expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: manual
+        )
+        waitForExpectations(timeout: 3)
+        assertVisibleElement(app.buttons["50 percent"])
     }
 
     private func openSettingsDestination(_ title: String, fixture: String) {

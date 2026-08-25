@@ -36,16 +36,16 @@ The remaining items in their list — account registration, purchases,
 user-generated content — do not exist in this app. There is nothing to film.
 
 The existing recording remains valid evidence for the physically tested iPhone
-path. Before uploading the universal iPhone/iPad build, repeat the core
-connect/advertise/shift/stop flow on a physical iPad and record the iPad model
-and iPadOS version in `DEVELOPMENT.md`. Simulator footage is not a substitute.
+path. The core connect/advertise/shift/stop flow was also repeated on a physical
+iPad Air running iPadOS 26.6.1 before build 19; that evidence is recorded in
+`DEVELOPMENT.md`. Simulator footage is not a substitute for that Bluetooth check.
 
 ## Before you start
 
 **Delete the app from the phone first.** Deleting it takes its Bluetooth
 permission with it, so the prompt appears again on the next launch, and the app
 starts with no remembered trainer — exactly what an App Review device sees.
-Then install the latest TestFlight build, currently 1.0 (18), but **do not open
+Then install build 1.0 (19) after it appears in TestFlight, but **do not open
 it**. The
 recording has to start from the Home screen.
 

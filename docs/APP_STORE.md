@@ -3,12 +3,13 @@
 Everything Apple will ask you for, written out so you can copy and paste it.
 Work top to bottom.
 
-!!! warning "Universal release is not uploaded yet"
+!!! warning "Universal release is ready to upload"
 
     The universal iPhone/iPad target, iPad screenshots and shared-device wording
     below are prepared repository metadata, not a claim about the live listing.
-    Build 18 remains the current TestFlight build. Do not increment or upload a
-    universal build until the physical iPad Bluetooth gate in Stage 5 passes.
+    Build 18 remains the current TestFlight build until build 19 finishes
+    uploading and processing. The physical iPad Bluetooth gate in Stage 5 passed
+    on 25 August 2026.
 
 ---
 
@@ -263,10 +264,11 @@ An iPad Air (`iPad14,10`, iPadOS 26.6.1) was connected by USB and paired on
 25 August 2026. After Developer Mode was enabled, automatic provisioning
 registered the device and the signed 1.0 (18) development build installed and
 launched successfully. Physical XCTest still times out while enabling automation
-mode, and no iPad Bluetooth behavior has been validated yet, so the universal
-upload remains blocked. Enable **Settings → Developer → Enable UI Automation**
-before retrying the physical UI suite; complete the KICKR flow above manually if
-automation remains unavailable.
+mode. The corrected build physically found and selected the sole original Zwift
+Click automatically on the startup screen. The same iPad then passed the complete
+KICKR flow above, including connected Click shifts, normal wheel-size restoration
+and riding-app continuity across Stop. The physical Bluetooth gate is complete;
+simulator coverage remains the evidence for the automated layout matrix.
 
 In Xcode:
 
@@ -299,8 +301,8 @@ asked when they rejected 1.0 (5) under Guideline 2.1:
     With hardware: switch the KICKR on and open the app. It finds and connects on its own. Then point any FTMS riding app on a computer at "Virtual Gears" and shift with the on-screen buttons or an original Zwift Click.
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
-    Physically tested: iPhone 17 Pro, iOS 26.6.
-    Simulator-tested interface: iPad mini (A17 Pro) and iPad Pro 13-inch (M5), portrait and landscape. Physical iPad Bluetooth validation is required before this universal metadata is made live.
+    Physically tested: iPhone 17 Pro, iOS 26.6; iPad Air (iPad14,10), iPadOS 26.6.1.
+    Simulator-tested interface: iPad mini (A17 Pro) and iPad Pro 13-inch (M5), portrait and landscape.
     Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS and Windows, plus RealVelo and MyWhoosh on Windows.
 
     EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)
@@ -436,12 +438,11 @@ The live App Store description still carries the old "starts the session"
 sentence. It is corrected in this file and needs the same edit in App Store
 Connect on the next metadata change.
 
-The next development change makes the target universal for iPhone and iPad while
+Build 19 makes the target universal for iPhone and iPad while
 keeping iOS/iPadOS 17 as the minimum. It adds all four iPad orientations without
 requiring full screen, caps ride controls at deliberate iPad sizes, and runs the
-UI suite on iPhone 17 Pro, iPad mini and iPad Pro 13-inch simulators. Build 18 is
-unchanged. The universal build must not be numbered or uploaded until the
-physical iPad gate above is recorded as complete.
+UI suite on iPhone 17 Pro, iPad mini and iPad Pro 13-inch simulators. The
+physical iPad gate above is complete, so build 19 is eligible for upload.
 
 Uploading without opening Xcode:
 

@@ -186,9 +186,8 @@ Virtual Gears 1.0 (18) — com.sbroenne.VirtualGears — installed
 
 Physical XCTest automation was attempted twice, including a single test, but
 the runner timed out after 60 seconds while enabling automation mode. Launch is
-therefore physically verified, but app-owned layouts, multitasking and Bluetooth
-behavior have not been claimed as physically validated. Build 18 remains
-unchanged and no archive or TestFlight upload was made.
+therefore physically verified while app-owned layouts and multitasking remain
+covered by the simulator matrix rather than physical XCTest.
 
 The first physical Click discovery attempt found the original Click but remained
 on "Found one. Checking for others…" after the search window. A direct Mac probe
@@ -197,22 +196,19 @@ its button presses, ruling out a sleeping or unavailable accessory. The settings
 discovery window now keeps an absolute view-state deadline driven by a timer
 rather than a SwiftUI `.task(id:)`, so candidate-driven view updates cannot
 discard the deadline. The single-candidate regression passes on iPhone and iPad
-simulators; the corrected build still requires a physical iPad retest.
+simulators. The corrected build was installed on the iPad on 25 August 2026;
+after the Click was woken, the startup screen found and selected the sole
+original Click automatically. Physical sole-device discovery is therefore
+validated.
 
-Before the first universal upload, unlock this paired iPad, enable **Settings →
-Developer → Enable UI Automation** for the automated checks where available,
-and record:
-
-1. Full-screen, portrait and landscape launch; compact Split View and a Stage
-   Manager window; Accessibility Dynamic Type on setup, Settings and ride.
-2. KICKR discovery and connection, FTMS advertising to a riding app, Start
-   Shifting, confirmed easier/harder shifts, Stop Shifting, restored normal
-   wheel circumference and an uninterrupted riding-app connection.
-3. Original Zwift Click auto-discovery and shifting, and Headwind control, when
-   those accessories are available.
-4. iPad model, iPadOS version, trainer/accessory firmware and the date in this
-   document. Only then increment the build, archive, upload, make the prepared
-   iPad App Store metadata live and attach the 13-inch iPad screenshots.
+The complete required Bluetooth gate was then checked manually on the same iPad
+Air with the physically validated KICKR V5 and original Zwift Click: KICKR
+discovery and connection, FTMS advertising to a riding app, Start Shifting,
+confirmed easier and harder shifts including Click input, Stop Shifting, normal
+wheel-circumference restoration and an uninterrupted riding-app connection all
+worked. The Headwind path was not repeated on iPad; its existing physical iPhone
+evidence remains the supported claim. With this evidence recorded, build 19 is
+the first universal build eligible for TestFlight upload.
 
 The proxy and shifting have deliberately separate lifecycles. Once the saved
 KICKR is ready, `ProxyCoordinator.makeProxyAvailable()` publishes the FTMS
