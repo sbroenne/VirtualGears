@@ -173,21 +173,26 @@ iPad Air (2) — iPad14,10 — iPadOS 26.6.1 (23G83)
 UDID 00008112-001C381E3441A01E — wired — available (paired)
 ```
 
-The signed development build could not yet be installed because Developer Mode
-was disabled on the iPad. Xcode reported:
+Developer Mode was enabled, and automatic provisioning registered the iPad.
+The signed development build was then built, installed and launched successfully
+with bundle identifier `com.sbroenne.VirtualGears`. `devicectl` confirmed the app
+was running in the foreground on the unlocked iPad at its native 2732×2048
+display resolution.
 
 ```text
-Developer Mode disabled
-To use iPad Air (2) for development, enable Developer Mode in
-Settings → Privacy & Security.
+Virtual Gears 1.0 (18) — com.sbroenne.VirtualGears — installed
+/private/var/containers/Bundle/Application/.../VirtualGears.app/VirtualGears
 ```
 
-Enabling Developer Mode requires an on-device restart and confirmation. No app
-or Bluetooth behavior has therefore been validated on this iPad yet. Build 18
-remains unchanged and no archive or TestFlight upload was made.
+Physical XCTest automation was attempted twice, including a single test, but
+the runner timed out after 60 seconds while enabling automation mode. Launch is
+therefore physically verified, but app-owned layouts, multitasking and Bluetooth
+behavior have not been claimed as physically validated. Build 18 remains
+unchanged and no archive or TestFlight upload was made.
 
-Before the first universal upload, enable Developer Mode, unlock this paired
-iPad, install the current development build and record:
+Before the first universal upload, unlock this paired iPad, enable **Settings →
+Developer → Enable UI Automation** for the automated checks where available,
+and record:
 
 1. Full-screen, portrait and landscape launch; compact Split View and a Stage
    Manager window; Accessibility Dynamic Type on setup, Settings and ride.

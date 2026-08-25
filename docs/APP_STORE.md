@@ -260,9 +260,13 @@ Before changing `CURRENT_PROJECT_VERSION`, archiving or uploading:
    exactly what was tested in `DEVELOPMENT.md`.
 
 An iPad Air (`iPad14,10`, iPadOS 26.6.1) was connected by USB and paired on
-25 August 2026. Deployment remains blocked because Developer Mode is disabled;
-enabling it requires an on-device restart and confirmation. No iPad Bluetooth
-behavior has been validated yet, so the universal upload remains blocked.
+25 August 2026. After Developer Mode was enabled, automatic provisioning
+registered the device and the signed 1.0 (18) development build installed and
+launched successfully. Physical XCTest still times out while enabling automation
+mode, and no iPad Bluetooth behavior has been validated yet, so the universal
+upload remains blocked. Enable **Settings → Developer → Enable UI Automation**
+before retrying the physical UI suite; complete the KICKR flow above manually if
+automation remains unavailable.
 
 In Xcode:
 
