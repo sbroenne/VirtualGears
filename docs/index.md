@@ -8,9 +8,9 @@
 none.**
 
 Use the smaller front ring if your bike has one, then pick a rear gear that keeps
-the chain straight and leave it there. Shifting happens on your iPhone instead,
-which changes how hard the trainer feels. Nothing on the bike moves, so there is
-no chain noise, no dropped chain, and no wear.
+the chain straight and leave it there. Shifting happens on your iPhone or iPad
+instead, which changes how hard the trainer feels. Nothing on the bike moves, so
+there is no chain noise, no dropped chain, and no wear.
 
 !!! quote "Why this exists"
 
@@ -39,10 +39,11 @@ no chain noise, no dropped chain, and no wear.
 
 ## What it is
 
-Your riding app connects to the iPhone instead of to the trainer. Virtual Gears
-passes everything through in both directions, and applies your chosen gear on
-top. The riding app still controls the road: hills feel like hills. It does not
-need special virtual-shifting support; ordinary FTMS trainer support is enough.
+Your riding app connects to your iPhone or iPad instead of to the trainer.
+Virtual Gears passes everything through in both directions, and applies your
+chosen gear on top. The riding app still controls the road: hills feel like
+hills. It does not need special virtual-shifting support; ordinary FTMS trainer
+support is enough.
 
 ![How Virtual Gears sits between your riding app and your trainer](how-it-works.svg)
 
@@ -56,6 +57,15 @@ speed. Both remain optional and never hold up a ride.
   <img src="screenshots/setup.png" width="30%" alt="First-run setup asking for the physical chainrings and cassette">
   <img src="screenshots/bike-setup.png" width="30%" alt="First-run setup with Zwift Cog or another single sprocket selected">
 </p>
+
+<p align="center">
+  <img src="app-store/ipad-13/riding.png" width="45%" alt="The native 13-inch iPad ride screen showing gear 12 and the large Easier and Harder controls">
+  <img src="app-store/ipad-13/setup.png" width="45%" alt="The native 13-inch iPad first-run bike setup screen">
+</p>
+
+The iPad layout uses the same app-owned screens and actions rather than a
+separate tablet workflow. Controls stay bounded in full screen and reflow through
+the existing compact layout as Split View or Stage Manager narrows the window.
 
 ## What you get
 
@@ -133,16 +143,16 @@ list of tooth counts can tell you.
 
 ### Shifting
 
-Two large buttons on the phone, placed for sweaty hands and a locked-out gaze.
+Two large buttons on the screen, placed for sweaty hands and a locked-out gaze.
 An original Zwift Click can be added and shifts the same gears, but it is never
 required and nothing ever waits for it. Its physical press is mirrored on the
-matching phone button; the gear number still changes only after the trainer
+matching on-screen button; the gear number still changes only after the trainer
 confirms the shift.
 
 The current gear is also an adjustable VoiceOver control: swipe up for a harder
 gear and down for an easier one. Confirmed gear changes are announced, so the
 ride can be controlled without looking at the screen. [Accessibility
-details](accessibility.md) cover larger text and other iPhone settings.
+details](accessibility.md) cover larger text and other iPhone and iPad settings.
 
 ### Headwind control
 

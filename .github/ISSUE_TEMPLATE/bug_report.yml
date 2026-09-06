@@ -34,10 +34,10 @@ body:
       required: true
 
   - type: input
-    id: iphone
+    id: apple-device
     attributes:
-      label: iPhone and iOS version
-      placeholder: iPhone 14 Pro, iOS 18.2
+      label: Apple device and OS version
+      placeholder: iPhone 17 Pro on iOS 26.6, or iPad mini on iPadOS 26.6
     validations:
       required: true
 

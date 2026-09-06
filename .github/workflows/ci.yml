@@ -66,15 +66,27 @@ jobs:
             CODE_SIGNING_ALLOWED=NO
 
   ui-tests:
-    name: UI tests
+    name: UI tests (${{ matrix.destination }})
     runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        destination:
+          - iPhone 17 Pro
+          - iPad mini (A17 Pro)
+          - iPad Pro 13-inch (M5)
     steps:
       - uses: actions/checkout@v7
+
+      - name: Prepare simulator
+        run: |
+          xcrun simctl boot "${{ matrix.destination }}" 2>/dev/null || true
+          xcrun simctl bootstatus "${{ matrix.destination }}" -b
 
       - name: Run UI regression tests
         run: |
           xcodebuild test \
             -project VirtualGears.xcodeproj \
             -scheme VirtualGears \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
+            -destination "platform=iOS Simulator,name=${{ matrix.destination }}" \
             -parallel-testing-enabled NO

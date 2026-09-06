@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import VirtualGearsCore
 
@@ -302,6 +303,7 @@ private struct NormalWheelSizeView: View {
     @Bindable var store: ConfigurationStore
     @State private var enteredValue: String
     @State private var isApplyingDefault = false
+    @FocusState private var wheelSizeFieldIsFocused: Bool
 
     init(store: ConfigurationStore) {
         self.store = store
@@ -368,6 +370,7 @@ private struct NormalWheelSizeView: View {
             Section {
                 TextField("Millimetres", text: $enteredValue)
                     .keyboardType(.numberPad)
+                    .focused($wheelSizeFieldIsFocused)
                     .onChange(of: enteredValue) { _, value in
                         if isApplyingDefault {
                             isApplyingDefault = false
@@ -425,6 +428,15 @@ private struct NormalWheelSizeView: View {
         }
         .navigationTitle("Wheel circumference")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    wheelSizeFieldIsFocused = false
+                }
+                .accessibilityIdentifier("wheel.dismissKeyboard")
+            }
+        }
     }
 
     private var defaultMillimeters: Int {
@@ -635,6 +647,16 @@ private struct ShiftingSetupView: View {
             if store.configuration.usesClick {
                 click.autoConnectSavedDevice()
             }
+#if DEBUG
+            if ScreenshotFixture.current == .settingsClickSingleCandidate {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                click.stageDiscoveredCandidate(BluetoothCandidate(
+                    id: ScreenshotFixture.clickID,
+                    name: "Zwift Click"
+                ))
+            }
+#endif
         }
         .onChange(of: click.latestButtonEvent) { _, event in
             guard click.identificationCandidateID != nil, let event else { return }
@@ -1670,8 +1692,14 @@ private struct DeviceDiscoverySection: View {
     let select: (BluetoothCandidate) -> Void
 
     @State private var discovery = DeviceDiscoveryState()
+    @State private var searchDeadline: Date?
 
     private let searchDuration = DeviceDiscoveryPolicy.searchDuration
+    private let searchTicks = Timer.publish(
+        every: 0.25,
+        on: .main,
+        in: .common
+    ).autoconnect()
 
     init(
         deviceName: String,
@@ -1805,17 +1833,16 @@ private struct DeviceDiscoverySection: View {
                 beginSearch()
             }
         }
-        .task(id: DiscoveryClock(
+        .onChange(of: DiscoveryClock(
             scanGeneration: scanGeneration,
             isScanning: isScanning
-        )) {
-            guard isScanning else { return }
-            do {
-                try await Task.sleep(for: searchDuration)
-            } catch {
-                return
-            }
-            guard !Task.isCancelled, isScanning else { return }
+        ), initial: true) { _, clock in
+            updateSearchClock(clock)
+        }
+        .onReceive(searchTicks) { now in
+            guard let searchDeadline, now >= searchDeadline,
+                  isScanning else { return }
+            self.searchDeadline = nil
             finishSearch()
         }
         .onChange(of: candidates.count) { _, count in
@@ -1830,6 +1857,7 @@ private struct DeviceDiscoverySection: View {
             }
         }
         .onDisappear {
+            searchDeadline = nil
             if discovery.phase != .idle || isScanning {
                 cancelScanning()
             }
@@ -1862,6 +1890,14 @@ private struct DeviceDiscoverySection: View {
         if !isScanning {
             handleConnectionState(connectionState)
         }
+    }
+
+    private func updateSearchClock(_ clock: DiscoveryClock) {
+        searchDeadline = clock.isScanning
+            ? Date.now.addingTimeInterval(
+                TimeInterval(searchDuration.components.seconds)
+            )
+            : nil
     }
 
     private func finishSearch() {

@@ -185,6 +185,11 @@ final class VirtualGearsUITests: XCTestCase {
         app.staticTexts["Zwift Click"].firstMatch.tap()
 
         XCTAssertTrue(
+            app.staticTexts["Found one. Checking for others…"]
+                .waitForExistence(timeout: 4),
+            "The fixture did not discover its sole Click after scanning began"
+        )
+        XCTAssertTrue(
             app.staticTexts["Your Click"].waitForExistence(timeout: 12),
             "A sole Click was not selected when the discovery window ended"
         )
@@ -353,6 +358,60 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Stop Shifting"].exists)
     }
 
+    func testIPadReadyAndRideFlowsRemainUsableAcrossOrientations() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else {
+            throw XCTSkip("iPad layout coverage")
+        }
+
+        launch("-shotReady")
+        assertVisible("screen.startup")
+        assertVisibleElement(app.buttons["Start Shifting"])
+        app.buttons["Settings"].tap()
+        assertVisible("screen.settings")
+        assertVisibleElement(app.buttons["Done"])
+        app.buttons["Done"].tap()
+
+        launch("-shotRide", orientation: .landscapeLeft)
+        waitForLandscapeLayout()
+        let window = app.windows.firstMatch.frame
+        let easier = app.buttons["Shift easier"]
+        let harder = app.buttons["Shift harder"]
+        assertVisibleElement(easier)
+        assertVisibleElement(harder)
+        XCTAssertLessThanOrEqual(
+            easier.frame.width,
+            320,
+            "The easier control grows beyond its deliberate iPad width."
+        )
+        XCTAssertLessThanOrEqual(
+            harder.frame.width,
+            320,
+            "The harder control grows beyond its deliberate iPad width."
+        )
+        XCTAssertLessThan(easier.frame.maxX, harder.frame.minX)
+        XCTAssertTrue(window.contains(easier.frame))
+        XCTAssertTrue(window.contains(harder.frame))
+
+        XCUIDevice.shared.orientation = .portraitUpsideDown
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline,
+              app.windows.firstMatch.frame.width > app.windows.firstMatch.frame.height {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertEqual(
+            XCUIDevice.shared.orientation,
+            .portraitUpsideDown,
+            "The simulated iPad did not enter upside-down portrait."
+        )
+        XCTAssertGreaterThan(
+            app.windows.firstMatch.frame.height,
+            app.windows.firstMatch.frame.width,
+            "The iPad did not rotate to upside-down portrait."
+        )
+        assertVisibleElement(app.buttons["Shift easier"])
+        assertVisibleElement(app.buttons["Shift harder"])
+    }
+
     func testStoppingRequiresConfirmationBeforeRideControlsDisappear() {
         launch("-shotRide")
 
@@ -489,6 +548,9 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertFalse(
             app.buttons["MTB, 29×2.25, 2326 millimetres"].isSelected
         )
+        let dismissKeyboard = app.buttons["wheel.dismissKeyboard"]
+        assertVisibleElement(dismissKeyboard)
+        dismissKeyboard.tap()
 
         let useDefault = app.buttons["wheel.useDefault"]
         XCTAssertTrue(useDefault.isEnabled)
@@ -857,8 +919,7 @@ final class VirtualGearsUITests: XCTestCase {
 
         app.buttons["Fan"].tap()
         assertVisible("screen.demo-headwind")
-        app.buttons["Manual"].tap()
-        assertVisibleElement(app.buttons["50 percent"])
+        selectDemoManualFanControl()
     }
 
     func testDemoShiftButtonsAreDrawnLikeTheRideScreensAreWithDistinctWeight() {
@@ -1317,10 +1378,26 @@ final class VirtualGearsUITests: XCTestCase {
         app.buttons["Fan"].tap()
         assertVisible("screen.demo-headwind")
         capture(.demoHeadwindAutomatic)
-        app.buttons["Manual"].tap()
-        assertVisibleElement(app.buttons["50 percent"])
+        selectDemoManualFanControl()
         capture(.demoHeadwindManual)
         assertJourneyCoverage()
+    }
+
+    private func selectDemoManualFanControl() {
+        let manual = app.buttons["Manual"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 3))
+        let deadline = Date().addingTimeInterval(3)
+        while Date() < deadline, !manual.isHittable {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTAssertTrue(manual.isHittable, "Manual fan control is not tappable")
+        manual.tap()
+        expectation(
+            for: NSPredicate(format: "isSelected == true"),
+            evaluatedWith: manual
+        )
+        waitForExpectations(timeout: 3)
+        assertVisibleElement(app.buttons["50 percent"])
     }
 
     private func openSettingsDestination(_ title: String, fixture: String) {
