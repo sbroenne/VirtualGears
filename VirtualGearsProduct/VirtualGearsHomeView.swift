@@ -1171,6 +1171,8 @@ struct ShiftingView: View {
                 }
                 .padding(.horizontal, landscape ? 18 : 14)
                 .padding(.bottom, 4)
+                .frame(maxWidth: 1_100, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
             }
             .navigationTitle(configuration.drivetrainName)
             .navigationBarTitleDisplayMode(.inline)
@@ -1368,7 +1370,8 @@ struct ShiftingView: View {
             gearHero(
                 fontSize: min(
                     geometry.size.width * 0.61,
-                    geometry.size.height * 0.38
+                    geometry.size.height * 0.38,
+                    320
                 )
             )
             HStack(spacing: 12) {
@@ -1378,7 +1381,8 @@ struct ShiftingView: View {
             .frame(
                 height: min(
                     max(160, geometry.size.height * 0.32),
-                    geometry.size.height * 0.36
+                    geometry.size.height * 0.36,
+                    300
                 )
             )
             .accessibilityElement(children: .contain)
@@ -1387,14 +1391,15 @@ struct ShiftingView: View {
     }
 
     private func landscapeControls(_ geometry: GeometryProxy) -> some View {
-        let buttonWidth = max(150, geometry.size.width * 0.28)
+        let buttonWidth = min(320, max(150, geometry.size.width * 0.28))
         return HStack(spacing: 12) {
             shiftButton(easier: true)
                 .frame(width: buttonWidth)
             gearHero(
                 fontSize: min(
                     geometry.size.width * 0.18,
-                    geometry.size.height * 0.46
+                    geometry.size.height * 0.46,
+                    300
                 )
             )
             shiftButton(easier: false)

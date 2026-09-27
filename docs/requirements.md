@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| **iPhone** | Running iOS 17 or later — any iPhone from the XS onwards |
+| **Apple device** | An iPhone or iPad running iOS/iPadOS 17 or later |
 | **Trainer** | A compatible direct-drive Wahoo KICKR. [See below](#which-trainers-work). |
 | **Riding app** | An app that can connect to an FTMS trainer. |
-| **Shifting** | Large buttons on the iPhone. An original Zwift Click is optional. |
+| **Shifting** | Large on-screen buttons. An original Zwift Click is optional. |
 | **Fan** | Optional. A Wahoo KICKR HEADWIND. |
 
 ## Which trainers work
@@ -64,12 +64,12 @@ That is the gap Virtual Gears fills. Three differences worth knowing:
 - **Your riding app will not display the gear.** Zwift can show it because Zwift
   decides it. Virtual Gears decides it, and there is no way to tell a riding app
   what gear you are in — the Bluetooth standard has no such message. The gear is
-  shown large on the phone instead.
+  shown large on your iPhone or iPad instead.
 - **Virtual Gears does not require virtual-shifting support in the riding app.**
   It appears as an ordinary FTMS trainer, bringing gears to compatible apps that
   do not provide their own.
 - **Virtual Gears does not support Zwift-native virtual shifting.** It supplies
-  and displays its own gears on the iPhone.
+  and displays its own gears on your iPhone or iPad.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -105,16 +105,21 @@ MyWhoosh ignored FTMS ride data in direct testing and read power and cadence
 from Cycling Power Service instead. Virtual Gears now publishes that service,
 and the complete iPhone-to-Windows path has been ridden end to end.
 
+The iPad interface is exercised on iPad mini and 13-inch iPad simulators. That
+proves the layouts and navigation, not Bluetooth. The first universal release
+remains blocked until a physical iPad has connected to the KICKR, advertised the
+trainer proxy, shifted, stopped and restored the normal wheel size.
+
 ## Your first ride
 
 1. Put your bike on the trainer and wake the trainer by turning the pedals.
-2. Open Virtual Gears on your iPhone. It finds the trainer and connects on its
-   own, then appears as a trainer. If it finds more than one trainer, it asks
-   you which one.
+2. Open Virtual Gears on your iPhone or iPad. It finds the trainer and connects
+   on its own, then appears as a trainer. If it finds more than one trainer, it
+   asks you which one.
 3. On your computer, open your riding app and pair with the trainer it offers.
-   That will be your iPhone, appearing as a trainer.
+   That will be your Apple device, appearing as a trainer.
 4. Tap **Start Shifting** when you want gears. Shift with the two large buttons
-   on the phone.
+   on the device.
 
 The two-step first-run setup is required. It asks what is physically on the bike
 and then confirms the recommended parked chain position. Standard 24 virtual
@@ -130,23 +135,23 @@ exercise equipment. A real ride still requires the compatible hardware above.
 ### What name to look for
 
 Virtual Gears tells your riding app it is called **Virtual Gears**, and most apps
-show that. Some show your iPhone's own name instead — "iPhone Anna", say —
+show that. Some show your Apple device's own name instead — "iPhone Anna", say —
 and a few add a short code after it.
 
 Either name is the right one to pick. There is only ever one of them in the
 list, because your trainer itself is already busy talking to Virtual Gears and
 so does not appear.
 
-This is not something the app can fix. iPhones report their own name over
+This is not something the app can fix. Apple devices report their own name over
 Bluetooth, and Apple does not let an app change it. If seeing "Virtual Gears"
-in the list matters to you, rename the phone itself in Settings → General →
+in the list matters to you, rename the device itself in Settings → General →
 About → Name — but that changes its name everywhere else too.
 
 ## Adding a Zwift Click
 
 Wake the Click by pressing a button before opening Virtual Gears. The app finds,
 connects and remembers it automatically. It shifts the same gears as the
-on-screen buttons, and pressing it visibly presses the matching phone button.
+on-screen buttons, and pressing it visibly presses the matching on-screen button.
 The gear number still changes only after the trainer confirms the shift.
 Nothing ever waits for the Click, so one that runs out of battery mid-ride
 costs you nothing but the buttons on the handlebar.

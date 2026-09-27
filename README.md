@@ -7,7 +7,8 @@
 **Virtual shifting for Wahoo KICKR trainers — even in riding apps that do not
 offer it.**
 
-Virtual Gears puts an iPhone between your trainer and the app you ride with.
+Virtual Gears puts an iPhone or iPad between your trainer and the app you ride
+with.
 Your riding app still controls the route and its hills; Virtual Gears adds the
 gears. Because it appears as a normal FTMS trainer, the riding app does not need
 to know anything about virtual shifting.
@@ -36,16 +37,21 @@ available to ordinary FTMS riding apps without changing their route data.
 
 | | Requirement |
 |---|---|
-| **iPhone** | iOS 17 or later |
+| **Apple device** | iPhone or iPad running iOS/iPadOS 17 or later |
 | **Trainer** | A compatible direct-drive Wahoo KICKR |
 | **Riding app** | An app that can connect to an FTMS trainer |
-| **Shifting** | Large iPhone buttons; optional original Zwift Click |
+| **Shifting** | Large on-screen buttons; optional original Zwift Click |
 | **Fan** | Optional Wahoo KICKR HEADWIND |
 
 Virtual Gears was built and physically tested with a KICKR V5. Other
 direct-drive KICKR models are expected to work but have not yet been physically
 tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
 supported.
+
+The Bluetooth path has been physically tested on iPhone and iPad with a KICKR
+V5 and original Zwift Click. The interface and ready/ride flows are also covered
+on iPad mini and 13-inch iPad simulators, including portrait, landscape and
+accessibility text.
 
 On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
 on Windows, have been ridden end to end. Other FTMS riding apps are expected to
@@ -56,15 +62,15 @@ work but have not been tested.
 ## Your first ride
 
 1. Wake the KICKR by turning the pedals.
-2. Open Virtual Gears on the iPhone. It finds the KICKR, connects and makes it
-   available to your riding app.
+2. Open Virtual Gears on the iPhone or iPad. It finds the KICKR, connects and
+   makes it available to your riding app.
 3. Tell the required first-run setup what is physically on the bike: chainrings,
    and either a cassette or a Zwift Cog/other single sprocket. Your first ride
    uses Standard 24 virtual gears automatically.
 4. Move the chain to the quiet, reachable gear Virtual Gears recommends and
    confirm it.
 5. In your riding app, connect to the trainer named **Virtual Gears**. Some apps
-   may show the iPhone's name instead.
+   may show the device's name instead.
 6. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
    buttons.
 
@@ -75,7 +81,7 @@ gears; **Stop Shifting** removes them without disconnecting or stopping the ride
 in your riding app. If it finds more than one trainer, it asks you to choose
 yours by name.
 
-The iPhone screen stays awake while the trainer proxy is available. This keeps
+The device screen stays awake while the trainer proxy is available. This keeps
 Virtual Gears discoverable to riding apps on Windows and other computers before
 they connect.
 
@@ -99,7 +105,8 @@ with physical hardware.
 - **Gears that shift the way an electronic groupset shifts**, one cog at a time
   with the front change folded in, so there are no dead shifts and no invented
   gaps.
-- **On-phone shifting** with large controls in portrait and landscape.
+- **On-device shifting** with large controls in portrait and landscape, including
+  iPad full screen, Split View and Stage Manager.
 - **Accessible ride controls** with VoiceOver gear feedback, adjustable gear
   control and support for larger text.
 - **Persistent equipment statuses** that keep the trainer, Click, fan and
@@ -113,6 +120,16 @@ with physical hardware.
 - **A Bluetooth-free Demo Mode** for exploring the app without equipment.
 
 ## Screenshots
+
+<p align="center">
+  <a href="docs/app-store/ipad-13/riding.png">
+    <img src="docs/app-store/ipad-13/riding.png" width="45%" alt="Virtual Gears ride controls on a 13-inch iPad, showing gear 12 and large Easier and Harder buttons">
+  </a>
+  <a href="docs/app-store/ipad-13/setup.png">
+    <img src="docs/app-store/ipad-13/setup.png" width="45%" alt="Virtual Gears first-run bike setup on a 13-inch iPad">
+  </a>
+</p>
+<p align="center"><strong>Native iPad ride and setup layouts</strong></p>
 
 <table>
   <tr>
@@ -178,7 +195,7 @@ Every gear change waits for confirmation from the trainer.
 - **ERG workouts are not supported.** ERG mode controls target power, while
   Virtual Gears controls how hard a gear feels.
 - **The riding app cannot display the selected gear.** Bluetooth FTMS has no
-  message for reporting it, so the gear is shown on the iPhone.
+  message for reporting it, so the gear is shown on your iPhone or iPad.
 - **This is not Zwift's native virtual shifting.** It works independently of the
   riding app. Virtual Gears supplies and displays the gears itself.
 - **Virtual Gears cannot read the trainer's current wheel circumference.** It
@@ -188,8 +205,8 @@ Every gear change waits for confirmation from the trainer.
   custom value in the Wahoo app, enter the same value in Virtual Gears before
   shifting.
 - **A riding app on Windows may not reconnect on its own after a Bluetooth
-  drop.** If the wireless link between your phone and the computer times out
-  mid-ride, some Windows riding apps do not scan for the phone again by
+  drop.** If the wireless link between your Apple device and the computer times
+  out mid-ride, some Windows riding apps do not scan for the device again by
   themselves; you may need to restart the riding app to see Virtual Gears once
   more. This is the riding app's own reconnect behaviour, not something Virtual
   Gears controls.

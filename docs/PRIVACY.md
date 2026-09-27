@@ -1,6 +1,6 @@
 # Privacy Policy for Virtual Gears
 
-Last updated: 8 August 2026
+Last updated: 25 August 2026
 
 ## The short version
 
@@ -9,14 +9,14 @@ the app has no way to send anything anywhere.
 
 ## What the app stores
 
-Virtual Gears remembers a few things on your iPhone so you don't have to set them up
+Virtual Gears remembers a few things on your device so you don't have to set them up
 again each ride:
 
 - Which trainer you last used, so it can reconnect on its own.
 - Which gears you chose.
 - Which optional shift controller or Headwind fan it should reconnect to.
 
-These stay on your iPhone. Deleting the app deletes them.
+These stay on your iPhone or iPad. Deleting the app deletes them.
 
 Demo Mode uses a separate in-memory setup. Its simulated equipment and gear
 choices are discarded when you leave the demo and are not written over the

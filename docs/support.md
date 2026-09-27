@@ -20,7 +20,7 @@ Most problems have a known answer already:
 - **The trainer is not found.** Turn the pedals to wake it, and close any other
   app that may already be connected to it. A trainer can only talk to one thing
   at a time.
-- **The riding app shows your iPhone's name instead of "Virtual Gears".** That
+- **The riding app shows your Apple device's name instead of "Virtual Gears".** That
   is normal and it is the right device to pick. See
   [What name to look for](requirements.md#what-name-to-look-for).
 - **Your trainer is not a KICKR V5.** Check
@@ -40,7 +40,7 @@ Most problems have a known answer already:
   [If you set a custom wheel circumference](requirements.md#if-you-set-a-custom-wheel-circumference).
 - **A Windows riding app disconnected mid-ride and won't come back.** A weak
   Bluetooth link can time out, and some riding apps on Windows do not scan for
-  your phone again on their own afterwards. Restart the riding app to make it
+  your Apple device again on their own afterwards. Restart the riding app to make it
   look again. This has been confirmed to be the riding app's own reconnect
   behaviour, not a Virtual Gears fault — the trainer stayed connected and
   working the whole time.
@@ -49,7 +49,7 @@ Most problems have a known answer already:
 
 The more of this you can give, the better the odds of a fix:
 
-- Your trainer model, and your iPhone and iOS version
+- Your trainer model, Apple device model, and iOS or iPadOS version
 - The riding app you were using, and on what computer
 - What you did, what you expected, and what happened instead
 - Whether the app showed an error, and its exact wording

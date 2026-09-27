@@ -1,6 +1,6 @@
 # How the gears work
 
-![Your riding app talks to the iPhone, the iPhone talks to the trainer, and a shift changes the wheel size the trainer is running](how-it-works.svg)
+![Your riding app talks to Virtual Gears on an iPhone or iPad, Virtual Gears talks to the trainer, and a shift changes the wheel size the trainer is running](how-it-works.svg)
 
 Virtual Gears was built and physically tested with a KICKR V5. Other
 direct-drive KICKR models are expected to work but have not yet been physically
@@ -9,7 +9,7 @@ size: a smaller wheel covers less ground per pedal stroke, which feels like an
 easier gear. The riding app's own terrain command is left untouched, so the two
 never fight.
 
-Virtual Gears chooses and displays the gear on the iPhone. The riding app sees an
+Virtual Gears chooses and displays the gear on your iPhone or iPad. The riding app sees an
 ordinary FTMS trainer and does not need a virtual-shifting feature of its own.
 
 Opening Virtual Gears connects this transparent trainer proxy. **Start Shifting**
@@ -17,8 +17,8 @@ adds the gears; **Stop Shifting** removes the virtual gear and restores the
 normal wheel circumference. Neither button starts or stops the ride in the
 riding app, and stopping shifting leaves that app connected.
 
-The iPhone screen stays awake for as long as this trainer proxy is available.
-iOS changes Bluetooth advertising after the phone locks, which can make a
+The device screen stays awake for as long as this trainer proxy is available.
+iOS and iPadOS change Bluetooth advertising after the device locks, which can make a
 waiting trainer disappear from riding apps on Windows and other computers.
 
 ## The gear your bike is parked in

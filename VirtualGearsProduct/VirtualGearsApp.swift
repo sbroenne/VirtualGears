@@ -329,13 +329,9 @@ private struct ScreenshotFixtureView: View {
                 name: "Zwift Click"
             ),
         ]
-        let clickCandidates = scenario == .settingsClickSingleCandidate
-            ? [BluetoothCandidate(
-                id: ScreenshotFixture.clickID,
-                name: "Zwift Click"
-            )]
-            : (scenario == .settingsClickDuplicates
-                || scenario == .settingsClickIdentifying ? duplicateClicks : [])
+        let clickCandidates =
+            scenario == .settingsClickDuplicates
+                || scenario == .settingsClickIdentifying ? duplicateClicks : []
         click.stageScreenshot(
             name: configuration.clickName,
             batteryLevel: scenario == .settingsClickLowBattery ? 15 : 82,

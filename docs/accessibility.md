@@ -25,16 +25,16 @@ and haptic, which occur only after the trainer confirms the shift.
 
 The ride controls use large targets in portrait and landscape. At Accessibility
 Dynamic Type sizes, the ride screen uses its vertical layout even when the
-phone is sideways so controls have room to reflow instead of being compressed.
+device is sideways so controls have room to reflow instead of being compressed.
 Equipment statuses reflow into a two-column grid at those sizes, keeping short
 names on one line instead of breaking words apart. The toolbar shortens the gear
 menu label so it cannot overlap the equipment controls.
 
-Virtual Gears respects the iPhone's Reduce Motion setting for the gear-number
+Virtual Gears respects the device's Reduce Motion setting for the gear-number
 transition. Connection and status states use names and symbols alongside
 colour; the gear rail adds an outline when Differentiate Without Color is on.
 
-## Other iPhone accessibility features
+## Other iPhone and iPad accessibility features
 
 The app uses standard SwiftUI buttons, menus, pickers, sliders and navigation
 controls. These retain their normal support for Switch Control, Voice Control,
@@ -47,7 +47,7 @@ Try these settings with **Try Demo** before a real ride:
 1. Turn on VoiceOver in **Settings > Accessibility > VoiceOver** and adjust
    the simulated gear readout.
 2. Choose an Accessibility text size in **Settings > Accessibility > Display &
-   Text Size > Larger Text**, then rotate the phone.
+   Text Size > Larger Text**, then rotate the device.
 3. Turn on **Reduce Motion** and **Differentiate Without Color** in **Settings
    > Accessibility > Display & Text Size**.
 

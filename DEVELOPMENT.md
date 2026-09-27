@@ -10,10 +10,15 @@ physical hardware measurements behind it. Rider instructions live in the
 - macOS
 - Xcode 26 or later
 - Swift 6
-- An iPhone running iOS 17 or later for Bluetooth and trainer testing
+- An iPhone or iPad running iOS/iPadOS 17 or later for Bluetooth and trainer testing
 
 The simulator can build and display the app, but it cannot prove Bluetooth
 behavior with a trainer, controller or fan.
+
+The app target and UI-test target are universal (`TARGETED_DEVICE_FAMILY =
+"1,2"`). iPad supports portrait, upside-down portrait and both landscape
+orientations without requiring full screen, so normal full screen, Split View
+and Stage Manager remain available.
 
 The in-app Demo Mode is intentionally simulator-safe. `DemoRideState` contains
 only a drivetrain and selected gear, while its `ConfigurationStore` has no
@@ -56,6 +61,18 @@ xcodebuild test \
   -parallel-testing-enabled NO
 ```
 
+Run the same suite on the representative iPads used by CI:
+
+```bash
+for destination in 'iPad mini (A17 Pro)' 'iPad Pro 13-inch (M5)'; do
+  xcodebuild test \
+    -project VirtualGears.xcodeproj \
+    -scheme VirtualGears \
+    -destination "platform=iOS Simulator,name=$destination" \
+    -parallel-testing-enabled NO
+done
+```
+
 Run the dense setup and Settings journeys on the smaller supported simulator:
 
 ```bash
@@ -79,7 +96,9 @@ The matrix includes the setup guide, startup, ride, Settings, every equipment
 destination, virtual and physical gearing, Headwind and Demo Mode. It also
 includes Accessibility Dynamic Type for the wizard, Settings and ride;
 landscape ride and Headwind layouts; dark-mode ride and Headwind controls; and
-the dense wizard and Settings journeys on the smaller iPhone 17e. Assertions
+the dense wizard and Settings journeys on the smaller iPhone 17e. The full suite
+also runs on an iPad mini and 13-inch iPad, with iPad-specific ready/ride,
+sheet, landscape and upside-down assertions. Assertions
 check the state-specific message and action, plus important layout and visual
 invariants. Whole-screen pixel comparisons are deliberately avoided; pixel
 sampling is used only when XCTest cannot expose a meaningful property such as
@@ -103,22 +122,23 @@ matrix. Every response Virtual Gears owns after those events is still represente
 Protocol behavior and equipment lifecycle remain covered by the package tests and
 physical-hardware evidence.
 
-Open the iPhone project:
+Open the app project:
 
 ```bash
 open VirtualGears.xcodeproj
 ```
 
-Select the `VirtualGears` scheme. To run on an iPhone:
+Select the `VirtualGears` scheme. To run on a physical iPhone or iPad:
 
 1. Sign in to Xcode with the Apple ID used for device development.
 2. Select the `VirtualGears` target.
 3. Open **Signing & Capabilities** and choose the development team.
-4. Select the physical iPhone as the run destination.
+4. Select the physical device as the run destination.
 5. Run the app.
 
-CI performs the same package tests and builds the app for an iPhone simulator
-without code signing.
+CI performs the same package tests, builds the universal app for the iOS
+simulator without code signing, and runs UI tests on iPhone 17 Pro, iPad mini
+and iPad Pro 13-inch.
 
 ## Repository layout
 
@@ -130,12 +150,65 @@ without code signing.
 | `VirtualGearsUITests` | Simulator UI, navigation, accessibility and layout regression tests |
 | `Tools` | macOS tools for inspecting the KICKR, Zwift Click and advertised trainer name |
 | `docs` | MkDocs website, screenshots and hardware findings |
-| `VirtualGears.xcodeproj` | iPhone app project |
+| `VirtualGears.xcodeproj` | Universal iPhone and iPad app project |
 
 `DemoRideStateTests` cover the simulated gear ladder and drivetrain changes.
 Bluetooth safety still depends on keeping Demo Mode outside `ProxyCoordinator`
 and the CoreBluetooth services; do not replace its local state with staged
 production services.
+
+## Native iPad release gate
+
+Simulator coverage verifies app-owned layout and navigation at compact iPhone
+widths and regular full-screen iPad widths. The same geometry-driven layout is
+used when an iPad window becomes compact, but Split View and Stage Manager still
+need the physical iPad check below. CoreBluetooth behavior must also be checked
+on physical hardware.
+
+On 25 August 2026 the iPad was connected by USB and paired successfully:
+
+```text
+xcrun devicectl list devices
+iPad Air (2) — iPad14,10 — iPadOS 26.6.1 (23G83)
+UDID 00008112-001C381E3441A01E — wired — available (paired)
+```
+
+Developer Mode was enabled, and automatic provisioning registered the iPad.
+The signed development build was then built, installed and launched successfully
+with bundle identifier `com.sbroenne.VirtualGears`. `devicectl` confirmed the app
+was running in the foreground on the unlocked iPad at its native 2732×2048
+display resolution.
+
+```text
+Virtual Gears 1.0 (18) — com.sbroenne.VirtualGears — installed
+/private/var/containers/Bundle/Application/.../VirtualGears.app/VirtualGears
+```
+
+Physical XCTest automation was attempted twice, including a single test, but
+the runner timed out after 60 seconds while enabling automation mode. Launch is
+therefore physically verified while app-owned layouts and multitasking remain
+covered by the simulator matrix rather than physical XCTest.
+
+The first physical Click discovery attempt found the original Click but remained
+on "Found one. Checking for others…" after the search window. A direct Mac probe
+then found the same Click at -59 dBm, connected, reported a 100% battery and read
+its button presses, ruling out a sleeping or unavailable accessory. The settings
+discovery window now keeps an absolute view-state deadline driven by a timer
+rather than a SwiftUI `.task(id:)`, so candidate-driven view updates cannot
+discard the deadline. The single-candidate regression passes on iPhone and iPad
+simulators. The corrected build was installed on the iPad on 25 August 2026;
+after the Click was woken, the startup screen found and selected the sole
+original Click automatically. Physical sole-device discovery is therefore
+validated.
+
+The complete required Bluetooth gate was then checked manually on the same iPad
+Air with the physically validated KICKR V5 and original Zwift Click: KICKR
+discovery and connection, FTMS advertising to a riding app, Start Shifting,
+confirmed easier and harder shifts including Click input, Stop Shifting, normal
+wheel-circumference restoration and an uninterrupted riding-app connection all
+worked. The Headwind path was not repeated on iPad; its existing physical iPhone
+evidence remains the supported claim. With this evidence recorded, build 19 is
+the first universal build eligible for TestFlight upload.
 
 The proxy and shifting have deliberately separate lifecycles. Once the saved
 KICKR is ready, `ProxyCoordinator.makeProxyAvailable()` publishes the FTMS
