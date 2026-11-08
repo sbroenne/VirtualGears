@@ -86,13 +86,15 @@ The new mode is not considered complete until this physical gate passes:
    retain the existing physical evidence rather than repeat the hardware test.
 3. Choose Shift with Zwift or a compatible app on the start screen and confirm its parked-gear advice.
 4. In RealVelo, reconnect Virtual Gears as the trainer and pair the Click there.
-5. Confirm discovery, RideOn/device information, power, cadence and terrain.
-6. Verify a ratio received before Start leaves the KICKR at normal wheel size.
-7. Tap Start here. Shift both ways in RealVelo and verify resistance and
-   KICKR-confirmed ratio responses, including a held button.
-8. Stop here. Confirm normal wheel size, uninterrupted RealVelo connection and
-   no further ratio application until Start is pressed again.
-9. Exercise an ERG target, a trainer reconnect and return to Shift with Virtual Gears.
+5. Confirm RealVelo offers virtual shifting and shifting is visible after Start.
+6. Ride an ERG workout segment and confirm the KICKR holds the target power.
+7. Disconnect and reconnect the trainer in RealVelo; confirm virtual shifting
+   is offered again.
+
+Wheel-size writes, confirmation and Stop restoration use the same trainer path
+as Shift with Virtual Gears, which already has physical evidence. Pre-Start
+staging happens inside the app and is covered by core tests. These are not
+repeated on hardware.
 
 Record the app/device versions, observed commands and results here. At present
 this gate is **pending**, not physical compatibility evidence. A separate Zwift
@@ -146,9 +148,8 @@ unforwarded; the KICKR retains its configured weight.
 
 On 8 November 2026, the rider confirmed, "i can see that it is shifting,"
 while testing RealVelo with the corrected build. This adds rider-observed
-shifting to the command/reply evidence. It does not yet establish easier/harder
-resistance in both directions, pre-Start behavior, Stop restoration, ERG or
-reconnect acceptance.
+shifting to the command/reply evidence, satisfying steps 1-5. ERG and
+reconnect (steps 6-7) remain pending.
 
 Run the hardware-independent test suite:
 

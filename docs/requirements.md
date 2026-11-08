@@ -110,8 +110,7 @@ acceptance gate. Zwift is another protocol target, not yet a validated app.
 RealVelo now recognises virtual shifting after correcting its initial RideOn
 greeting handling. A phone trace confirms simulation/ratio commands and ratio
 replies, and the rider confirmed seeing shifting on 8 November 2026.
-The remaining physical acceptance checks are still pending; this is not yet
-full ride-validation evidence.
+ERG and reconnecting RealVelo are still to be checked on hardware.
 
 The iPad interface is exercised on iPad mini and 13-inch iPad simulators. That
 proves the layouts and navigation, not Bluetooth. The first universal release
