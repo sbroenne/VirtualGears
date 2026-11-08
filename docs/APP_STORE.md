@@ -11,6 +11,14 @@ Work top to bottom.
     physical iPad Bluetooth gate in Stage 5 passed. The version has not been
     submitted for App Review.
 
+The listing and review-note drafts below now describe both shifting modes.
+They are not a record of new live metadata or an uploaded build. Before this
+change is accepted, complete the RealVelo/KICKR hardware test and record its
+result in `DEVELOPMENT.md`. Before submission, save the matching description,
+promotional text, review notes and relevant screenshots in App Store Connect.
+Do not reuse the earlier Independent-shifting evidence as proof of the new
+Zwift-compatible path.
+
 ---
 
 ## Stage 1 — Join the Apple Developer Program
@@ -61,7 +69,7 @@ iPhone and iPad and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Give your Wahoo KICKR virtual gears in compatible FTMS riding apps. Shift on iPhone or iPad with 24 virtual gears or real groupset gearing.
+    Give your KICKR virtual gears. Shift independently on iPhone or iPad, or let a Zwift-protocol riding app control the gears. Keep your bike in one quiet gear.
 
 ### Description
 
@@ -89,8 +97,16 @@ iPhone and iPad and when advertising itself as a trainer.
     Shifting to restore normal trainer gearing without disconnecting or stopping the
     ride in your riding app.
 
-    This is not Zwift-native virtual shifting. Virtual Gears supplies and displays its
-    own gears on your iPhone or iPad through an ordinary FTMS connection.
+    TWO WAYS TO SHIFT
+    Shift with Virtual Gears supplies and displays its own gears on your iPhone or iPad
+    through an ordinary FTMS connection. Use our on-screen buttons or an original
+    Zwift Click connected to Virtual Gears.
+
+    Shift with Zwift or a compatible app lets a riding app that supports the Zwift trainer
+    protocol send gear ratios to Virtual Gears. Pair your Click with the riding app
+    instead. The app chooses the gears; Virtual Gears shows the KICKR-confirmed ratio.
+    Choose either mode directly on the start screen. Both modes keep Start Shifting and Stop
+    Shifting. Stop before changing modes, then reconnect the trainer in your riding app.
 
     GEARS YOU CAN SEE
     The gear ladder is drawn rather than shown as a bare number: short bars for small
@@ -114,7 +130,7 @@ iPhone and iPad and when advertising itself as a trainer.
     example equipment status. Demo choices never replace saved equipment.
 
     OPTIONAL ZWIFT CLICK
-    Wake an original Zwift Click and Virtual Gears finds and remembers it automatically.
+    In Shift with Virtual Gears, wake an original Zwift Click and Virtual Gears finds and remembers it automatically.
     It shifts alongside the on-screen buttons and visibly presses the matching control,
     but is never required.
 
@@ -127,9 +143,10 @@ iPhone and iPad and when advertising itself as a trainer.
     are honoured: gears are rebuilt around that size. Otherwise the app uses your
     optional saved circumference or a 2105 mm default.
 
-    NOT AN ERG APP
-    Workouts that set target power are refused. Virtual Gears controls how hard a gear
-    feels, not your wattage.
+    WORKOUTS
+    Shift with Virtual Gears refuses ERG power targets. Shift with Zwift or a compatible app passes
+    targets of 0-2000 W to the KICKR's own ERG mode. A gear change does not change
+    the workout's power target.
 
     NO ACCOUNTS, INTERNET OR TRACKING
     The app has no networking code. Nothing about your ride leaves your device.
@@ -261,7 +278,7 @@ answers, in order, the seven questions App Review asked when they rejected
     HOW TO SET UP AND REACH THE MAIN FEATURES (point 4)
     No account, login, credentials or sample files are needed. No hardware is needed either.
     On the first screen, tap "Try Demo". A blue "Demo Mode - Simulated" notice confirms no trainer is connected and Bluetooth is not in use. Demo Mode gives you the production gear picker, the gear ladder, the large Easier and Harder controls, virtual and real-bike gearing, Settings, and simulated trainer, Click, Headwind and riding-app status. Tap "Exit Demo" to return to real trainer discovery. Demo Mode is in-memory only: it does not scan, advertise, connect or send Bluetooth commands, and it does not replace saved equipment.
-    With hardware: switch the KICKR on and open the app. It finds and connects on its own. Then point any FTMS riding app on a computer at "Virtual Gears" and shift with the on-screen buttons or an original Zwift Click.
+    With hardware: switch the KICKR on and open the app. Complete the physical bike setup. Shift with Virtual Gears is the default: connect an FTMS riding app to "Virtual Gears", tap Start Shifting and use our buttons or an original Click paired here. For Shift with Zwift or a compatible app, choose it directly on the start screen, confirm the parked gear, reconnect the trainer in the riding app and pair the Click there. Tap Start Shifting here; the riding app sends gear ratios and Virtual Gears applies and reports the KICKR-confirmed ratio.
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
     Physically tested: iPhone 17 Pro, iOS 26.6; iPad Air (iPad14,10), iPadOS 26.6.1.
@@ -277,8 +294,8 @@ answers, in order, the seven questions App Review asked when they rejected
     REGULATION AND THIRD-PARTY MATERIAL (point 7)
     Not a regulated industry. This is exercise-equipment control, not a medical device, and the app makes no health or medical claims. It speaks the public Bluetooth SIG Fitness Machine Service (FTMS) standard, which requires no licence or credential. Wahoo, KICKR, HEADWIND, Zwift and the riding apps are named only to say which hardware and software the app works with. The app is not affiliated with, authorised by or endorsed by those companies, and contains none of their material.
 
-    TWO LIMITS WE STATE PLAINLY
-    Virtual Gears supplies and displays its gears itself over ordinary FTMS. It does not support Zwift-native virtual shifting; an original Zwift Click is read as ordinary buttons.
+    LIMITS WE STATE PLAINLY
+    Shift with Virtual Gears supplies and displays its own gears over ordinary FTMS. Shift with Zwift or a compatible app requires a riding app that recognises the additional Zwift trainer protocol, not simply an app with any virtual-shifting feature. This is not an official Zwift affiliation or certification.
     Demo Mode shows the app's interface and local gearing behaviour. It is not a claim that simulated accessories prove physical compatibility.
 
     WHY BLUETOOTH BACKGROUND MODE
@@ -297,7 +314,7 @@ recording, and the reply to send with it.
 | Guideline 2.1, information needed | What happened to 1.0 (5). They wanted a screen recording plus six written answers. The answers are now in the Notes field; the recording is covered by `DEMO_VIDEO.md`. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
-| Safety of controlling exercise equipment | The app cannot change resistance beyond what the riding app already asks for; it only rescales a wheel-size setting within a range verified on real hardware, and shows a gear only after the trainer confirms it. |
+| Safety of controlling exercise equipment | Gears rescale wheel circumference within the supported range. Terrain comes from the riding app. Zwift-compatible mode may also forward power targets to the KICKR's ERG mode. Applied ratios are reported only after trainer confirmation; Start is required and Stop restores normal wheel size. |
 
 ## Later versions
 

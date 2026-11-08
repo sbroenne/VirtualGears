@@ -10,10 +10,10 @@ offer it.**
 Virtual Gears puts an iPhone or iPad between your trainer and the app you ride
 with.
 Your riding app still controls the route and its hills; Virtual Gears adds the
-gears. Because it appears as a normal FTMS trainer, the riding app does not need
-to know anything about virtual shifting.
+gears. Choose **Shift with Virtual Gears** for ordinary FTMS apps, or
+**Shift with Zwift or a compatible app** to let a riding app send its own gear ratios.
 
-![Your riding app connects to Virtual Gears, which connects to a Wahoo KICKR and optional accessories](docs/how-it-works.svg)
+![Shift with Virtual Gears: your riding app connects to Virtual Gears, which applies the gears on a Wahoo KICKR](docs/how-it-works.svg)
 
 Leave the bike in a quiet, straight chain line and shift virtually instead.
 Nothing moves on the bike, so shifting is silent and cannot drop the chain.
@@ -39,8 +39,8 @@ available to ordinary FTMS riding apps without changing their route data.
 |---|---|
 | **Apple device** | iPhone or iPad running iOS/iPadOS 17 or later |
 | **Trainer** | A compatible direct-drive Wahoo KICKR |
-| **Riding app** | An app that can connect to an FTMS trainer |
-| **Shifting** | Large on-screen buttons; optional original Zwift Click |
+| **Riding app** | FTMS support for Shift with Virtual Gears; Zwift trainer-protocol support for Shift with Zwift or a compatible app |
+| **Shifting** | Shift with Virtual Gears: on-screen buttons or original Zwift Click connected here. Shift with Zwift or a compatible app: controls in your riding app |
 | **Fan** | Optional Wahoo KICKR HEADWIND |
 
 Virtual Gears was built and physically tested with a KICKR V5. Other
@@ -54,8 +54,10 @@ on iPad mini and 13-inch iPad simulators, including portrait, landscape and
 accessibility text.
 
 On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
-on Windows, have been ridden end to end. Other FTMS riding apps are expected to
-work but have not been tested.
+on Windows, have been ridden end to end with **Shift with Virtual Gears**. The
+RealVelo/KICKR test for **Shift with Zwift or a compatible app** is a required gate for this
+change; that path is not yet physically validated. Other FTMS riding apps are
+expected to work but have not been tested.
 
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
 
@@ -73,6 +75,15 @@ work but have not been tested.
    may show the device's name instead.
 6. Tap **Start Shifting**, then shift with the large **Easier** and **Harder**
    buttons.
+
+Those steps use the default **Shift with Virtual Gears** mode. To use
+**Shift with Zwift or a compatible app**, choose it directly on the start screen,
+confirm the parked gear recommendation for that mode, and reconnect Virtual
+Gears in your riding app. Pair the Click with the riding app instead of Virtual
+Gears. **Start Shifting** is still required here before the app's ratios affect
+the trainer. Virtual Gears shows the confirmed ratio; the riding app owns the
+gear selection and display. Stop restores normal wheel size without ending the
+riding app's ride. Stop shifting before changing modes or the physical gear.
 
 Virtual Gears is a transparent trainer connection as soon as the KICKR is ready.
 The physical fact it cannot guess is the gear the bike is parked in, because a
@@ -111,7 +122,9 @@ with physical hardware.
   control and support for larger text.
 - **Persistent equipment statuses** that keep the trainer, Click, fan and
   riding app visible independently, including while the riding app is waiting.
-- **Automatic optional-equipment discovery** for an original Zwift Click and
+- **Two shifting modes**, with gears controlled here or by your riding app.
+- **Automatic optional-equipment discovery** for an original Zwift Click in
+  Shift with Virtual Gears and
   Wahoo KICKR HEADWIND.
 - **Optional Zwift Click shifting** from the handlebar.
 - **Headwind control** with Automatic, Off, 25%, 50%, 75% and 100% settings.
@@ -184,7 +197,10 @@ controller for the real KICKR. It passes the riding app's commands and trainer
 data through, then applies the selected gear by changing the wheel
 circumference configured on the KICKR.
 
-Every gear change waits for confirmation from the trainer.
+Every gear change waits for confirmation from the trainer. In
+Shift with Zwift or a compatible app, an app-requested ratio is scaled from the confirmed
+physical gear rather than mapped to our own gear ladder. Ratios beyond the safe
+range are limited and the actual confirmed ratio is reported back.
 
 [How the gears work](https://sbroenne.github.io/VirtualGears/how-it-works/) ·
 [Safety details](https://sbroenne.github.io/VirtualGears/safety/) ·
@@ -192,12 +208,14 @@ Every gear change waits for confirmation from the trainer.
 
 ## Important limitations
 
-- **ERG workouts are not supported.** ERG mode controls target power, while
-  Virtual Gears controls how hard a gear feels.
-- **The riding app cannot display the selected gear.** Bluetooth FTMS has no
-  message for reporting it, so the gear is shown on your iPhone or iPad.
-- **This is not Zwift's native virtual shifting.** It works independently of the
-  riding app. Virtual Gears supplies and displays the gears itself.
+- **Shift with Virtual Gears does not support ERG workouts.** The Zwift option
+  forwards power targets of 0-2000 W to the KICKR's own ERG mode.
+- **Shift with Virtual Gears cannot report a gear to the riding app.** Ordinary
+  FTMS has no gear-number message. In Shift with Zwift or a compatible app the riding app
+  chooses the gears and Virtual Gears reports the applied ratio.
+- **Virtual-shifting support is protocol-specific.** Shift with Zwift or a compatible app
+  requires an app that recognises the added Zwift trainer service. It is not a
+  promise that every app with a virtual-shifting feature will work.
 - **Virtual Gears cannot read the trainer's current wheel circumference.** It
   uses the optional **Wheel circumference** saved in Settings, or the 2105 mm
   (700×25 road) default, unless the riding app supplies another size. Common
@@ -231,6 +249,9 @@ The FulGaz-on-Windows compatibility investigation was informed by the outward
 Bluetooth behavior of [QZ (qdomyos-zwift)](https://github.com/cagnulein/qdomyos-zwift),
 an independent GPL-3.0 project. Virtual Gears implements the standard Bluetooth
 services independently; no QZ source code is copied or bundled.
+Public Zwift trainer message schemas and observed protocol exchanges in QZ
+also informed the independently written Zwift-compatible codec; no generated
+protocol code, trainer identity or serial number is copied.
 
 ## Licence
 

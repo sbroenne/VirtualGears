@@ -39,9 +39,13 @@ struct VirtualGearsHomeView: View {
                 )
             }
         }
-        .task(id: isDemoMode) {
+        .task(id: "\(isDemoMode)-\(store.configuration.shiftingMode.rawValue)") {
             guard !isDemoMode else { return }
             await discoverOptionalEquipment()
+        }
+        .task(id: store.configuration) {
+            guard !isDemoMode, !coordinator.isShiftingPresented else { return }
+            await coordinator.updateConfiguration(store.configuration)
         }
     }
 
@@ -65,7 +69,7 @@ struct VirtualGearsHomeView: View {
     private func exitDemoMode() {
         isDemoMode = false
         kickr.resumeAfterDemo()
-        click.resumeAfterDemo()
+        click.resumeAfterDemo(reconnectSavedDevice: store.configuration.connectsClick)
         headwind.resumeAfterDemo()
         if demoInterruptedAdvertising {
             demoInterruptedAdvertising = false
@@ -98,6 +102,11 @@ struct VirtualGearsHomeView: View {
     }
 
     private func discoverClick(ifNeeded needed: Bool) async {
+        guard store.configuration.shiftingMode == .independent else {
+            click.stopScanning(reconnectSavedDevice: false)
+            click.disconnect()
+            return
+        }
         guard needed else {
             click.autoConnectSavedDevice()
             return
@@ -111,6 +120,7 @@ struct VirtualGearsHomeView: View {
             return
         }
         guard !store.configuration.usesClick,
+              store.configuration.shiftingMode == .independent,
               click.scanGeneration == generation else { return }
         let seen = click.candidates.map { DiscoveredTrainer(id: $0.id) }
         guard case let .connect(id) = TrainerPicker.choice(from: seen),
@@ -177,14 +187,15 @@ struct StartupView: View {
                 VStack(spacing: 24) {
                     if let failureMessage {
                         failureCard(failureMessage)
-                        retryButton
                     } else if mustChoose {
                         chooser
                     } else if canStart {
                         readyCard
-                        retryButton
                     } else {
                         searching
+                    }
+                    shiftingModeSelection
+                    if failureMessage != nil || !mustChoose {
                         retryButton
                     }
                     demoEntry
@@ -363,10 +374,64 @@ struct StartupView: View {
 
     // MARK: - Stopping and failing
 
+    private var shiftingModeSelection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("How you shift")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            VStack(spacing: 0) {
+                ForEach(ShiftingMode.allCases, id: \.self) { mode in
+                    let selected = store.configuration.shiftingMode == mode
+                    Button {
+                        store.configuration.shiftingMode = mode
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(mode.name)
+                                    .font(.headline)
+                                Text(mode.explanation)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .multilineTextAlignment(.leading)
+                            Spacer(minLength: 8)
+                            Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(.rect)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
+                    .accessibilityIdentifier("startup.mode.\(mode.rawValue)")
+                    .accessibilityAddTraits(selected ? [.isSelected] : [])
+                    .accessibilityHint(mode.explanation)
+                    if mode == .independent {
+                        Divider().padding(.horizontal, 16)
+                    }
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 12))
+            if store.configuration.shiftingMode == .zwiftCompatible {
+                Text("After changing modes, reconnect Virtual Gears in your riding app.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     private var readyCard: some View {
         VStack(spacing: 16) {
             Text("Ready to shift")
                 .font(.title3.weight(.semibold))
+            if store.configuration.shiftingMode == .zwiftCompatible {
+                Text("Connect your Click to your riding app. Tap Start Shifting here to enable its gears.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
             connectionList(includeRidingApp: true)
         }
         .frame(maxWidth: .infinity)
@@ -382,7 +447,7 @@ struct StartupView: View {
                 state: connectionState(kickr.state, isReady: kickr.isReady)
             )
         ]
-        if store.configuration.usesClick {
+        if store.configuration.connectsClick {
             items.append(
                 ConnectionStatusItem(
                     id: "click",
@@ -532,6 +597,7 @@ struct StartupView: View {
     /// button stays actionable even before the trainer is found.
     private var needsParkedGear: Bool {
         store.configuration.parkedGear == nil
+            || store.configuration.parkedGearPutsGearsOutOfReach
     }
 
     private var retryTitle: String {
@@ -543,13 +609,13 @@ struct StartupView: View {
     /// that is sitting there connected has no way to discover that the missing
     /// thing is which gear the bike is parked in.
     private var waitingTitle: String {
-        store.configuration.parkedGear == nil
+        needsParkedGear
             ? "Set the gear you are in"
             : "Waiting for trainer"
     }
 
     private var blockedHint: String {
-        store.configuration.parkedGear == nil
+        needsParkedGear
             ? (store.configuration.setupWizardCompleted
                 ? "Opens Settings so you can set which gear the bike is parked in"
                 : "Opens the setup guide so you can set which gear the bike "
@@ -1141,6 +1207,7 @@ struct ShiftingView: View {
         from previous: Drivetrain?,
         revertingTo original: AppConfiguration?
     ) {
+        guard configuration.shiftingMode == .independent else { return }
         guard previous?.gears != configuration.drivetrain?.gears else { return }
         let updated = store.configuration
         Task {
@@ -1162,7 +1229,9 @@ struct ShiftingView: View {
                 let landscape = geometry.size.width > geometry.size.height
                     && !dynamicTypeSize.isAccessibilitySize
                 VStack(spacing: landscape ? 10 : 14) {
-                    if landscape {
+                    if configuration.shiftingMode == .zwiftCompatible {
+                        appRatioControls
+                    } else if landscape {
                         landscapeControls(geometry)
                     } else {
                         portraitControls(geometry)
@@ -1222,7 +1291,8 @@ struct ShiftingView: View {
                 // before it loses its icon, leaving a bare warning glyph with
                 // nothing to explain it.
                 ToolbarItem(placement: .principal) {
-                    if coordinator.state == .active && !isChangingGears {
+                    if configuration.shiftingMode == .independent,
+                       coordinator.state == .active && !isChangingGears {
                         gearsMenu
                     }
                 }
@@ -1250,7 +1320,8 @@ struct ShiftingView: View {
                     kickr: kickr,
                     click: click,
                     headwind: headwind,
-                    onFinish: { showsSettings = false }
+                    onFinish: { showsSettings = false },
+                    shiftingIsActive: true
                 )
             }
         }
@@ -1378,6 +1449,7 @@ struct ShiftingView: View {
                 shiftButton(easier: true)
                 shiftButton(easier: false)
             }
+
             .frame(
                 height: min(
                     max(160, geometry.size.height * 0.32),
@@ -1386,6 +1458,38 @@ struct ShiftingView: View {
                 )
             )
             .accessibilityElement(children: .contain)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var appRatioControls: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                if showsRideStatus { rideStatus }
+                Text(ShiftingMode.zwiftCompatible.name)
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+                if let ratio = coordinator.confirmedAppRatio {
+                    Text(ratio, format: .number.precision(.fractionLength(2)))
+                        .font(.system(size: 88, weight: .black, design: .rounded).monospacedDigit())
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .accessibilityLabel("Confirmed gear ratio")
+                        .accessibilityIdentifier("ride.appRatio")
+                    Text("Ratio set by your riding app")
+                        .font(.headline)
+                } else {
+                    Text("Waiting for a gear ratio from your riding app")
+                        .font(.title3.weight(.semibold))
+                        .accessibilityIdentifier("ride.appRatioWaiting")
+                }
+                Text("Use your riding app to shift. Connect your Click there, not to Virtual Gears.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .multilineTextAlignment(.center)
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -1555,7 +1659,7 @@ struct ShiftingView: View {
     @ViewBuilder
     private var equipmentNotes: some View {
         HStack(spacing: 12) {
-            if configuration.usesClick, click.isReady, click.batteryIsLow,
+            if configuration.connectsClick, click.isReady, click.batteryIsLow,
                let battery = click.batteryLevel {
                 // A shifter about to go flat mid-ride is not a footnote. It is
                 // the one thing on this screen a rider can still do something
@@ -1602,7 +1706,7 @@ struct ShiftingView: View {
                     ? "Reconnecting" : kickr.state.label
             )
         ]
-        if configuration.usesClick {
+        if configuration.connectsClick {
             items.append(
                 EquipmentItem(
                     isOptional: true,

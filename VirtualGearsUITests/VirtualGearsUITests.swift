@@ -33,6 +33,13 @@ private enum DesignedUXState: String, CaseIterable {
     case rideLandscape = "ride/landscape"
     case rideAccessibilityText = "ride/accessibility-text"
     case rideDarkMode = "ride/dark-mode"
+    case zwiftReady = "zwift/ready"
+    case zwiftRatio = "zwift/confirmed-ratio"
+    case zwiftWaiting = "zwift/waiting-for-ratio"
+    case zwiftSettings = "zwift/settings"
+    case shiftingModePicker = "zwift/mode-picker"
+    case zwiftLandscape = "zwift/landscape"
+    case zwiftModeLocked = "zwift/mode-locked"
 
     // Settings and equipment
     case settingsConnected = "settings/connected"
@@ -131,6 +138,10 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
         .demoRide, .demoSettings, .demoGearSettings,
         .demoHeadwindAutomatic, .demoHeadwindManual,
     ], to: "testUXCoverageDemoStates")
+    assign([
+        .zwiftReady, .zwiftRatio, .zwiftWaiting, .zwiftSettings,
+        .shiftingModePicker, .zwiftLandscape, .zwiftModeLocked,
+    ], to: "testUXCoverageZwiftShiftingStates")
     return result
 }()
 
@@ -138,6 +149,57 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
 final class VirtualGearsUITests: XCTestCase {
     private var app: XCUIApplication!
     private var capturedUXStates: Set<DesignedUXState> = []
+
+    func testUXCoverageZwiftShiftingStates() {
+        launch("-shotZwiftReady")
+        assertVisibleElement(app.buttons["Start Shifting"])
+        let independentMode = app.buttons["startup.mode.independent"]
+        let zwiftMode = app.buttons["startup.mode.zwiftCompatible"]
+        assertVisibleElement(independentMode)
+        assertVisibleElement(zwiftMode)
+        XCTAssertTrue(zwiftMode.isSelected)
+        XCTAssertFalse(app.descendants(matching: .any)["status.click"].exists)
+        capture(.zwiftReady)
+        independentMode.tap()
+        XCTAssertTrue(independentMode.isSelected)
+        XCTAssertFalse(zwiftMode.isSelected)
+        zwiftMode.tap()
+        XCTAssertTrue(zwiftMode.isSelected)
+        XCTAssertFalse(independentMode.isSelected)
+        capture(.shiftingModePicker)
+
+        launch("-shotZwiftWaiting")
+        assertVisible("ride.appRatioWaiting")
+        XCTAssertFalse(app.buttons["Easier"].exists)
+        XCTAssertFalse(app.buttons["Harder"].exists)
+        capture(.zwiftWaiting)
+
+        launch("-shotZwiftRide")
+        assertVisible("ride.appRatio")
+        XCTAssertTrue(app.staticTexts["Ratio set by your riding app"].exists)
+        XCTAssertFalse(app.buttons["Easier"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["status.click"].exists)
+        capture(.zwiftRatio)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        assertVisible("ride.appRatio")
+        capture(.zwiftLandscape)
+        XCUIDevice.shared.orientation = .portrait
+        app.buttons["Settings"].tap()
+        assertVisible("screen.settings")
+        XCTAssertFalse(app.buttons["settings.shiftingMode"].isEnabled)
+        capture(.zwiftModeLocked)
+
+        launch("-shotZwiftSettings")
+        assertVisible("screen.settings")
+        let clickInstruction = app.descendants(matching: .any)["settings.clickInRidingApp"]
+        assertVisibleElement(clickInstruction)
+        XCTAssertTrue(clickInstruction.label.contains("Connect in your riding app"))
+        capture(.zwiftSettings)
+        app.buttons["settings.shiftingMode"].tap()
+        assertVisibleElement(app.buttons["Shift with Virtual Gears"])
+        assertVisibleElement(app.buttons["Shift with Zwift or a compatible app"])
+        assertJourneyCoverage()
+    }
 
     func testStartingScreenShowsEveryConfiguredEquipmentStatus() {
         launch("-shotStarting")

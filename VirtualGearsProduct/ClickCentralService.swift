@@ -97,6 +97,7 @@ final class ClickCentralService: NSObject {
     private var repeatTask: Task<Void, Never>?
     private var isSuspendedForDemo = false
     private var resumesAfterDemoDisconnect = false
+    private var reconnectsAfterDemo = true
 #if DEBUG
     private var usesStagedScan = false
 #endif
@@ -244,6 +245,7 @@ final class ClickCentralService: NSObject {
 
     func disconnect() {
         desiredConnection = false
+        scanWhenPoweredOn = false
         reconnectTask?.cancel()
         central.stopScan()
         stopRepeat()
@@ -263,20 +265,21 @@ final class ClickCentralService: NSObject {
         disconnect()
     }
 
-    func resumeAfterDemo() {
+    func resumeAfterDemo(reconnectSavedDevice: Bool = true) {
+        reconnectsAfterDemo = reconnectSavedDevice
         if peripheral != nil {
             resumesAfterDemoDisconnect = true
             return
         }
         isSuspendedForDemo = false
-        if hasSavedDevice { resumeSavedConnection() }
+        if hasSavedDevice, reconnectsAfterDemo { resumeSavedConnection() }
     }
 
     private func finishDemoSuspensionIfNeeded() -> Bool {
         guard isSuspendedForDemo, resumesAfterDemoDisconnect else { return false }
         isSuspendedForDemo = false
         resumesAfterDemoDisconnect = false
-        if hasSavedDevice { resumeSavedConnection() }
+        if hasSavedDevice, reconnectsAfterDemo { resumeSavedConnection() }
         return true
     }
 

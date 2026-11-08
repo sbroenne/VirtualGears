@@ -119,6 +119,35 @@ final class FakeRidingAppLink: FitnessMachineBroadcast {
         FitnessMachineControlPointRequest,
         RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)?
+    var zwiftCommandHandler: ((ZwiftTrainerRequest, RidingAppCommandSource) async -> [ZwiftTrainerResponse])?
+    private(set) var shiftingMode = ShiftingMode.independent
+    private(set) var zwiftResponses: [ZwiftTrainerResponse] = []
+
+    func configureShiftingMode(_ mode: ShiftingMode) {
+        guard mode != shiftingMode else { return }
+        let wasAdvertising = isAdvertising
+        stopAdvertising()
+        shiftingMode = mode
+        if wasAdvertising { startAdvertising() }
+    }
+
+    func isZwiftSubscriber(_ source: RidingAppCommandSource) -> Bool {
+        shiftingMode == .zwiftCompatible && isControlSubscriber(source)
+    }
+
+    func sendZwiftResponse(_ response: ZwiftTrainerResponse) {
+        zwiftResponses.append(response)
+    }
+
+    func sendZwift(
+        _ request: ZwiftTrainerRequest, from app: UUID = UUID()
+    ) async -> [ZwiftTrainerResponse] {
+        if controlSubscribers[app] == nil { subscribe(app) }
+        guard acceptingCommands else { return [] }
+        return await zwiftCommandHandler?(request, .init(
+            centralID: app, subscriptionID: controlSubscribers[app]!
+        )) ?? []
+    }
 
     /// How many times the riding app has had the trainer pulled out from under
     /// it. Stopping advertising is what disconnects a connected riding app, so

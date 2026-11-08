@@ -56,11 +56,17 @@ public protocol FitnessMachineBroadcast: AnyObject {
         FitnessMachineControlPointRequest,
         RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)? { get set }
+    var zwiftCommandHandler: ((
+        ZwiftTrainerRequest, RidingAppCommandSource
+    ) async -> [ZwiftTrainerResponse])? { get set }
 
+    func configureShiftingMode(_ mode: ShiftingMode)
     func startAdvertising()
     func stopAcceptingCommands()
     func stopAdvertising()
     func isControlSubscriber(_ source: RidingAppCommandSource) -> Bool
+    func isZwiftSubscriber(_ source: RidingAppCommandSource) -> Bool
+    func sendZwiftResponse(_ response: ZwiftTrainerResponse)
     func relayIndoorBikeData(_ data: Data)
     func notifyControlLost()
 }

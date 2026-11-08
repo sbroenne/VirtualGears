@@ -8,6 +8,7 @@ public struct AppConfiguration: Codable, Equatable {
     public var kickrUUID = ""
     public var clickName = ""
     public var clickUUID = ""
+    public var shiftingMode = ShiftingMode.independent
     public var headwindName: String?
     public var headwindUUID: String?
     public var chainringID = DrivetrainCatalog.defaultChainringID
@@ -47,6 +48,18 @@ public struct AppConfiguration: Codable, Equatable {
         kickrUUID = try string(.kickrUUID, "")
         clickName = try string(.clickName, "")
         clickUUID = try string(.clickUUID, "")
+        let savedMode = try container.decodeIfPresent(String.self, forKey: .shiftingMode)
+        if let savedMode, let mode = ShiftingMode(rawValue: savedMode) {
+            shiftingMode = mode
+        } else {
+            shiftingMode = .independent
+            if let savedMode {
+                ProductLogger.record(
+                    "Unknown shifting mode \(savedMode); using Shift with Virtual Gears",
+                    source: "Configuration", level: .warning
+                )
+            }
+        }
         headwindName = try container.decodeIfPresent(
             String.self, forKey: .headwindName
         )
@@ -165,6 +178,11 @@ public struct AppConfiguration: Codable, Equatable {
     /// The gear to recommend: the quietest one that still lets every simulated
     /// gear reach the trainer.
     public var suggestedParkedGear: ParkedGear? {
+        if shiftingMode == .zwiftCompatible {
+            return ParkedGearAdvice.suggestion(
+                for: physical, workable: workableParkedRatios
+            )
+        }
         guard let drivetrain else { return nil }
         return ParkedGearAdvice.suggestion(
             for: physical,
@@ -175,6 +193,12 @@ public struct AppConfiguration: Codable, Equatable {
     /// Every parked ratio that keeps the whole ladder within the trainer's
     /// reach, at every wheel size a riding app may ask for.
     public var workableParkedRatios: ClosedRange<Double>? {
+        if shiftingMode == .zwiftCompatible {
+            let scale = TrainerSafety.supportedScaleRange
+            let lower = ShiftingMode.zwiftRatioRange.upperBound / scale.upperBound
+            let upper = ShiftingMode.zwiftRatioRange.lowerBound / scale.lowerBound
+            return lower...upper
+        }
         guard let drivetrain else { return nil }
         return ParkedGearAdvice.workableRatios(for: drivetrain)
     }
@@ -182,6 +206,10 @@ public struct AppConfiguration: Codable, Equatable {
     /// True when the confirmed parked gear leaves part of the ladder out of
     /// reach, so the app can say so rather than fail mid-ride.
     public var parkedGearPutsGearsOutOfReach: Bool {
+        if shiftingMode == .zwiftCompatible {
+            guard let parkedGear, let range = workableParkedRatios else { return false }
+            return !range.contains(parkedGear.ratio)
+        }
         guard let drivetrain, let parkedGear else { return false }
         return !ParkedGearAdvice.isWorkable(parkedGear, simulating: drivetrain)
     }
@@ -232,6 +260,10 @@ public struct AppConfiguration: Codable, Equatable {
             && UUID(uuidString: clickUUID) != nil
     }
 
+    public var connectsClick: Bool {
+        shiftingMode == .independent && usesClick
+    }
+
     /// A Headwind is optional and never gates a ride.
     public var usesHeadwind: Bool {
         !(headwindName ?? "")
@@ -242,11 +274,15 @@ public struct AppConfiguration: Codable, Equatable {
     /// Whether the simulated gearing itself fits the trainer, before the
     /// rider's physical chain position is considered.
     public var hasSafeGearing: Bool {
+        if shiftingMode == .zwiftCompatible { return true }
         guard let drivetrain else { return false }
         return Self.isSafe(drivetrain)
     }
 
     public var hasSafeCircumference: Bool {
+        if shiftingMode == .zwiftCompatible {
+            return parkedGear != nil && !parkedGearPutsGearsOutOfReach
+        }
         guard let drivetrain else { return false }
         return Self.isSafe(drivetrain, parkedGear: parkedGear)
     }
@@ -333,6 +369,7 @@ public extension AppConfiguration {
     /// What the rider chose, named the way the bike is named: the groupset if
     /// the parts belong to one, otherwise the parts themselves.
     var drivetrainName: String {
+        if shiftingMode == .zwiftCompatible { return shiftingMode.name }
         guard !usesVirtualGears else { return gearLadder.name }
         if let groupset {
             return "\(groupset.qualifiedName) · \(chainring.name) \(cassette.name)"
@@ -342,6 +379,7 @@ public extension AppConfiguration {
 
     /// The one line that matters: how many gears they will actually have.
     var gearSummary: String {
+        if shiftingMode == .zwiftCompatible { return "Gears set by your riding app" }
         guard drivetrain != nil else {
             return "Too wide a range for the trainer"
         }
@@ -372,6 +410,9 @@ public extension AppConfiguration {
 
     /// Explains what the numbers on the ride screen will mean.
     var setupDescription: String {
+        if shiftingMode == .zwiftCompatible {
+            return shiftingMode.explanation + " Tap Start Shifting here to enable gears."
+        }
         guard let drivetrain else {
             return "The easiest and hardest gear are too far apart for the "
                 + "trainer to copy. Choose a smaller cassette or a single "

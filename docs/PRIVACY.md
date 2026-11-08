@@ -1,11 +1,11 @@
 # Privacy Policy for Virtual Gears
 
-Last updated: 25 August 2026
+Last updated: 7 November 2026
 
 ## The short version
 
-Virtual Gears does not collect anything about you. Nothing is sent anywhere, because
-the app has no way to send anything anywhere.
+Virtual Gears does not collect personal data or upload ride records. It relays
+live trainer readings to your riding app over local Bluetooth, not the internet.
 
 ## What the app stores
 
@@ -14,6 +14,7 @@ again each ride:
 
 - Which trainer you last used, so it can reconnect on its own.
 - Which gears you chose.
+- Whether Shift with Virtual Gears or Shift with Zwift or a compatible app is selected.
 - Which optional shift controller or Headwind fan it should reconnect to.
 
 These stay on your iPhone or iPad. Deleting the app deletes them.
@@ -38,6 +39,16 @@ equipment or gears saved for real rides.
 The app asks for Bluetooth permission because that is how it works: it connects to
 your trainer, optional shift buttons and optional fan, and it appears as a trainer
 to the app you ride with on your computer. Bluetooth is used only for that. iOS
+In Shift with Zwift or a compatible app, your riding app sends trainer commands and gear
+ratios to Virtual Gears, which reports the confirmed ratio and live readings
+back locally. Pair the Click with the riding app in this mode.
+
+Diagnostic messages can include requested trainer settings, gear ratios and
+command failures. They are not a recording of measured power, speed or cadence,
+and the app does not upload them. Development builds also keep a bounded local
+Zwift handshake log for connection troubleshooting. It contains protocol
+commands and replies, not central-device identifiers or measured telemetry;
+release builds do not create this file. iOS
 requires this permission for any app that uses Bluetooth; it is not used to
 determine where you are.
 

@@ -1,8 +1,23 @@
 # Safety
 
-Virtual Gears changes one setting on your trainer: its idea of your wheel size.
-It never touches resistance directly, and it never overrides what your riding
-app asks for.
+Virtual Gears applies gears by changing the trainer's idea of your wheel size.
+Terrain commands still come from your riding app. In Shift with Zwift or a compatible app,
+the app also supplies gear ratios and may send power targets to the KICKR's own
+ERG mode; Shift with Virtual Gears continues to refuse ERG.
+
+Both modes require **Start Shifting** before gears are applied. **Stop Shifting**
+restores normal wheel size and keeps the riding app connected. A mode or physical
+gear change requires stopping first.
+
+App-requested ratios are limited to the existing supported scale range if they
+would exceed it. The actual KICKR-confirmed ratio is returned, and the limiting
+event is logged. Failed writes do not produce a successful ratio reply. The
+normal wheel size is persisted before app-controlled gear writes so recovery
+can restore it after an interruption.
+
+The physical measurements below establish the underlying Wahoo wheel-size
+command behavior. They do not replace the required RealVelo test of the new
+Zwift-compatible path.
 
 Demo Mode is separate from this hardware path. It uses local simulated gear
 state, does not use Bluetooth, does not run the interrupted-ride baseline reset

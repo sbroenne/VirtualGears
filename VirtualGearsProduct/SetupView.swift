@@ -13,14 +13,19 @@ struct SetupView: View {
     @Bindable var headwind: HeadwindCentralService
     var onFinish: (() -> Void)?
     var autoConnectsOnAppear = true
+    var shiftingIsActive = false
 
     var body: some View {
         Form {
             setupStatusSection
+            shiftingModeSection
             equipmentSection
             wheelSizeSection
-            gearsSection
+            if store.configuration.shiftingMode == .independent {
+                gearsSection
+            }
             parkedGearSection
+                .disabled(shiftingIsActive && store.configuration.shiftingMode == .zwiftCompatible)
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -30,8 +35,9 @@ struct SetupView: View {
                 autoConnectSavedEquipment()
             }
         }
-        .onChange(of: store.configuration.usesClick) { _, enabled in
+        .onChange(of: store.configuration.connectsClick) { _, enabled in
             if enabled { click.autoConnectSavedDevice() }
+            else { click.disconnect() }
         }
         .onChange(of: store.configuration.usesHeadwind) { _, enabled in
             if enabled { headwind.autoConnectSavedDevice() }
@@ -43,6 +49,29 @@ struct SetupView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Done") { onFinish?() }
                     .fontWeight(.semibold)
+            }
+        }
+    }
+
+    private var shiftingModeSection: some View {
+        Section {
+            Picker("How you shift", selection: $store.configuration.shiftingMode) {
+                ForEach(ShiftingMode.allCases, id: \.self) { mode in
+                    Text(mode.name).tag(mode)
+                }
+            }
+            .pickerStyle(.navigationLink)
+            .accessibilityIdentifier("settings.shiftingMode")
+            .disabled(shiftingIsActive)
+        } footer: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(store.configuration.shiftingMode.explanation)
+                if store.configuration.shiftingMode == .zwiftCompatible {
+                    Text("Changing modes requires reconnecting your riding app.")
+                }
+                if shiftingIsActive {
+                    Text("Stop shifting before changing modes or the physical gear.")
+                }
             }
         }
     }
@@ -129,19 +158,25 @@ struct SetupView: View {
                 .foregroundStyle(.orange)
             }
 
-            NavigationLink {
-                ShiftingSetupView(store: store, click: click)
-            } label: {
-                SetupRow(
-                    title: "Zwift Click",
-                    value: store.configuration.usesClick ? shiftingValue : nil,
-                    status: EquipmentDisplayState(
-                        isConfigured: store.configuration.usesClick,
-                        connectionState: click.state,
+            if store.configuration.shiftingMode == .independent {
+                NavigationLink {
+                    ShiftingSetupView(store: store, click: click)
+                } label: {
+                    SetupRow(
+                        title: "Zwift Click",
+                        value: store.configuration.usesClick ? shiftingValue : nil,
+                        status: EquipmentDisplayState(
+                            isConfigured: store.configuration.usesClick,
+                            connectionState: click.state,
+                            isRequired: false
+                        ),
                         isRequired: false
-                    ),
-                    isRequired: false
-                )
+                    )
+                }
+            } else {
+                LabeledContent("Zwift Click", value: "Connect in your riding app")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("settings.clickInRidingApp")
             }
 
             NavigationLink {
@@ -289,7 +324,7 @@ struct SetupView: View {
 
     private func autoConnectSavedEquipment() {
         kickr.autoConnectSavedDevice()
-        if store.configuration.usesClick {
+        if store.configuration.connectsClick {
             click.autoConnectSavedDevice()
         }
         if store.configuration.usesHeadwind {
