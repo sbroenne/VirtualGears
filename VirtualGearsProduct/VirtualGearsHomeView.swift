@@ -194,10 +194,12 @@ struct StartupView: View {
                     } else {
                         searching
                     }
-                    shiftingModeSelection
+                    // Start comes before the mode list so it stays on screen
+                    // on short displays such as a folded iPhone.
                     if failureMessage != nil || !mustChoose {
                         retryButton
                     }
+                    shiftingModeSelection
                     demoEntry
                 }
                 .frame(maxWidth: 560)
@@ -655,6 +657,9 @@ struct DemoModeView: View {
     @State private var fanSpeed = 50
     @State private var sweepTask: Task<Void, Never>?
     @State private var sweepGeneration: UUID?
+    // Short screens such as the folded iPhone Duo need a compact layout so the
+    // shift buttons stay on screen without scrolling.
+    @State private var isShortScreen = false
     let onExit: () -> Void
 
     init(onExit: @escaping () -> Void) {
@@ -685,6 +690,9 @@ struct DemoModeView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
+            .onGeometryChange(for: Bool.self) { $0.size.height < 720 } action: {
+                isShortScreen = $0
+            }
             .navigationTitle("Demo Ride")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -729,7 +737,9 @@ struct DemoModeView: View {
                     showsFan = false
                 }
             }
-            .presentationDetents([.fraction(0.66), .large])
+            .presentationDetents(
+                isShortScreen ? [.large] : [.fraction(0.66), .large]
+            )
         }
         .onChange(of: store.configuration) { _, configuration in
             stopSweep()
@@ -745,17 +755,19 @@ struct DemoModeView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Demo Mode · Simulated", systemImage: "testtube.2")
                 .font(.title3.weight(.bold))
-            Text(
-                "Try the same large shift buttons and gear display used during "
-                    + "a real ride."
-            )
-            .font(.subheadline)
-            Text(
-                "No trainer is connected and Bluetooth stays off. The details "
-                    + "below explain what a confirmed shift changes."
-            )
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            if !isShortScreen {
+                Text(
+                    "Try the same large shift buttons and gear display used "
+                        + "during a real ride."
+                )
+                .font(.subheadline)
+                Text(
+                    "No trainer is connected and Bluetooth stays off. The "
+                        + "details below explain what a confirmed shift changes."
+                )
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -796,7 +808,7 @@ struct DemoModeView: View {
         VStack(spacing: 4) {
             Text("\(ride.selectedIndex + 1)")
                 .font(.system(
-                    size: 128,
+                    size: isShortScreen ? 88 : 128,
                     weight: .black,
                     design: .rounded
                 ).monospacedDigit())
@@ -817,8 +829,8 @@ struct DemoModeView: View {
             .padding(.top, 10)
         }
         .padding(.horizontal, 22)
-        .padding(.vertical, 18)
-        .frame(maxWidth: .infinity, minHeight: 230)
+        .padding(.vertical, isShortScreen ? 12 : 18)
+        .frame(maxWidth: .infinity, minHeight: isShortScreen ? 0 : 230)
         .background(
             Color(.secondarySystemGroupedBackground),
             in: .rect(cornerRadius: 24)

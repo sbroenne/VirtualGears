@@ -180,13 +180,18 @@ Issues and Discussions must stay enabled on the repository.
 
 ### Screenshots
 
-Required iPhone set: **6.9-inch iPhone**. The six portrait images listed below are
-1320 × 2868, captured on an iPhone 17 Pro Max simulator, so they can be
-uploaded as they are. Apple scales them down for smaller phones; one set is
-enough. The two landscape images are 2868 × 1320 documentation views; they are
-not part of the portrait upload set below.
+Apple's required iPhone size changed (checked 8 November 2026): App Store
+Connect now requires **iPhone with Dynamic Island (medium display)**, 1206 × 2622
+or 1179 × 2556 (iPhone 17 Pro, iPhone 18 Pro). The 1320 × 2868 set in
+`docs/screenshots/` is the optional large-display size. Both sets are kept:
 
-Upload these six, in this order:
+- **Medium display (required):** `docs/app-store/iphone-medium/`, 1206 × 2622,
+  captured on an iPhone 18 Pro simulator. Not uploaded yet.
+- **Large display (optional):** `docs/screenshots/`, 1320 × 2868, captured on an
+  iPhone 17 Pro Max simulator. The two landscape images there are 2868 × 1320
+  documentation views, not part of the upload set.
+
+Both iPhone folders hold the same six scenes. Upload them in this order:
 
 1. `riding.png` — the ride screen, which is what the app is for.
 2. `setup.png` — required first-run setup for the physical chainrings and
@@ -212,6 +217,26 @@ Required iPad set: **13-inch iPad**. The matching portrait images under
 These assets prove the app-owned layout at App Store dimensions. They do not
 prove Bluetooth behavior. All six were uploaded to the 13-inch iPad screenshot
 set with build 19 after the physical iPad gate below passed.
+
+iPhone Duo set (optional now): the same six scenes under
+`docs/app-store/iphone-duo/` are 1398 × 2034 captures of the folded Duo's outer
+screen on the iPhone Duo simulator. On the folded Duo, iOS shows the clock and
+battery in a side column, which is why they sit to the right of the content.
+Uploading them adds a "made for iPhone Duo" badge to the product page. Apple
+will require Duo screenshots from April 2027 for apps built with the iOS 27.1
+SDK or later. The inner (unfolded) screen, 2007 × 2853, has not been captured or
+checked. Not uploaded yet.
+
+### Product page header and search image (optional)
+
+App Store Connect now also accepts:
+
+- a **custom product page header**, 3840 × 1646 (21:9) or 5244 × 2950 (16:9);
+- a **search results image**, 3:2 from 1920 × 1280 to 3840 × 2560, or 16:9.
+
+Neither is required and none has been made. If one is added, keep it to the app
+itself: the ride screen's large gear number and Easier/Harder buttons, with no
+Wahoo or Zwift logos and no claim of affiliation.
 
 ### Privacy answers ("App Privacy" section)
 
@@ -281,7 +306,7 @@ answers, in order, the seven questions App Review asked when they rejected
 
     DEVICES AND SYSTEMS TESTED ON (point 2)
     Physically tested: iPhone 17 Pro, iOS 26.6; iPad Air (iPad14,10), iPadOS 26.6.1.
-    Simulator-tested interface: iPad mini (A17 Pro) and iPad Pro 13-inch (M5), portrait and landscape.
+    Simulator-tested interface: iPad mini (A17 Pro) and iPad Pro 13-inch (M5), portrait and landscape; iPhone Duo outer screen (folded), portrait.
     Trainer: Wahoo KICKR V5. Accessories: original Zwift Click, Wahoo KICKR HEADWIND. Riding apps driven end to end: FulGaz on macOS and Windows, plus RealVelo and MyWhoosh on Windows.
 
     EXTERNAL SERVICES, TOOLS AND PLATFORMS (point 5)

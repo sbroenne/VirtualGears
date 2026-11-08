@@ -183,6 +183,22 @@ for destination in 'iPad mini (A17 Pro)' 'iPad Pro 13-inch (M5)'; do
 done
 ```
 
+Run the same suite on the folded iPhone Duo simulator (Xcode with the iOS 27.2
+simulator runtime). Its outer screen is 466 × 678 points and stays portrait, so
+the tests skip landscape checks there and scroll short lists into view:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone Duo' \
+  -parallel-testing-enabled NO
+```
+
+On 8 November 2026 the full suite passed on iPhone Duo (folded), iPhone 18 Pro,
+iPad mini (A20 Pro) and iPad Pro 13-inch (M5) simulators. The Duo's unfolded
+inner screen has not been checked.
+
 Run the dense setup and Settings journeys on the smaller supported simulator:
 
 ```bash
