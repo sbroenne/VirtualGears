@@ -225,16 +225,25 @@ will require Duo screenshots from April 2027 for apps built with the iOS 27.1
 SDK or later. The inner (unfolded) screen, 2007 × 2853, has not been captured or
 checked. Uploaded on 8 November 2026.
 
-### Product page header and search image (optional)
+### Product page header and search image
 
-App Store Connect now also accepts:
+App Store Connect now also accepts a custom product page header and a search
+results image ("New Ways to Market Apps"). Neither is required; both are
+uploaded for version 1.0 (8 November 2026) and live in
+`docs/app-store/creative/`:
 
-- a **custom product page header**, 3840 × 1646 (21:9) or 5244 × 2950 (16:9);
-- a **search results image**, 3:2 from 1920 × 1280 to 3840 × 2560, or 16:9.
+- `header.png`, **3840 × 1646** (21:9), the custom product page header. The
+  app-icon blue background with the 24-bar gear ladder, the headline "Your
+  KICKR has no gears. / Now it does." in the centre, and the gear-picker and
+  ride screenshots either side.
+- `search-result.png`, **3840 × 2560** (3:2), the search results image. The same
+  background with the bike-setup, ride and gear-picker screenshots and no text,
+  because App Store search crops the edges.
 
-Neither is required and none has been made. If one is added, keep it to the app
-itself: the ride screen's large gear number and Easier/Harder buttons, with no
-Wahoo or Zwift logos and no claim of affiliation.
+Both are built from the medium iPhone screenshots in `docs/app-store/iphone-medium/`.
+They show only the app itself, with no Wahoo or Zwift logos and no claim of
+affiliation. Regenerate them whenever those screenshots change. If the search
+image is removed, the App Store falls back to the screenshots.
 
 ### Privacy answers ("App Privacy" section)
 
