@@ -67,15 +67,18 @@ iPhone and iPad and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Your KICKR has no gears. Now it does. Shift on your iPhone or iPad, or let Zwift and compatible apps run the gears, while your bike stays in one quiet gear.
+    Wahoo left the KICKR V5 and older without virtual shifting. Virtual Gears adds it: shift on your iPhone or iPad, or let Zwift and compatible apps run the gears.
 
 ### Description
 
     Your KICKR has no gears. Now it does.
 
-    Virtual Gears adds shifting to your Wahoo KICKR. Leave your bike in one gear,
-    keep riding in your favourite app, and shift with big on-screen buttons or a
-    Zwift Click. Hills still come from your riding app; the gears come from us.
+    Wahoo brought virtual shifting to the KICKR MOVE, KICKR V6 and KICKR CORE, but
+    says the KICKR V5 and older models will never get it. Virtual Gears adds it.
+
+    Leave your bike in one gear, keep riding in your favourite app, and shift with
+    big on-screen buttons or a Zwift Click. Hills still come from your riding app;
+    the gears come from us.
 
     TWO WAYS TO RIDE
     • Shift with Virtual Gears: your iPhone or iPad becomes the shifter. Tap the
@@ -113,6 +116,8 @@ iPhone and iPad and when advertising itself as a trainer.
     • Built and tested on a Wahoo KICKR V5. Other direct-drive KICKRs should work
       but have not been tested. KICKR SNAP, KICKR BIKE and other brands are not
       supported.
+    • KICKR already has virtual shifting built in? Zwift and Rouvy can use it
+      directly; Virtual Gears can still bring gears to other riding apps.
     • Virtual Gears is for riding in gears, not ERG workouts. Workouts that set a
       target power are refused.
 
