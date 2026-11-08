@@ -4,8 +4,8 @@
 |---|---|
 | **Apple device** | An iPhone or iPad running iOS/iPadOS 17 or later |
 | **Trainer** | A compatible direct-drive Wahoo KICKR. [See below](#which-trainers-work). |
-| **Riding app** | An app that can connect to an FTMS trainer. |
-| **Shifting** | Large on-screen buttons. An original Zwift Click is optional. |
+| **Riding app** | FTMS support for Shift with Virtual Gears; Zwift trainer-protocol support for Shift with Zwift or a compatible app. |
+| **Shifting** | Shift with Virtual Gears: on-screen buttons or original Click paired here. Shift with Zwift or a compatible app: controls in your riding app, with the Click paired there. |
 | **Fan** | Optional. A Wahoo KICKR HEADWIND. |
 
 ## Which trainers work
@@ -59,17 +59,16 @@ KICKR CORE 1 and 2 — and then answers the obvious question directly:
 > support the required protocols for virtual shifting using the Zwift protocol
 > and will not be receiving a future update for this functionality."
 
-That is the gap Virtual Gears fills. Three differences worth knowing:
+That is a firmware limitation of the trainer itself. Virtual Gears provides a
+separate bridge on your iPhone or iPad, with two modes:
 
-- **Your riding app will not display the gear.** Zwift can show it because Zwift
-  decides it. Virtual Gears decides it, and there is no way to tell a riding app
-  what gear you are in — the Bluetooth standard has no such message. The gear is
-  shown large on your iPhone or iPad instead.
-- **Virtual Gears does not require virtual-shifting support in the riding app.**
+- **Shift with Virtual Gears** supplies and displays its own gears.
   It appears as an ordinary FTMS trainer, bringing gears to compatible apps that
-  do not provide their own.
-- **Virtual Gears does not support Zwift-native virtual shifting.** It supplies
-  and displays its own gears on your iPhone or iPad.
+  do not provide their own. FTMS cannot report our gear number to the riding app.
+- **Shift with Zwift or a compatible app** exposes the Zwift trainer protocol. The riding
+  app selects and displays the gears; Virtual Gears applies and reports the
+  ratio. This requires that app to recognise our trainer service, not merely
+  offer virtual shifting for some other hardware.
 
   [wahoo]: https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers
 
@@ -90,7 +89,7 @@ idea of the bike and leaves the road alone.
 ## Which riding apps work
 
 Virtual Gears appears as an ordinary FTMS trainer, so a riding app needs no
-special support for it. Compatibility still depends on the riding app and
+special support for **Shift with Virtual Gears**. Compatibility still depends on the riding app and
 computer:
 
 | Riding app | Status |
@@ -104,6 +103,13 @@ computer:
 MyWhoosh ignored FTMS ride data in direct testing and read power and cadence
 from Cycling Power Service instead. Virtual Gears now publishes that service,
 and the complete iPhone-to-Windows path has been ridden end to end.
+
+The table records Shift with Virtual Gears only. **Shift with Zwift or a
+compatible app** has been ridden with RealVelo on Windows and a KICKR V5:
+RealVelo recognises virtual shifting, a phone trace confirms its ratio commands
+and Virtual Gears' replies, and the rider confirmed the shifting on the trainer.
+Zwift itself and other apps that use the same protocol are expected to work but
+have not been tested.
 
 The iPad interface is exercised on iPad mini and 13-inch iPad simulators. That
 proves the layouts and navigation, not Bluetooth. The first universal release
@@ -149,8 +155,12 @@ About → Name — but that changes its name everywhere else too.
 
 ## Adding a Zwift Click
 
+In **Shift with Zwift or a compatible app**, pair the Click with your riding app.
+Virtual Gears leaves it disconnected, even if a saved Click exists. Switching
+back to Shift with Virtual Gears retains that saved device.
+
 Wake the Click by pressing a button before opening Virtual Gears. The app finds,
-connects and remembers it automatically. It shifts the same gears as the
+connects and remembers it automatically in **Shift with Virtual Gears**. It shifts the same gears as the
 on-screen buttons, and pressing it visibly presses the matching on-screen button.
 The gear number still changes only after the trainer confirms the shift.
 Nothing ever waits for the Click, so one that runs out of battery mid-ride
@@ -178,6 +188,11 @@ therefore sends an explicit sensor-control command and waits for the fan to
 confirm it before switching to another Headwind.
 
 ## Choosing your gears
+
+Select **Shift with Virtual Gears** to use the gear choices below. In
+**Shift with Zwift or a compatible app**, select gears in your riding app instead. Confirm
+the parked-gear recommendation again if switching modes changes its safe range.
+Both modes keep **Start Shifting** and **Stop Shifting**.
 
 The starting choice is a 24-step virtual ladder with extra room for easy
 climbing. If you would rather ride the gears of a real bike, pick a groupset

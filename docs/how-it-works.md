@@ -1,6 +1,6 @@
-# How the gears work
+# Shifting modes and gearing
 
-![Your riding app talks to Virtual Gears on an iPhone or iPad, Virtual Gears talks to the trainer, and a shift changes the wheel size the trainer is running](how-it-works.svg)
+![Shift with Virtual Gears: Virtual Gears supplies the gears and changes the wheel size the trainer is running](how-it-works.svg)
 
 Virtual Gears was built and physically tested with a KICKR V5. Other
 direct-drive KICKR models are expected to work but have not yet been physically
@@ -9,8 +9,35 @@ size: a smaller wheel covers less ground per pedal stroke, which feels like an
 easier gear. The riding app's own terrain command is left untouched, so the two
 never fight.
 
-Virtual Gears chooses and displays the gear on your iPhone or iPad. The riding app sees an
-ordinary FTMS trainer and does not need a virtual-shifting feature of its own.
+## Choose who controls the gears
+
+Choose the mode directly on the start screen. The default is **Shift with
+Virtual Gears**: Virtual Gears chooses and displays the gears, and the riding app
+sees an ordinary FTMS trainer. Connect an original Click to Virtual Gears, or
+use the on-screen buttons. The diagram above illustrates this mode.
+
+In **Shift with Zwift or a compatible app**, the riding app chooses the gears and sends
+Virtual Gears a gear ratio over the Zwift trainer protocol. Connect your Click
+to that app instead. Virtual Gears does not connect to the Click in this mode
+and does not apply its own gear ladder. It displays the ratio confirmed by the
+KICKR, not an invented gear number.
+
+The KICKR keeps its configured bike/rider weight: weight fields in the Zwift
+commands are not currently forwarded.
+
+```text
+Click -> Riding app -> Virtual Gears -> KICKR
+                   <-               <-
+                   Status, power and cadence
+```
+
+Stop shifting before changing modes. The Bluetooth services are republished
+when the mode changes, so reconnect the trainer in your riding app.
+The Zwift option refers to the protocol, not an affiliation or certification.
+RealVelo on Windows has been ridden this way on a KICKR V5: it recognises the
+trainer's virtual shifting and its gear changes reach the KICKR. Zwift itself
+and other apps that use the same protocol are expected to work but have not
+been tested.
 
 Opening Virtual Gears connects this transparent trainer proxy. **Start Shifting**
 adds the gears; **Stop Shifting** removes the virtual gear and restores the
@@ -56,6 +83,29 @@ for whatever you confirm, the parked gear can be chosen purely for quiet.
 
 ## Where the gears sit
 
+### App-controlled ratios
+
+In Shift with Zwift or a compatible app, the effective circumference is:
+
+    normal wheel size x app-requested ratio / physical parked ratio
+
+The normal wheel size is 2105 mm unless changed in Settings or supplied by the
+riding app. A ratio received before Start is remembered but not applied. Queries
+report the normal physical ratio until Start, never an unconfirmed requested
+ratio. After Start, replies report the actual ratio derived from the
+KICKR-confirmed, tenth-millimetre wheel size. Out-of-range ratios are limited
+to the existing supported scaling window, with the limit recorded in the log.
+
+The usual Zwift ratio range is approximately 0.75-5.49. Parked-gear advice
+uses that range in this mode, rather than whichever independent gear ladder is
+saved. Stop and interruption recovery restore the normal wheel size.
+
+Terrain parameters are translated to FTMS for the KICKR. ERG power targets
+are refused in this mode too; use a riding app's own ERG connection without
+Virtual Gears for structured power workouts.
+
+### Independent gear ladders
+
 Every gear is scaled away from the optional **Wheel circumference** in Settings,
 2105 mm (700×25 road) by default, and from the gear the bike is parked in. The
 default ladder reaches about four times easier and 2.3 times harder while
@@ -89,3 +139,7 @@ not ask for.
 
 Measured on a Wahoo KICKR V5, a gear change is confirmed in 59 to 238 ms,
 averaging 138 ms.
+
+The timing measurements above are from Shift with Virtual Gears. The
+Zwift-compatible path has automated codec and coordinator checks; its
+RealVelo/KICKR physical test is required separately.

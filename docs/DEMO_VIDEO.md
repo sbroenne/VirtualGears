@@ -45,7 +45,7 @@ iPad Air running iPadOS 26.6.1 before build 19; that evidence is recorded in
 **Delete the app from the phone first.** Deleting it takes its Bluetooth
 permission with it, so the prompt appears again on the next launch, and the app
 starts with no remembered trainer — exactly what an App Review device sees.
-Then install the latest TestFlight build, currently 1.0 (19), but **do not open
+Then install the latest TestFlight build, currently 1.0 (20), but **do not open
 it**. The
 recording has to start from the Home screen.
 
@@ -54,7 +54,12 @@ Also:
 - Trainer plugged in and awake. Turn the pedals once to wake it. You do not need
   to ride: the trainer confirms a gear change whether or not you are pedalling.
 - iPhone in Do Not Disturb, screen brightness up, battery over 50%.
-- If you have a Zwift Click, fit it and switch it on.
+- If you have a Zwift Click, fit it and switch it on. The existing recording
+  sequence uses Shift with Virtual Gears with the Click connected to Virtual Gears.
+  For a Zwift-compatible demonstration, pair it with the riding app instead,
+  retain Start/Stop, and show the ratio confirmed by the KICKR. Capture that
+  physical sequence on the trainer; Demo Mode cannot prove the app-controlled
+  protocol path.
 - Riding app open on the computer only if you want the optional act 4.
 
 Record the phone with **iOS screen recording** (Control Centre → the record

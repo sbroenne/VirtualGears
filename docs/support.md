@@ -17,6 +17,17 @@ support desk — everything happens on those pages.
 
 Most problems have a known answer already:
 
+- **The riding app's gears have no effect.** Select **Shift with Zwift or a compatible app**
+  on the start screen, reconnect Virtual Gears in the riding app
+  and tap **Start Shifting** here. The app must support the Zwift trainer
+  protocol. Its generic virtual-shifting feature alone does not prove this.
+- **The Click will not connect to the riding app.** With the Zwift option
+  selected, Virtual Gears intentionally disconnects it. Pair it in the riding
+  app's controller settings. In Shift with Virtual Gears, pair it here instead.
+- **The app ratio is limited.** Confirm the physical chain position and
+  normal wheel size. Ratios outside the supported scaling range are limited;
+  Virtual Gears reports what the KICKR actually applied.
+
 - **The trainer is not found.** Turn the pedals to wake it, and close any other
   app that may already be connected to it. A trainer can only talk to one thing
   at a time.
@@ -51,6 +62,7 @@ The more of this you can give, the better the odds of a fix:
 
 - Your trainer model, Apple device model, and iOS or iPadOS version
 - The riding app you were using, and on what computer
+- Which shifting mode was selected, and where the Click was paired
 - What you did, what you expected, and what happened instead
 - Whether the app showed an error, and its exact wording
 - Whether a Zwift Click or Headwind was connected

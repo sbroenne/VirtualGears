@@ -15,6 +15,17 @@ public final class ProxyCoordinator {
     public private(set) var requestedGearIndex: Int?
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
+    public private(set) var shiftingMode = ShiftingMode.independent
+    public private(set) var requestedAppRatio: Double?
+    public private(set) var confirmedAppRatio: Double?
+    private var appParkedRatio: Double?
+    /// The last confirmed app ratio when a Stop or failed Start could not put
+    /// the normal wheel size back. The KICKR may still hold it, so the riding
+    /// app is told that rather than the parked ratio.
+    private var unrestoredAppRatio: Double?
+    private var appRatioSetting: AppRatioSetting?
+    private var appShiftingSession = false
+    private var appSimulation = ZwiftSimulation()
     /// The wheel size the gears are currently built around. A riding app can
     /// supply a new one while shifting is under way, so it is not the size the
     /// trainer gets back on Stop.
@@ -45,12 +56,12 @@ public final class ProxyCoordinator {
     /// The wheel size this time's gears are built around, or nil when no gears
     /// are engaged.
     public var wheelSizeGearsAreBuiltAround: Double? {
-        gearEngine == nil ? nil : trainerWheelSizeMillimeters
+        gearEngine == nil && !appShiftingSession ? nil : trainerWheelSizeMillimeters
     }
     /// True while gears are engaged around a wheel size a riding app chose, so
     /// the ride screen can say whose number they are built around.
     public var ridingAppSetWheelSize: Bool {
-        gearEngine != nil && wheelSizeCameFromRidingApp
+        (gearEngine != nil || appShiftingSession) && wheelSizeCameFromRidingApp
     }
     /// Whether a virtual gear has actually reached the trainer this time. Until
     /// it has, there is nothing to put right and nothing to report as unreset.
@@ -116,11 +127,11 @@ public final class ProxyCoordinator {
     public var isShiftingPresented: Bool { lifecycle.isShiftingPresented }
 
     public var canShiftEasier: Bool {
-        lifecycle.isShifting && (confirmedGearIndex ?? 0) > 0
+        shiftingMode == .independent && lifecycle.isShifting && (confirmedGearIndex ?? 0) > 0
     }
 
     public var canShiftHarder: Bool {
-        lifecycle.isShifting
+        shiftingMode == .independent && lifecycle.isShifting
             && (confirmedGearIndex ?? Int.max) < gearSequence.count - 1
     }
 
@@ -144,7 +155,8 @@ public final class ProxyCoordinator {
         click: any ShifterLink,
         peripheral: any FitnessMachineBroadcast,
         screen: any ScreenWake,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        configuration: AppConfiguration = AppConfiguration()
     ) {
         self.kickr = kickr
         self.click = click
@@ -167,6 +179,43 @@ public final class ProxyCoordinator {
         click.shiftHandler = { [weak self] request in
             self?.handleShiftRequest(request)
         }
+        peripheral.zwiftCommandHandler = { [weak self] request, source in
+            guard let self else { return [] }
+            return await self.handleZwift(request, from: source)
+        }
+        configureShifting(configuration)
+    }
+
+    @discardableResult
+    public func configureShifting(_ configuration: AppConfiguration) -> Bool {
+        guard lifecycle.shiftingID == nil else {
+            log("Stop shifting before changing modes or the physical setup", .warning)
+            return false
+        }
+        if shiftingMode != configuration.shiftingMode {
+            requestedAppRatio = nil
+            confirmedAppRatio = nil
+            unrestoredAppRatio = nil
+            appSimulation = ZwiftSimulation()
+        }
+        shiftingMode = configuration.shiftingMode
+        appParkedRatio = configuration.hasSafeCircumference ? configuration.parkedGear?.ratio : nil
+        if !wheelSizeCameFromRidingApp,
+           defaults.object(forKey: interruptedShiftingKey) == nil {
+            trainerWheelSizeMillimeters = Double(configuration.neutralCircumferenceMillimeters)
+        }
+        if shiftingMode == .zwiftCompatible { click.disconnect() }
+        peripheral.configureShiftingMode(shiftingMode)
+        return true
+    }
+
+    public func updateConfiguration(_ configuration: AppConfiguration) async {
+        guard lifecycle.shiftingID == nil else { return }
+        closePCCommandGate()
+        defer { reopenPCCommandGate() }
+        await waitForPCCommandsToFinish()
+        guard !Task.isCancelled, lifecycle.shiftingID == nil else { return }
+        configureShifting(configuration)
     }
 
     /// A record from an interrupted shifting session means the KICKR may still
@@ -222,7 +271,7 @@ public final class ProxyCoordinator {
         let wheelSize = trainerWheelSizeMillimeters
             ?? defaults.double(forKey: interruptedShiftingKey)
         guard wheelSize > 0 else {
-            defaults.removeObject(forKey: interruptedShiftingKey)
+            clearInterruptedShiftingRecord()
             trainerWheelSizeMillimeters = wheelSize
             startProxyIfSafe()
             return
@@ -249,7 +298,7 @@ public final class ProxyCoordinator {
             let response = try await kickr.executeWahoo(command)
             guard response.confirmsSuccess(for: command) else { return }
             guard isStillWanted(token) else { return }
-            defaults.removeObject(forKey: interruptedShiftingKey)
+            clearInterruptedShiftingRecord()
             log("Reset the wheel size after interrupted shifting")
             startProxyIfSafe()
         } catch {
@@ -270,6 +319,7 @@ public final class ProxyCoordinator {
     /// rejected by the same guard that protected the previous async entry point.
     public func startShifting(configuration: AppConfiguration) {
         guard lifecycle.canStart else { return }
+        guard configureShifting(configuration) else { return }
         // Shifting sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
         // gear they did not choose.
@@ -284,7 +334,7 @@ public final class ProxyCoordinator {
             lifecycle.refuseStart("Setup is incomplete")
             return
         }
-        usesClick = configuration.usesClick
+        usesClick = configuration.connectsClick
         let id = lifecycle.beginConnecting()
         closePCCommandGate()
         startTask = Task { [weak self] in
@@ -305,6 +355,10 @@ public final class ProxyCoordinator {
         shiftingID id: UUID
     ) async {
         do {
+            if shiftingMode == .zwiftCompatible {
+                try await runAppShifting(configuration: configuration, shiftingID: id)
+                return
+            }
             let parkedGear = configuration.parkedGear
             guard let drivetrain = configuration.drivetrain,
                   AppConfiguration.isSafe(drivetrain, parkedGear: parkedGear) else {
@@ -392,6 +446,84 @@ public final class ProxyCoordinator {
             guard lifecycle.owns(id), !lifecycle.isStopping else { return }
             await abortStart(error)
         }
+    }
+
+    private func runAppShifting(
+        configuration: AppConfiguration, shiftingID id: UUID
+    ) async throws {
+        guard let parked = configuration.parkedGear,
+              configuration.hasSafeCircumference else {
+            throw ProductBluetoothError.commandFailed("Confirm a workable parked gear")
+        }
+        appParkedRatio = parked.ratio
+        appShiftingSession = true
+        let reference = Double(configuration.neutralCircumferenceMillimeters)
+        var neutral = trainerWheelSizeMillimeters ?? reference
+        if !TrainerSafety.supportedRidingAppCircumferenceMillimeters.contains(neutral) {
+            log(
+                "Your riding app left a \(Int(neutral.rounded())) mm wheel size, "
+                    + "outside the supported range, so shifting starts from "
+                    + "\(Int(reference.rounded())) mm instead.",
+                .warning
+            )
+            neutral = reference
+            wheelSizeCameFromRidingApp = false
+        }
+        trainerWheelSizeMillimeters = neutral
+        kickr.resumeSavedConnection()
+        screen.keepAwake = true
+        try await waitUntilReady(kickr, named: "KICKR", shiftingID: id)
+        let response = try await kickr.execute(.requestControl)
+        guard startMayProceed(id), response.result == .success else {
+            throw ProductBluetoothError.commandFailed("KICKR denied FTMS control")
+        }
+        // Persist the reset target before writing: a force-quit can happen while
+        // the trainer is applying a command, before its response reaches us.
+        defaults.set(neutral, forKey: interruptedShiftingKey)
+        if let ratio = requestedAppRatio {
+            try await applyAppRatio(ratio, shiftingID: id)
+        } else {
+            let command = try WahooKickrCommand.setWheelCircumference(millimeters: neutral)
+            let result = try await kickr.executeWahoo(command)
+            guard startMayProceed(id), result.confirmsSuccess(for: command) else {
+                throw ProductBluetoothError.commandFailed("KICKR did not confirm the normal wheel size")
+            }
+            unrestoredAppRatio = nil
+        }
+        guard startMayProceed(id) else { throw CancellationError() }
+        makeTrainerProxyAvailable()
+        try await waitUntilPeripheralReady(shiftingID: id)
+        lifecycle.markActive()
+        if let confirmedAppRatio {
+            peripheral.sendZwiftResponse(.ratio(UInt32((confirmedAppRatio * 10_000).rounded())))
+        }
+        log("Shift with Zwift or a compatible app started; gears are controlled by the riding app")
+    }
+
+    private func applyAppRatio(_ ratio: Double, shiftingID id: UUID) async throws {
+        guard startMayProceed(id), let neutral = trainerWheelSizeMillimeters,
+              let parked = appParkedRatio else {
+            throw ProductBluetoothError.commandFailed("App-controlled shifting is not ready")
+        }
+        let setting = try AppRatioSetting(
+            ratio: ratio, neutralMillimeters: neutral, parkedRatio: parked
+        )
+        if setting.wasClamped {
+            log(
+                "Riding app ratio \(ratio) limited to \(setting.appliedRatio) by the trainer's safe range",
+                .warning
+            )
+        }
+        defaults.set(neutral, forKey: interruptedShiftingKey)
+        let result = try await kickr.executeWahoo(setting.command)
+        guard startMayProceed(id), result.confirmsSuccess(for: setting.command) else {
+            throw ProductBluetoothError.commandFailed("KICKR did not confirm the riding app's ratio")
+        }
+        appRatioSetting = setting
+        hasAppliedVirtualGear = true
+        confirmedAppRatio = setting.appliedRatio
+        unrestoredAppRatio = nil
+        log("KICKR confirmed app ratio \(setting.appliedRatio)")
     }
 
     /// Ends Virtual Gears' gear session without ending the riding app's session.
@@ -482,7 +614,7 @@ public final class ProxyCoordinator {
                         "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: interruptedShiftingKey)
+                clearInterruptedShiftingRecord()
             } catch {
                 failures.append(
                     "Wheel size reset failed: \(error.localizedDescription)"
@@ -495,6 +627,9 @@ public final class ProxyCoordinator {
         if disconnectWhenFinished { disconnectOwnedEquipment() }
         screen.keepAwake = proxyWanted
         clearShiftingData()
+        if shiftingMode == .zwiftCompatible, failures.isEmpty, let appParkedRatio {
+            peripheral.sendZwiftResponse(.ratio(UInt32((appParkedRatio * 10_000).rounded())))
+        }
         // The record is only removed once the trainer confirms the original
         // wheel size is back, so its presence is the honest answer to whether
         // the trainer still needs putting right.
@@ -557,8 +692,20 @@ public final class ProxyCoordinator {
         waiters.forEach { $0.resume() }
     }
 
+    private func clearInterruptedShiftingRecord() {
+        defaults.removeObject(forKey: interruptedShiftingKey)
+        unrestoredAppRatio = nil
+    }
+
     private func clearShiftingData() {
         gearEngine = nil
+        appRatioSetting = nil
+        appShiftingSession = false
+        if defaults.object(forKey: interruptedShiftingKey) != nil,
+           let confirmedAppRatio {
+            unrestoredAppRatio = confirmedAppRatio
+        }
+        confirmedAppRatio = nil
         heldDirection = nil
         displayedGear = nil
         confirmedGearIndex = nil
@@ -596,7 +743,7 @@ public final class ProxyCoordinator {
     /// gears shifting is not using is its own kind of wrong answer.
     @discardableResult
     public func changeDrivetrain(_ configuration: AppConfiguration) async -> Bool {
-        guard lifecycle.isShifting, let id = lifecycle.shiftingID,
+        guard shiftingMode == .independent, lifecycle.isShifting, let id = lifecycle.shiftingID,
               let drivetrain = configuration.drivetrain,
               AppConfiguration.isSafe(
                   drivetrain,
@@ -749,12 +896,11 @@ public final class ProxyCoordinator {
         }
         pcCommandsInFlight += 1
         defer { finishPCCommand() }
-        return await handleCommand(request, from: source)
+        return await handleCommand(request)
     }
 
     private func handleCommand(
-        _ request: FitnessMachineControlPointRequest,
-        from source: RidingAppCommandSource
+        _ request: FitnessMachineControlPointRequest
     ) async -> FTMSPeripheralCommandResult {
         guard kickr.isReady else {
             return .init(result: .operationFailed, status: nil)
@@ -764,6 +910,10 @@ public final class ProxyCoordinator {
             return .init(result: .opcodeNotSupported, status: nil)
         }
         do {
+            if shiftingMode == .zwiftCompatible, lifecycle.isShifting,
+               case let .setWheelCircumference(tenths) = request {
+                return try await setAppWheelSize(millimeters: Double(tenths) / 10)
+            }
             // Between Virtual Gears runs this remains a transparent trainer
             // proxy. Stopping the gear UI must not pause, stop, or otherwise
             // take ownership of the PC riding app's session.
@@ -809,6 +959,128 @@ public final class ProxyCoordinator {
                 .error
             )
             return .init(result: .operationFailed, status: nil)
+        }
+    }
+
+    private func setAppWheelSize(millimeters: Double) async throws -> FTMSPeripheralCommandResult {
+        guard TrainerSafety.supportedRidingAppCircumferenceMillimeters.contains(millimeters),
+            let id = lifecycle.shiftingID, let parked = appParkedRatio
+        else {
+            log("Rejected app wheel size outside the supported range", .warning)
+            return .init(result: .invalidParameter, status: nil)
+        }
+        let setting = try appRatioSetting.map {
+            try AppRatioSetting(
+                ratio: $0.requestedRatio, neutralMillimeters: millimeters, parkedRatio: parked
+            )
+        }
+        let command =
+            try setting?.command
+            ?? WahooKickrCommand.setWheelCircumference(millimeters: millimeters)
+        // Until the write is confirmed, recovery must use the previous baseline.
+        let result = try await kickr.executeWahoo(command)
+        guard stillShifting(id), result.confirmsSuccess(for: command) else {
+            throw ProductBluetoothError.commandFailed("KICKR did not confirm rescaled app ratio")
+        }
+        trainerWheelSizeMillimeters = millimeters
+        wheelSizeCameFromRidingApp = true
+        defaults.set(millimeters, forKey: interruptedShiftingKey)
+        appRatioSetting = setting
+        confirmedAppRatio = setting?.appliedRatio
+        if let setting {
+            if setting.wasClamped { log("App ratio limited after wheel-size change", .warning) }
+            peripheral.sendZwiftResponse(.ratio(setting.encodedRatio))
+        }
+        return .success(
+            status: .wheelCircumferenceChanged(
+                tenthsOfMillimeter: UInt16((millimeters * 10).rounded())
+            ))
+    }
+
+    private func handleZwift(
+        _ request: ZwiftTrainerRequest, from source: RidingAppCommandSource
+    ) async -> [ZwiftTrainerResponse] {
+        await waitForPCCommandGate()
+        guard shiftingMode == .zwiftCompatible, peripheral.isZwiftSubscriber(source) else {
+            log("Rejected a Zwift command from an expired subscription", .warning)
+            return []
+        }
+        pcCommandsInFlight += 1
+        defer { finishPCCommand() }
+        do {
+            switch request {
+            case .rideOn:
+                log("Riding app completed the Zwift RideOn handshake")
+                return [.rideOn]
+            case .deviceInformation: return [.information()]
+            case let .query(id):
+                if id == 0 { return [.information()] }
+                guard id == 520 else {
+                    log("Unsupported Zwift information query \(id)", .warning)
+                    return []
+                }
+                guard let ratio = confirmedAppRatio ?? unrestoredAppRatio ?? appParkedRatio else {
+                    log("Cannot report a ratio until the parked gear is confirmed", .warning)
+                    return []
+                }
+                return [.ratio(UInt32((ratio * 10_000).rounded()))]
+            case let .command(command):
+                guard kickr.isReady else {
+                    throw ProductBluetoothError.unavailable("KICKR is not connected")
+                }
+                if !kickr.hasFTMSControl {
+                    try await executeZwiftFTMS(.requestControl)
+                }
+                if let simulation = command.simulation {
+                    let merged = appSimulation.merging(simulation)
+                    try await executeZwiftFTMS(
+                        .setIndoorBikeSimulationParameters(merged.ftmsParameters()))
+                    appSimulation = merged
+                }
+                if command.powerTarget != nil {
+                    log("Ignored ERG target power; Virtual Gears does not support ERG", .warning)
+                    guard command.simulation != nil || command.ratioX10000 != nil else {
+                        throw ZwiftTrainerCodecError.invalidParameter("ERG is not supported")
+                    }
+                }
+                if let encoded = command.ratioX10000 {
+                    guard encoded > 0 else {
+                        throw ZwiftTrainerCodecError.invalidParameter("Gear ratio must be positive")
+                    }
+                    let ratio = Double(encoded) / 10_000
+                    if lifecycle.isShifting, let id = lifecycle.shiftingID {
+                        try await applyAppRatio(ratio, shiftingID: id)
+                        requestedAppRatio = ratio
+                        guard let setting = appRatioSetting else {
+                            throw ProductBluetoothError.commandFailed("No confirmed app ratio")
+                        }
+                        return [.ratio(setting.encodedRatio)]
+                    }
+                    guard lifecycle.shiftingID == nil else {
+                        throw ProductBluetoothError.unavailable(
+                            "Shifting is reconnecting or stopping")
+                    }
+                    requestedAppRatio = ratio
+                    log("App ratio \(ratio) is waiting for Start Shifting")
+                    // Do not echo an unapplied ratio as though the KICKR accepted it.
+                    if let reported = unrestoredAppRatio ?? appParkedRatio {
+                        return [.ratio(UInt32((reported * 10_000).rounded()))]
+                    }
+                }
+                return []
+            }
+        } catch {
+            log("Zwift trainer command failed: \(error.localizedDescription)", .error)
+            return []
+        }
+    }
+
+    private func executeZwiftFTMS(_ request: FitnessMachineControlPointRequest) async throws {
+        let result = await handleCommand(request)
+        guard result.result == .success else {
+            throw ProductBluetoothError.commandFailed(
+                "KICKR rejected Zwift command 0x\(String(format: "%02X", request.opcode)): \(result.result)"
+            )
         }
     }
 
@@ -915,7 +1187,7 @@ public final class ProxyCoordinator {
                 guard !Task.isCancelled,
                       self.lifecycle.isReconnecting,
                       response.result == .success,
-                      let command = self.gearEngine?.confirmedSetting.command else {
+                      let command = self.recoveryCommand else {
                     throw ProductBluetoothError.commandFailed(
                         "Could not reacquire KICKR control"
                     )
@@ -950,6 +1222,15 @@ public final class ProxyCoordinator {
                 self.handleKickrState(.ready)
             }
         }
+    }
+
+    private var recoveryCommand: Data? {
+        if appShiftingSession {
+            if let appRatioSetting { return appRatioSetting.command }
+            guard let neutral = trainerWheelSizeMillimeters else { return nil }
+            return try? WahooKickrCommand.setWheelCircumference(millimeters: neutral)
+        }
+        return gearEngine?.confirmedSetting.command
     }
 
     private func beginRecovery(startImmediately: Bool = true) {
@@ -994,7 +1275,7 @@ public final class ProxyCoordinator {
             heldDirection = nil
             return
         }
-        guard lifecycle.isShifting, !wheelSizeUpdateInProgress else { return }
+        guard shiftingMode == .independent, lifecycle.isShifting, !wheelSizeUpdateInProgress else { return }
         let direction: ShiftDirection
         let feedback: ShiftFeedbackKind
         switch request {
@@ -1129,7 +1410,7 @@ public final class ProxyCoordinator {
                         "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: interruptedShiftingKey)
+                clearInterruptedShiftingRecord()
             } catch {
                 wheelSizeReset = false
                 log(
@@ -1204,6 +1485,18 @@ public final class ProxyCoordinator {
 
 #if DEBUG
 extension ProxyCoordinator {
+    public func stageScreenshotAppRide(configuration: AppConfiguration, ratio: Double?) {
+        lifecycle = ShiftingLifecycle()
+        _ = lifecycle.beginConnecting()
+        lifecycle.markActive()
+        shiftingMode = .zwiftCompatible
+        appShiftingSession = true
+        appParkedRatio = configuration.parkedGear?.ratio
+        requestedAppRatio = ratio
+        confirmedAppRatio = ratio
+        trainerWheelSizeMillimeters = Double(configuration.neutralCircumferenceMillimeters)
+    }
+
     public func stageScreenshotRide(configuration: AppConfiguration) {
         guard let drivetrain = configuration.drivetrain,
               let engine = try? ConfirmedGearEngine(

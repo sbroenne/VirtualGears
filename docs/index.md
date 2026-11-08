@@ -8,14 +8,15 @@
 none.**
 
 Use the smaller front ring if your bike has one, then pick a rear gear that keeps
-the chain straight and leave it there. Shifting happens on your iPhone or iPad
+the chain straight and leave it there. Shifting happens electronically
 instead, which changes how hard the trainer feels. Nothing on the bike moves, so
 there is no chain noise, no dropped chain, and no wear.
 
 !!! quote "Why this exists"
 
-    Zwift added virtual shifting in 2024, and Wahoo brought it to their newer
-    trainers. The KICKR V5 was left out, [permanently][wahoo]:
+    Zwift added virtual shifting in 2024, and Wahoo brought it to the KICKR
+    MOVE, KICKR V6 and KICKR CORE. The KICKR V5 and older were left out,
+    [permanently][wahoo]:
 
     > "We have reviewed the hardware and firmware capabilities of KICKR v5
     > (2020) and preceding KICKR versions. Unfortunately, these older models
@@ -23,9 +24,11 @@ there is no chain noise, no dropped chain, and no wear.
     > the Zwift protocol and will not be receiving a future update for this
     > functionality."
 
-    Virtual Gears gives a KICKR V5 gears anyway. Because it appears as a normal
-    FTMS trainer, it also brings virtual shifting to riding apps that do not
-    provide their own.
+    Virtual Gears adds virtual shifting to the KICKRs Wahoo left out. Because
+    it appears as a normal FTMS trainer, it also brings virtual shifting to
+    riding apps that do not provide their own. Wahoo's built-in shifting only
+    works in Zwift and Rouvy, so even owners of newer KICKRs can use Virtual
+    Gears in their other riding apps.
 
     The app was built and physically tested with a KICKR V5. Other direct-drive
     KICKR models are expected to work but have not yet been physically tested.
@@ -45,9 +48,27 @@ chosen gear on top. The riding app still controls the road: hills feel like
 hills. It does not need special virtual-shifting support; ordinary FTMS trainer
 support is enough.
 
-![How Virtual Gears sits between your riding app and your trainer](how-it-works.svg)
+## Choose how you shift
 
-Wake an original Zwift Click or Wahoo Headwind before opening Virtual Gears and
+**Shift with Virtual Gears** is the default. Use Virtual Gears' on-screen buttons
+or connect an original Zwift Click here. The gear choices and screenshots below
+describe this mode.
+
+**Shift with Zwift or a compatible app** lets your riding app choose the gears and send
+their ratios to Virtual Gears. Connect the Click to the riding app instead.
+Virtual Gears displays the ratio confirmed by the trainer. This mode needs
+Zwift trainer-protocol support in the riding app; FTMS alone is not enough.
+
+Choose either mode directly on the start screen, then reconnect the trainer in your
+riding app. Both modes require **Start Shifting** here. Stop shifting before
+changing modes. [How the modes work](how-it-works.md) includes the connections
+and current hardware-validation status.
+
+<img src="screenshots/shifting-modes.png" width="320" alt="Start screen showing Shift with Virtual Gears and Shift with Zwift or a compatible app, with instructions for where to connect the Click">
+
+![Shift with Virtual Gears: Virtual Gears supplies the gears between your riding app and trainer](how-it-works.svg)
+
+In Shift with Virtual Gears, wake an original Zwift Click or Wahoo Headwind before opening Virtual Gears and
 the app finds and remembers it automatically. The Click shifts from the
 handlebar. The Headwind can stay with its own sensor control or use a manual fan
 speed. Both remain optional and never hold up a ride.
@@ -210,10 +231,12 @@ can come back to the same gear.
 
 ## What it does not do
 
-**Zwift-native virtual shifting.** Virtual Gears supplies and displays its own
-gears over ordinary FTMS; it does not support Zwift's native gear system.
+**Universal virtual-shifting compatibility.** Shift with Zwift or a compatible app exposes
+the Zwift trainer protocol, not every protocol used by every riding app.
+It has been ridden with RealVelo on a KICKR V5; Zwift itself and other apps
+are expected to work but have not been tested.
 
-**ERG mode.** A workout that sets a target power is refused, because holding a
+**ERG mode.** A workout that sets a target power is refused in both modes, because holding a
 power target and holding a gear are two different ideas of what the trainer
 should feel like. Virtual Gears still tells riding apps it is a trainer they can
 steer, so it appears in their trainer list rather than as a bare power sensor.

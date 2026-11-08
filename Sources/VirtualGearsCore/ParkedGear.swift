@@ -142,7 +142,14 @@ public enum ParkedGearAdvice {
         for setup: PhysicalSetup,
         simulating drivetrain: Drivetrain
     ) -> ParkedGear? {
-        guard let workable = workableRatios(for: drivetrain) else { return nil }
+        suggestion(for: setup, workable: workableRatios(for: drivetrain))
+    }
+
+    public static func suggestion(
+        for setup: PhysicalSetup,
+        workable: ClosedRange<Double>?
+    ) -> ParkedGear? {
+        guard let workable else { return nil }
         let floor = workable.lowerBound * margin
         let ceiling = workable.upperBound / margin
 

@@ -33,6 +33,13 @@ private enum DesignedUXState: String, CaseIterable {
     case rideLandscape = "ride/landscape"
     case rideAccessibilityText = "ride/accessibility-text"
     case rideDarkMode = "ride/dark-mode"
+    case zwiftReady = "zwift/ready"
+    case zwiftRatio = "zwift/confirmed-ratio"
+    case zwiftWaiting = "zwift/waiting-for-ratio"
+    case zwiftSettings = "zwift/settings"
+    case shiftingModePicker = "zwift/mode-picker"
+    case zwiftLandscape = "zwift/landscape"
+    case zwiftModeLocked = "zwift/mode-locked"
 
     // Settings and equipment
     case settingsConnected = "settings/connected"
@@ -131,6 +138,10 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
         .demoRide, .demoSettings, .demoGearSettings,
         .demoHeadwindAutomatic, .demoHeadwindManual,
     ], to: "testUXCoverageDemoStates")
+    assign([
+        .zwiftReady, .zwiftRatio, .zwiftWaiting, .zwiftSettings,
+        .shiftingModePicker, .zwiftLandscape, .zwiftModeLocked,
+    ], to: "testUXCoverageZwiftShiftingStates")
     return result
 }()
 
@@ -138,6 +149,58 @@ private let uxCoverageManifest: [DesignedUXState: String] = {
 final class VirtualGearsUITests: XCTestCase {
     private var app: XCUIApplication!
     private var capturedUXStates: Set<DesignedUXState> = []
+
+    func testUXCoverageZwiftShiftingStates() {
+        launch("-shotZwiftReady")
+        assertVisibleElement(app.buttons["Start Shifting"])
+        let independentMode = app.buttons["startup.mode.independent"]
+        let zwiftMode = app.buttons["startup.mode.zwiftCompatible"]
+        scrollIntoView(zwiftMode)
+        assertVisibleElement(independentMode)
+        assertVisibleElement(zwiftMode)
+        XCTAssertTrue(zwiftMode.isSelected)
+        XCTAssertFalse(app.descendants(matching: .any)["status.click"].exists)
+        capture(.zwiftReady)
+        independentMode.tap()
+        XCTAssertTrue(independentMode.isSelected)
+        XCTAssertFalse(zwiftMode.isSelected)
+        zwiftMode.tap()
+        XCTAssertTrue(zwiftMode.isSelected)
+        XCTAssertFalse(independentMode.isSelected)
+        capture(.shiftingModePicker)
+
+        launch("-shotZwiftWaiting")
+        assertVisible("ride.appRatioWaiting")
+        XCTAssertFalse(app.buttons["Easier"].exists)
+        XCTAssertFalse(app.buttons["Harder"].exists)
+        capture(.zwiftWaiting)
+
+        launch("-shotZwiftRide")
+        assertVisible("ride.appRatio")
+        XCTAssertTrue(app.staticTexts["Ratio set by your riding app"].exists)
+        XCTAssertFalse(app.buttons["Easier"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["status.click"].exists)
+        capture(.zwiftRatio)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        assertVisible("ride.appRatio")
+        capture(.zwiftLandscape)
+        XCUIDevice.shared.orientation = .portrait
+        app.buttons["Settings"].tap()
+        assertVisible("screen.settings")
+        XCTAssertFalse(app.buttons["settings.shiftingMode"].isEnabled)
+        capture(.zwiftModeLocked)
+
+        launch("-shotZwiftSettings")
+        assertVisible("screen.settings")
+        let clickInstruction = app.descendants(matching: .any)["settings.clickInRidingApp"]
+        assertVisibleElement(clickInstruction)
+        XCTAssertTrue(clickInstruction.label.contains("Connect in your riding app"))
+        capture(.zwiftSettings)
+        app.buttons["settings.shiftingMode"].tap()
+        assertVisibleElement(app.buttons["Shift with Virtual Gears"])
+        assertVisibleElement(app.buttons["Shift with Zwift or a compatible app"])
+        assertJourneyCoverage()
+    }
 
     func testStartingScreenShowsEveryConfiguredEquipmentStatus() {
         launch("-shotStarting")
@@ -463,7 +526,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(finish.waitForExistence(timeout: 2))
         XCTAssertTrue(finish.isEnabled)
 
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         XCTAssertTrue(
             app.navigationBars["Set up Virtual Gears"].waitForExistence(timeout: 2),
             "Back from chain position should return to the physical bike"
@@ -561,7 +624,7 @@ final class VirtualGearsUITests: XCTestCase {
             evaluatedWith: useDefault
         )
         waitForExpectations(timeout: 2)
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         assertVisibleElement(app.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@", "Default · 2105 mm")
         ).firstMatch)
@@ -575,13 +638,14 @@ final class VirtualGearsUITests: XCTestCase {
             "Trainer", "Zwift Click", "Wahoo Headwind", "Gears",
         ] {
             let row = app.staticTexts[destination].firstMatch
+            scrollIntoView(row)
             assertVisibleElement(row)
             row.tap()
             XCTAssertTrue(
                 app.navigationBars[destination].waitForExistence(timeout: 2),
                 "\(destination) screen did not open"
             )
-            app.navigationBars.buttons.firstMatch.tap()
+            goBack()
         }
 
         // The parked-gear row's title and value collapse into a single
@@ -597,7 +661,7 @@ final class VirtualGearsUITests: XCTestCase {
             app.navigationBars["Gear the bike is in"].waitForExistence(timeout: 2),
             "Gear the bike is in screen did not open"
         )
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
     }
 
     /// The gear the bike is parked in is the one thing setup cannot guess, so
@@ -639,7 +703,7 @@ final class VirtualGearsUITests: XCTestCase {
                 + "recommendation"
         )
 
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         assertVisible("screen.settings")
         XCTAssertFalse(
             app.staticTexts.matching(
@@ -716,7 +780,7 @@ final class VirtualGearsUITests: XCTestCase {
 
         app.staticTexts["Chainrings"].tap()
         XCTAssertTrue(app.navigationBars["Chainrings"].waitForExistence(timeout: 2))
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
 
         app.staticTexts["Cassette"].tap()
         XCTAssertTrue(app.navigationBars["Cassette"].waitForExistence(timeout: 2))
@@ -754,7 +818,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(other.isSelected)
         XCTAssertFalse(current.isSelected)
 
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         XCTAssertTrue(
             app.staticTexts["Groupset, Shimano Dura-Ace R9200"]
                 .waitForExistence(timeout: 2)
@@ -784,7 +848,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(
             app.navigationBars["Custom Ladder"].waitForExistence(timeout: 2)
         )
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
 
         assertVisible("screen.gears")
         XCTAssertFalse(standard.isSelected)
@@ -858,7 +922,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertFalse(otherChainring.isSelected)
         otherChainring.tap()
         XCTAssertTrue(otherChainring.isSelected)
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         XCTAssertTrue(
             app.staticTexts["Chainrings, 38"].waitForExistence(timeout: 2)
         )
@@ -874,7 +938,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertFalse(otherCassette.isSelected)
         otherCassette.tap()
         XCTAssertTrue(otherCassette.isSelected)
-        app.navigationBars.buttons.firstMatch.tap()
+        goBack()
         XCTAssertTrue(
             app.staticTexts["Cassette, 11-30"].waitForExistence(timeout: 2)
         )
@@ -898,11 +962,15 @@ final class VirtualGearsUITests: XCTestCase {
 
         assertVisible("screen.demo")
         XCTAssertTrue(app.navigationBars["Demo Ride"].exists)
-        assertVisibleElement(
-            app.staticTexts[
-                "Try the same large shift buttons and gear display used during a real ride."
-            ]
-        )
+        // Short screens keep only the demo banner title so the shift buttons
+        // stay on screen.
+        if !isFoldedDuo {
+            assertVisibleElement(
+                app.staticTexts[
+                    "Try the same large shift buttons and gear display used during a real ride."
+                ]
+            )
+        }
         let gear = app.descendants(matching: .any)["Simulated gear"]
         assertVisibleElement(gear)
         let initialValue = gear.value as? String
@@ -1271,6 +1339,7 @@ final class VirtualGearsUITests: XCTestCase {
         capture(.cassettePicker)
 
         launch("-shotSettingsUnsafeGears")
+        scrollIntoView(app.staticTexts["Gears"].firstMatch)
         app.staticTexts["Gears"].firstMatch.tap()
         assertVisibleElement(app.staticTexts["Too wide for the trainer"])
         capture(.gearPreviewTooWide)
@@ -1287,11 +1356,14 @@ final class VirtualGearsUITests: XCTestCase {
         let outOfReach = app.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] %@", "Puts some gears out of reach")
         ).firstMatch
+        scrollIntoView(outOfReach)
         assertVisibleElement(outOfReach)
         outOfReach.tap()
-        assertVisibleElement(app.buttons.matching(
+        let suggestion = app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "Use ")
-        ).firstMatch)
+        ).firstMatch
+        scrollIntoView(suggestion, upward: true)
+        assertVisibleElement(suggestion)
         capture(.parkedGearOutOfReach)
         assertJourneyCoverage()
     }
@@ -1411,7 +1483,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(row.isHittable, "\(title) row is not tappable")
         row.tap()
         XCTAssertTrue(
-            app.navigationBars[title].waitForExistence(timeout: 2),
+            app.navigationBars[title].waitForExistence(timeout: 5),
             "\(title) screen did not open"
         )
     }
@@ -1437,6 +1509,7 @@ final class VirtualGearsUITests: XCTestCase {
         while Date() < deadline, window.frame.width <= window.frame.height {
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
+        if isFoldedDuo { return }
         XCTAssertGreaterThan(window.frame.width, window.frame.height)
     }
 
@@ -1589,6 +1662,39 @@ final class VirtualGearsUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    /// Short displays, such as a folded iPhone, need a scroll before rows
+    /// further down the start screen are fully on screen.
+    /// On the folded iPhone Duo, iOS draws the back button in a side column
+    /// outside the navigation bar, so it is found by its system identifier.
+    private func goBack() {
+        let back = app.buttons["BackButton"].firstMatch
+        if back.waitForExistence(timeout: 2) {
+            back.tap()
+        } else {
+            app.navigationBars.buttons.firstMatch.tap()
+        }
+    }
+
+    /// Short screens such as the folded iPhone Duo push lower rows below the
+    /// fold, and lists may not create them until they are scrolled near.
+    private func scrollIntoView(_ element: XCUIElement, upward: Bool = false) {
+        _ = element.waitForExistence(timeout: 2)
+        for _ in 0..<4 {
+            let window = app.windows.firstMatch.frame
+            if element.exists, element.isHittable,
+               window.contains(element.frame) { return }
+            if upward { app.swipeDown() } else { app.swipeUp() }
+        }
+    }
+
+    /// The folded iPhone Duo screen stays in portrait when the device is
+    /// rotated, so landscape layout checks only apply where it rotates.
+    private var isFoldedDuo: Bool {
+        let name = ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] ?? ""
+        return name.contains("iPhone Duo")
+            && app.windows.firstMatch.frame.width < 500
     }
 
     private func assertVisibleElement(

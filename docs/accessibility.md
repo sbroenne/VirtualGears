@@ -4,6 +4,16 @@ Virtual Gears is designed so the ride can be controlled without having to see
 or precisely tap the screen. The on-screen controls remain available even when
 optional hardware is disconnected.
 
+The shift-button and adjustable-gear behavior below applies to **Shift with
+Virtual Gears**. In **Shift with Zwift or a compatible app**, the confirmed ratio is a labelled
+readout, not an adjustable control: shift using your riding app and its
+accessibility controls instead. Waiting for a ratio and connection states are
+expressed in text, and the readout scrolls to accommodate larger text.
+
+Both mode choices are visible rows on the start screen. The selected mode
+has a checkmark and a spoken selected state; selection does not rely on colour.
+Stop shifting before changing modes.
+
 ## VoiceOver
 
 The current gear is a VoiceOver adjustable control. Focus the gear readout,

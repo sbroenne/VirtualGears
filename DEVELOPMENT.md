@@ -42,6 +42,120 @@ a button press, it was saved, connected automatically and appeared in the app.
 
 ## Build and test
 
+### Two shifting modes
+
+`ShiftingMode` is persisted with Shift with Virtual Gears as the migration default.
+Shift with Zwift or a compatible app publishes an additional trainer service with notify
+(`0002`), write (`0003`) and indicate (`0004`) characteristics under
+`00000001-19CA-4651-86E5-FA29DCDD09D1`. This UUID is also advertised in the
+Zwift option, alongside FTMS and Cycling Power, so a scanner can identify the
+protocol before connecting. The other mode still advertises FTMS and Cycling
+Power only; iOS cannot publish arbitrary manufacturer data. Virtual
+Gears retains its own name and does not impersonate a KICKR CORE or copy a
+serial number.
+
+`ZwiftTrainerProtocol` is an independently written, bounded protobuf/varint
+codec. Public wire-format facts from
+[QZ's trainer schema](https://github.com/cagnulein/qdomyos-zwift/blob/master/src/devices/zwifthubbike/Zwift%20hub.proto)
+and [iOS peripheral implementation](https://github.com/cagnulein/qdomyos-zwift/blob/master/src/ios/virtualbike_zwift.swift)
+informed it. No GPL implementation or generated code is included.
+
+Start remains explicit. Ratios arriving before Start are staged; queries and
+replies do not claim they were applied. Active app ratios scale the normal
+circumference by `requested ratio / parked ratio`, are bounded by the existing
+scaling window and are reported at the actual confirmed command precision.
+The recovery baseline is saved before app-ratio writes. Stop waits for in-flight
+commands, restores the baseline and leaves the riding app's connection intact.
+Mode publication changes invalidate queued subscription generations.
+
+Zwift simulation fields are merged across partial updates and translated to
+FTMS units with checked numeric conversions. ERG power targets are refused in
+both modes: FTMS Set Target Power returns "op code not supported", and a Zwift
+power target is ignored and logged (a command carrying only a power target is
+rejected).
+The Click stays disconnected here; its saved identity is retained for
+Shift with Virtual Gears. The mode and physical gear cannot be changed on the live
+Zwift-compatible ride screen.
+
+### RealVelo hardware check for Shift with Zwift or a compatible app
+
+Existing RealVelo FTMS evidence is for Shift with Virtual Gears only.
+The new mode was accepted after this physical check:
+
+1. Install this branch's signed development build on the connected iPhone 17 Pro.
+2. Cover Shift with Virtual Gears regressions with the core and simulator tests;
+   retain the existing physical evidence rather than repeat the hardware test.
+3. Choose Shift with Zwift or a compatible app on the start screen and confirm its parked-gear advice.
+4. In RealVelo, reconnect Virtual Gears as the trainer and pair the Click there.
+5. Confirm RealVelo offers virtual shifting and shifting is visible after Start.
+6. Disconnect and reconnect the trainer in RealVelo; confirm virtual shifting
+   is offered again.
+
+Wheel-size writes, confirmation and Stop restoration use the same trainer path
+as Shift with Virtual Gears, which already has physical evidence. Pre-Start
+staging happens inside the app and is covered by core tests. These are not
+repeated on hardware.
+
+The results are recorded below. A separate Zwift app test must be recorded
+before making a Zwift-app compatibility claim.
+
+On 7 November 2026, the branch build was installed on an iPhone 17 Pro running
+iOS 27.2. The rider reported that RealVelo connected and offered virtual
+shifting. Ratio application, pre-Start gating, Stop restoration, terrain and ERG
+have not yet been checked. Testing was paused to move mode selection onto the
+start screen; discovery alone does not satisfy the hardware gate.
+
+Later that day, after selecting the Zwift option and reconnecting, the rider
+reported RealVelo's "trainer does not support virtual shifting" rejection.
+The phone's saved configuration confirmed `zwiftCompatible`. The original build
+published the Zwift service but omitted it from advertising. The corrected
+build advertises that UUID too; whether this resolves RealVelo's rejection
+remains unverified. Device OS-log collection was blocked by the Mac's root
+permission requirement, so no RealVelo handshake trace has been captured yet.
+
+The advertisement-only correction did not resolve the rejection. A second QZ
+comparison included its current `characteristicwriteprocessor0003.cpp`, not just
+the iOS implementation. QZ includes length-delimited device-information field 8
+with bytes `08 01 10 14`; our initial reply omitted it. The corrected codec
+includes that observed field while retaining Virtual Gears' own identity.
+Its meaning is not documented in the public schema, and RealVelo compatibility
+is still unverified. QZ also emits diagnostic-text notifications and differs in
+its riding-data acknowledgements; these are not yet established requirements.
+
+Development builds keep a bounded local `Documents/zwift-handshake.log` of the
+last 128 publication, subscription, read and Zwift command/reply events. It
+omits central identifiers and measured telemetry and is absent from release
+builds. Retrieve it with `devicectl device copy from` for this app's data
+container after reproducing a connection failure.
+
+The captured RealVelo trace shows subscriptions to both Zwift channels followed
+by `52 69 64 65 4F 6E 02 04` (`RideOn 02 04`). The decoder accepted only
+`RideOn 02` and returned ATT result 6 (request not supported), preventing
+negotiation before any device-information query. QZ matches the greeting's
+prefix. The decoder now accepts this observed RealVelo variant and uses the
+existing `RideOn 02 00` response, with regression coverage. End-to-end acceptance
+still requires a new RealVelo connection and the remaining physical checks.
+
+After installing the greeting fix, the rider confirmed that RealVelo offered
+virtual shifting. The phone trace subsequently recorded combined simulation
+and physical-ratio commands, successful ATT writes, and ratio replies including
+`CC 3A` (0.75), `FC 43` (0.87), `AC 4D` (0.99), `DC 56` (1.11) and
+`8C 60` (1.23). This verifies protocol recognition and command/reply exchange,
+not yet the rider-observed resistance, pre-Start behavior, Stop restoration,
+ERG or reconnect acceptance checks. Bike/rider weights in those commands remain
+unforwarded; the KICKR retains its configured weight.
+
+On 8 November 2026, the rider confirmed, "i can see that it is shifting,"
+while testing RealVelo with the corrected build. This adds rider-observed
+shifting to the command/reply evidence, satisfying steps 1-5. ERG pass-through
+was removed from this mode on the same day, so no ERG hardware check is
+required.
+
+The rider later reported that the remaining hardware checks, including the
+reconnect in step 6, had been completed on the KICKR V5. No separate trace was
+captured for the reconnect; the evidence is the rider's report. The check is
+therefore passed for RealVelo on Windows only.
+
 Run the hardware-independent test suite:
 
 ```bash
@@ -73,6 +187,22 @@ for destination in 'iPad mini (A17 Pro)' 'iPad Pro 13-inch (M5)'; do
 done
 ```
 
+Run the same suite on the folded iPhone Duo simulator (Xcode with the iOS 27.2
+simulator runtime). Its outer screen is 466 × 678 points and stays portrait, so
+the tests skip landscape checks there and scroll short lists into view:
+
+```bash
+xcodebuild test \
+  -project VirtualGears.xcodeproj \
+  -scheme VirtualGears \
+  -destination 'platform=iOS Simulator,name=iPhone Duo' \
+  -parallel-testing-enabled NO
+```
+
+On 8 November 2026 the full suite passed on iPhone Duo (folded), iPhone 18 Pro,
+iPad mini (A20 Pro) and iPad Pro 13-inch (M5) simulators. The Duo's unfolded
+inner screen has not been checked.
+
 Run the dense setup and Settings journeys on the smaller supported simulator:
 
 ```bash
@@ -89,7 +219,7 @@ xcodebuild test \
 the simulator has Bluetooth hardware. `DesignedUXState` is the maintained
 coverage contract: it lists every intentionally designed, app-owned screen,
 modal, loading state, warning, error and recovery state. The journey tests cover
-all 65 entries and retain a stable `UX-...` screenshot for each one. The
+all 72 entries and retain a stable `UX-...` screenshot for each one. The
 completeness test fails if a state is not assigned to an executable journey.
 
 The matrix includes the setup guide, startup, ride, Settings, every equipment

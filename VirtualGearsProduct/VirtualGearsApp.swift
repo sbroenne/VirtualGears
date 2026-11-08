@@ -10,6 +10,7 @@ struct VirtualGearsApp: App {
     @State private var headwind: HeadwindCentralService
     @State private var coordinator: ProxyCoordinator
     @State private var isDemoMode = false
+    @State private var setupChange: Task<Void, Never>?
 
     init() {
         let defaults: UserDefaults
@@ -32,7 +33,8 @@ struct VirtualGearsApp: App {
             click: click,
             peripheral: FTMSPeripheral(),
             screen: DeviceScreenWake(),
-            defaults: defaults
+            defaults: defaults,
+            configuration: configurationStore.configuration
         ))
     }
 
@@ -66,9 +68,23 @@ struct VirtualGearsApp: App {
             coordinator: coordinator,
             isDemoMode: $isDemoMode
         )
-        .onChange(of: configurationStore.configuration.setupComplete) {
-            if !configurationStore.configuration.setupComplete {
-                Task { await coordinator.shutdown() }
+        .onChange(of: configurationStore.configuration.setupComplete) { _, complete in
+            // Changing mode can make the parked gear invalid and back again.
+            // The shutdown disconnects the KICKR, so once setup is valid again
+            // it is reconnected, after any shutdown still in progress.
+            let previous = setupChange
+            setupChange = Task {
+                await previous?.value
+                guard complete else {
+                    await coordinator.shutdown()
+                    return
+                }
+                guard !isDemoMode, !coordinator.isShiftingPresented else { return }
+                kickr.autoConnectSavedDevice()
+                coordinator.makeTrainerProxyAvailable()
+                if configurationStore.configuration.connectsClick {
+                    click.autoConnectSavedDevice()
+                }
             }
         }
         .onChange(of: headwind.hasSavedDevice) { _, saved in
@@ -81,7 +97,7 @@ struct VirtualGearsApp: App {
                   !coordinator.isShiftingPresented else { return }
             kickr.autoConnectSavedDevice()
             coordinator.makeTrainerProxyAvailable()
-            if configurationStore.configuration.usesClick {
+            if configurationStore.configuration.connectsClick {
                 click.autoConnectSavedDevice()
             }
             if configurationStore.configuration.usesHeadwind {
@@ -111,6 +127,10 @@ enum ScreenshotFixture: String {
     case rideReconnecting = "-shotRideReconnecting"
     case rideStopping = "-shotRideStopping"
     case rideWheelSize = "-shotRideWheelSize"
+    case zwiftReady = "-shotZwiftReady"
+    case zwiftRide = "-shotZwiftRide"
+    case zwiftWaiting = "-shotZwiftWaiting"
+    case zwiftSettings = "-shotZwiftSettings"
     case settings = "-shotSettings"
     case settingsSearching = "-shotSettingsSearching"
     case settingsResults = "-shotSettingsResults"
@@ -163,7 +183,7 @@ private struct ScreenshotFixtureView: View {
         Group {
             switch scenario {
             case .starting, .startupLooking, .startupChoosing, .ready, .failed,
-                 .unparked:
+                 .unparked, .zwiftReady:
                 StartupView(
                     store: store,
                     kickr: kickr,
@@ -175,7 +195,7 @@ private struct ScreenshotFixtureView: View {
                 )
             case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
                  .ridePending, .ridePressed, .rideReconnecting, .rideStopping,
-                 .rideWheelSize:
+                 .rideWheelSize, .zwiftRide, .zwiftWaiting:
                 ShiftingView(
                     store: store,
                     kickr: kickr,
@@ -190,7 +210,7 @@ private struct ScreenshotFixtureView: View {
                  .settingsClickLowBattery, .settingsClickDuplicates,
                  .settingsClickSingleCandidate, .settingsClickIdentifying,
                  .settingsUnsafeGears,
-                 .settingsAccessibility:
+                 .settingsAccessibility, .zwiftSettings:
                 NavigationStack {
                     SetupView(
                         store: store,
@@ -232,6 +252,9 @@ private struct ScreenshotFixtureView: View {
     private func stage() {
         guard scenario != .demo else { return }
         var configuration = AppConfiguration()
+        if [.zwiftReady, .zwiftRide, .zwiftWaiting, .zwiftSettings].contains(scenario) {
+            configuration.shiftingMode = .zwiftCompatible
+        }
         configuration.parkInSuggestion()
         // Every fixture here represents a rider who has already been through
         // setup once, not a first launch — so the guide should not pop up
@@ -355,7 +378,7 @@ private struct ScreenshotFixtureView: View {
             click.stageScreenshotPressedButton(.plus)
         }
 
-        if scenario == .ready || scenario == .rideWaiting
+        if scenario == .ready || scenario == .rideWaiting || scenario == .zwiftReady
             || scenario == .unparked {
             (coordinator.peripheral as? FTMSPeripheral)?
                 .stageScreenshotAdvertising()
@@ -364,7 +387,13 @@ private struct ScreenshotFixtureView: View {
                 .stageScreenshotConnection()
         }
         if isRideScenario {
-            coordinator.stageScreenshotRide(configuration: configuration)
+            if configuration.shiftingMode == .zwiftCompatible {
+                coordinator.stageScreenshotAppRide(
+                    configuration: configuration, ratio: scenario == .zwiftRide ? 2.4 : nil
+                )
+            } else {
+                coordinator.stageScreenshotRide(configuration: configuration)
+            }
         }
         if scenario == .failed {
             coordinator.stageScreenshotFailure("KICKR denied FTMS control")
@@ -387,7 +416,7 @@ private struct ScreenshotFixtureView: View {
         switch scenario {
         case .ride, .rideAccessibility, .rideWaiting, .rideLowBattery,
              .ridePending, .ridePressed, .rideReconnecting, .rideStopping,
-             .rideWheelSize:
+             .rideWheelSize, .zwiftRide, .zwiftWaiting:
             true
         default:
             false

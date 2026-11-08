@@ -17,6 +17,16 @@ final class FTMSPeripheral: NSObject {
         FitnessMachineControlPointRequest,
         RidingAppCommandSource
     ) async -> FTMSPeripheralCommandResult)?
+    var zwiftCommandHandler: ((ZwiftTrainerRequest, RidingAppCommandSource) async -> [ZwiftTrainerResponse])?
+    private var shiftingMode = ShiftingMode.independent
+    private let zwiftServiceUUID = CBUUID(string: ZwiftTrainerUUID.service)
+    private let zwiftNotifyUUID = CBUUID(string: ZwiftTrainerUUID.notify)
+    private let zwiftWriteUUID = CBUUID(string: ZwiftTrainerUUID.write)
+    private let zwiftIndicateUUID = CBUUID(string: ZwiftTrainerUUID.indicate)
+    private var zwiftNotifyCharacteristic: CBMutableCharacteristic?
+    private var zwiftIndicateCharacteristic: CBMutableCharacteristic?
+    private var zwiftSubscriptionIDs: [UUID: UUID] = [:]
+    private var commandGeneration = UUID()
 
     private let serviceUUID = CBUUID(string: FTMSUUID.fitnessMachineService)
     private let featureUUID = CBUUID(string: FTMSUUID.fitnessMachineFeature)
@@ -60,8 +70,9 @@ final class FTMSPeripheral: NSObject {
     private var wantsAdvertising = false
     private var servicePublished = false
     /// The fitness machine and the cycling power service.
-    private let servicesToPublish = 2
+    private var servicesToPublish: Int { shiftingMode == .zwiftCompatible ? 3 : 2 }
     private var servicesPublished = 0
+    private var publishingServices: [CBUUID: CBMutableService] = [:]
     /// What the trainer is doing, as far as a riding app is told.
     private var trainingStatus = FTMSTrainingStatus.idle
     private var acceptingCommands = false
@@ -75,13 +86,23 @@ final class FTMSPeripheral: NSObject {
         let source: RidingAppCommandSource
     }
 
+    private func isTelemetry(_ data: Data, on uuid: CBUUID) -> Bool {
+        uuid == bikeDataUUID || uuid == powerMeasurementUUID
+            || (uuid == zwiftNotifyUUID && data.first == 3)
+    }
+
+    private enum PendingCommand {
+        case ftms(ControlCommand)
+        case zwift(ZwiftTrainerRequest, RidingAppCommandSource)
+    }
+
     private struct Update {
         let data: Data
         let characteristic: CBMutableCharacteristic
         let centralID: UUID?
     }
 
-    private var commands: [ControlCommand] = []
+    private var commands: [PendingCommand] = []
     private var processingCommand = false
     private var updates: [Update] = []
 
@@ -112,6 +133,55 @@ final class FTMSPeripheral: NSObject {
         manager = CBPeripheralManager(delegate: self, queue: .main)
     }
 
+    func configureShiftingMode(_ mode: ShiftingMode) {
+        guard mode != shiftingMode else { return }
+        let restart = wantsAdvertising
+        teardownAdvertising()
+        shiftingMode = mode
+        if restart { startAdvertising() }
+    }
+
+#if DEBUG
+    private var handshakeTrace: [String] = []
+#endif
+
+    private func traceHandshake(_ message: String) {
+#if DEBUG
+        guard shiftingMode == .zwiftCompatible else { return }
+        handshakeTrace.append("\(Date().ISO8601Format()) \(String(message.prefix(400)))")
+        if handshakeTrace.count > 128 { handshakeTrace.removeFirst() }
+        do {
+            let directory = try FileManager.default.url(
+                for: .documentDirectory, in: .userDomainMask,
+                appropriateFor: nil, create: true
+            )
+            try Data(handshakeTrace.joined(separator: "\n").utf8).write(
+                to: directory.appendingPathComponent("zwift-handshake.log"), options: .atomic
+            )
+        } catch {
+            ProductLogger.record(
+                "Unable to save Zwift handshake trace: \(error.localizedDescription)",
+                source: "FTMS Peripheral", level: .error
+            )
+        }
+#endif
+    }
+
+    func isZwiftSubscriber(_ source: RidingAppCommandSource) -> Bool {
+        shiftingMode == .zwiftCompatible
+            && zwiftSubscriptionIDs[source.centralID] == source.subscriptionID
+            && subscriptions[source.centralID]?.contains(zwiftIndicateUUID) == true
+    }
+
+    func sendZwiftResponse(_ response: ZwiftTrainerResponse) {
+        let characteristic = response.channel == .notify
+            ? zwiftNotifyCharacteristic : zwiftIndicateCharacteristic
+        guard let characteristic else { return }
+        for id in subscribers(of: characteristic.uuid) {
+            send(response.data, on: characteristic, to: id)
+        }
+    }
+
     func startAdvertising() {
         // A failure left over from an earlier attempt must not be read as this
         // one's verdict, or a perfectly good ride start aborts on stale news.
@@ -140,6 +210,10 @@ final class FTMSPeripheral: NSObject {
         let rejected = commands
         commands.removeAll()
         for command in rejected {
+            guard case let .ftms(command) = command else {
+                ProductLogger.record("Dropped Zwift command during shutdown", source: "FTMS Peripheral", level: .warning)
+                continue
+            }
             let centralID = command.source.centralID
             let response = FitnessMachineControlPointResponse(
                 requestOpcode: command.request.opcode,
@@ -161,16 +235,21 @@ final class FTMSPeripheral: NSObject {
         startRequested = false
         acceptingCommands = false
         commands.removeAll()
+        commandGeneration = UUID()
         processingCommand = false
         updates.removeAll()
         manager.stopAdvertising()
         manager.removeAllServices()
         servicePublished = false
         servicesPublished = 0
+        publishingServices.removeAll()
         trainingStatus = .idle
         isAdvertising = false
         subscriptions.removeAll()
         controlSubscriptionIDs.removeAll()
+        zwiftSubscriptionIDs.removeAll()
+        zwiftNotifyCharacteristic = nil
+        zwiftIndicateCharacteristic = nil
         centrals.removeAll()
         subscribedAppCount = 0
         controlOwnerID = nil
@@ -188,7 +267,8 @@ final class FTMSPeripheral: NSObject {
     /// what tells a live claim apart from the ghost of a finished one.
     private func isLiveControlSubscriber(_ centralID: UUID) -> Bool {
         centrals[centralID] != nil
-            && subscriptions[centralID]?.contains(controlUUID) == true
+            && (subscriptions[centralID]?.contains(controlUUID) == true
+                || subscriptions[centralID]?.contains(zwiftIndicateUUID) == true)
     }
 
     /// Sent to every subscribed app. A riding app that only reads ride data,
@@ -200,6 +280,16 @@ final class FTMSPeripheral: NSObject {
             send(data, on: bikeDataCharacteristic, to: id)
         }
         relayCyclingPower(from: data)
+        if shiftingMode == .zwiftCompatible {
+            do {
+                let bike = try IndoorBikeData.decode(data)
+                sendZwiftResponse(.init(
+                    channel: .notify, data: ZwiftTrainerResponse.ridingData(bike)
+                ))
+            } catch {
+                ProductLogger.record("Invalid trainer data for Zwift telemetry: \(error.localizedDescription)", source: "FTMS Peripheral", level: .error)
+            }
+        }
     }
 
     /// The same trainer readings again, on the Cycling Power service, for the
@@ -240,6 +330,7 @@ final class FTMSPeripheral: NSObject {
             on: statusCharacteristic,
             to: owner
         )
+        ProductLogger.record("Trainer control was lost", source: "FTMS Peripheral", level: .warning)
     }
 
     private func subscribers(of characteristic: CBUUID) -> [UUID] {
@@ -300,6 +391,7 @@ final class FTMSPeripheral: NSObject {
             controlCharacteristic, statusCharacteristic,
             trainingStatusCharacteristic,
         ]
+        publishingServices[service.uuid] = service
         manager.add(service)
 
         powerMeasurementCharacteristic = CBMutableCharacteristic(
@@ -327,14 +419,40 @@ final class FTMSPeripheral: NSObject {
                 permissions: [.readable]
             ),
         ]
+        publishingServices[powerService.uuid] = powerService
         manager.add(powerService)
+        if shiftingMode == .zwiftCompatible {
+            let service = CBMutableService(type: zwiftServiceUUID, primary: true)
+            let notify = CBMutableCharacteristic(
+                type: zwiftNotifyUUID, properties: [.read, .notify],
+                value: nil, permissions: [.readable]
+            )
+            let indicate = CBMutableCharacteristic(
+                type: zwiftIndicateUUID, properties: [.indicate],
+                value: nil, permissions: []
+            )
+            zwiftNotifyCharacteristic = notify
+            zwiftIndicateCharacteristic = indicate
+            service.characteristics = [
+                notify,
+                CBMutableCharacteristic(
+                    type: zwiftWriteUUID, properties: [.write, .writeWithoutResponse],
+                    value: nil, permissions: [.writeable]
+                ),
+                indicate,
+            ]
+            publishingServices[service.uuid] = service
+            manager.add(service)
+        }
     }
 
     private func advertise() {
+        traceHandshake("Advertising \(shiftingMode.advertisedTrainerServiceUUIDs.joined(separator: ", "))")
         // FulGaz on Windows requires the advertised services and readable
         // measurement surface to agree. Either half by itself still fails.
         manager.startAdvertising([
-            CBAdvertisementDataServiceUUIDsKey: [serviceUUID, powerServiceUUID],
+            CBAdvertisementDataServiceUUIDsKey:
+                shiftingMode.advertisedTrainerServiceUUIDs.map { CBUUID(string: $0) },
             CBAdvertisementDataLocalNameKey: "Virtual Gears",
         ])
     }
@@ -343,7 +461,7 @@ final class FTMSPeripheral: NSObject {
         _ request: FitnessMachineControlPointRequest,
         from source: RidingAppCommandSource
     ) {
-        commands.append(.init(request: request, source: source))
+        commands.append(.ftms(.init(request: request, source: source)))
         processNextCommand()
     }
 
@@ -351,10 +469,50 @@ final class FTMSPeripheral: NSObject {
         guard !processingCommand, !commands.isEmpty else { return }
         processingCommand = true
         let command = commands.removeFirst()
+        let generation = commandGeneration
         Task { [weak self] in
             guard let self else { return }
-            let result = await self.execute(command)
-            self.finish(command, result: result)
+            switch command {
+            case let .ftms(command):
+                let result = await self.execute(command)
+                guard generation == self.commandGeneration else { return }
+                self.finish(command, result: result)
+            case let .zwift(request, source):
+                guard self.acceptingCommands, self.isZwiftSubscriber(source),
+                      self.controlOwnerID == nil
+                        || self.controlOwnerID == source.centralID
+                        || !self.isLiveControlSubscriber(self.controlOwnerID!) else {
+                    ProductLogger.record("Rejected Zwift command: another app owns control or subscription expired", source: "FTMS Peripheral", level: .warning)
+                    self.processingCommand = false
+                    self.processNextCommand()
+                    return
+                }
+                if case .command = request {
+                    self.controlOwnerID = source.centralID
+                    self.controllingAppID = source.centralID
+                }
+                guard let handler = self.zwiftCommandHandler else {
+                    self.fail("Zwift trainer command handler is unavailable")
+                    self.processingCommand = false
+                    self.processNextCommand()
+                    return
+                }
+                let responses = await handler(request, source)
+                guard generation == self.commandGeneration else { return }
+                if self.isZwiftSubscriber(source) {
+                    for response in responses {
+                        let characteristic = response.channel == .notify
+                            ? self.zwiftNotifyCharacteristic : self.zwiftIndicateCharacteristic
+                        if let characteristic,
+                           self.subscriptions[source.centralID]?.contains(characteristic.uuid) == true {
+                            self.send(response.data, on: characteristic, to: source.centralID)
+                            self.traceHandshake("Reply \(response.data.map { String(format: "%02X", $0) }.joined())")
+                        }
+                    }
+                }
+                self.processingCommand = false
+                self.processNextCommand()
+            }
         }
     }
 
@@ -428,14 +586,15 @@ final class FTMSPeripheral: NSObject {
                 characteristic: characteristic,
                 centralID: centralID
             )
-            if characteristic.uuid == bikeDataUUID {
+            if isTelemetry(data, on: characteristic.uuid) {
                 updates.removeAll {
-                    $0.characteristic.uuid == bikeDataUUID
+                    $0.characteristic.uuid == characteristic.uuid
                         && $0.centralID == centralID
+                        && isTelemetry($0.data, on: $0.characteristic.uuid)
                 }
                 updates.append(update)
             } else if let firstTelemetry = updates.firstIndex(where: {
-                $0.characteristic.uuid == bikeDataUUID
+                isTelemetry($0.data, on: $0.characteristic.uuid)
             }) {
                 updates.insert(update, at: firstTelemetry)
             } else {
@@ -483,6 +642,8 @@ final class FTMSPeripheral: NSObject {
         case bikeDataUUID: latestIndoorBikeData
         case powerMeasurementUUID: latestCyclingPowerData
         case trainingStatusUUID: trainingStatus.encode()
+        case zwiftNotifyUUID:
+            try? ZwiftTrainerResponse.ridingData(IndoorBikeData.decode(latestIndoorBikeData))
         default: nil
         }
     }
@@ -532,11 +693,13 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         didAdd service: CBService,
         error: Error?
     ) {
+        guard publishingServices[service.uuid] === service else { return }
         guard error == nil else {
             startRequested = false
             fail(error!.localizedDescription)
             return
         }
+        traceHandshake("Published service \(service.uuid.uuidString)")
         // Every service has to be in place before advertising, or a riding app
         // can connect during the gap and find only half the trainer.
         servicesPublished += 1
@@ -562,6 +725,7 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         _ peripheral: CBPeripheralManager,
         didReceiveRead request: CBATTRequest
     ) {
+        traceHandshake("Read \(request.characteristic.uuid.uuidString)")
         guard let value = readValue(for: request.characteristic.uuid) else {
             peripheral.respond(to: request, withResult: .readNotPermitted)
             return
@@ -578,9 +742,36 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         _ peripheral: CBPeripheralManager,
         didReceiveWrite requests: [CBATTRequest]
     ) {
+        for request in requests where request.characteristic.uuid == zwiftWriteUUID {
+            traceHandshake("Zwift write \((request.value ?? Data()).prefix(128).map { String(format: "%02X", $0) }.joined())")
+        }
         let result: CBATTError.Code
         if requests.count != 1 {
             result = .requestNotSupported
+        } else if let request = requests.first,
+                  request.characteristic.uuid == zwiftWriteUUID,
+                  shiftingMode == .zwiftCompatible,
+                  request.offset == 0, let data = request.value {
+            let id = request.central.identifier
+            if acceptingCommands, let subscriptionID = zwiftSubscriptionIDs[id],
+               subscriptions[id]?.contains(zwiftIndicateUUID) == true {
+                do {
+                    let decoded = try ZwiftTrainerRequest.decode(data)
+                    commands.append(.zwift(decoded, .init(
+                        centralID: id, subscriptionID: subscriptionID
+                    )))
+                    result = .success
+                    processNextCommand()
+                } catch {
+                    ProductLogger.record(
+                        "Rejected Zwift write \(data.map { String(format: "%02X", $0) }.joined()): \(error)",
+                        source: "FTMS Peripheral", level: .warning
+                    )
+                    result = .requestNotSupported
+                }
+            } else {
+                result = .writeNotPermitted
+            }
         } else if let request = requests.first,
                   request.characteristic.uuid == controlUUID,
                   request.offset == 0,
@@ -625,6 +816,9 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         for request in requests {
             peripheral.respond(to: request, withResult: result)
         }
+        if requests.contains(where: { $0.characteristic.uuid == zwiftWriteUUID }) {
+            traceHandshake("Write result \(result.rawValue)")
+        }
     }
 
     func peripheralManager(
@@ -632,10 +826,14 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         central: CBCentral,
         didSubscribeTo characteristic: CBCharacteristic
     ) {
+        traceHandshake("Subscribed \(characteristic.uuid.uuidString)")
         centrals[central.identifier] = central
         subscriptions[central.identifier, default: []].insert(characteristic.uuid)
         if characteristic.uuid == controlUUID {
             controlSubscriptionIDs[central.identifier] = UUID()
+        }
+        if characteristic.uuid == zwiftIndicateUUID {
+            zwiftSubscriptionIDs[central.identifier] = UUID()
         }
         refreshSubscribedAppCount()
         emit(.centralSubscribed(
@@ -652,13 +850,16 @@ extension FTMSPeripheral: @preconcurrency CBPeripheralManagerDelegate {
         subscriptions[central.identifier]?.remove(characteristic.uuid)
         // An app that drops the control channel gives up control with it, so a
         // later riding app is never locked out by a stale claim.
-        if characteristic.uuid == controlUUID,
-           controlOwnerID == central.identifier {
+        if controlOwnerID == central.identifier,
+           !isLiveControlSubscriber(central.identifier) {
             controlOwnerID = nil
             controllingAppID = nil
         }
         if characteristic.uuid == controlUUID {
             controlSubscriptionIDs.removeValue(forKey: central.identifier)
+        }
+        if characteristic.uuid == zwiftIndicateUUID {
+            zwiftSubscriptionIDs.removeValue(forKey: central.identifier)
         }
         if subscriptions[central.identifier]?.isEmpty == true {
             subscriptions.removeValue(forKey: central.identifier)
