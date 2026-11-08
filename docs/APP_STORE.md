@@ -6,18 +6,16 @@ Work top to bottom.
 !!! warning "Universal build uploaded; not submitted for review"
 
     The universal iPhone/iPad target, iPad screenshots and shared-device wording
-    are complete. Build 19 was uploaded on 25 August 2026, is available to the internal
-    `Insiders` TestFlight group, and is attached to App Store version 1.0. The
-    physical iPad Bluetooth gate in Stage 5 passed. The version has not been
-    submitted for App Review.
+    are complete. Build 20, which adds the two shifting modes and the iPhone Duo
+    layout, was uploaded on 8 November 2026. It is available to the internal
+    `Insiders` TestFlight group and is attached to App Store version 1.0. The
+    version has not been submitted for App Review.
 
-The listing and review-note drafts below now describe both shifting modes.
-They are not a record of new live metadata or an uploaded build. Before this
-change is accepted, complete the RealVelo/KICKR hardware test and record its
-result in `DEVELOPMENT.md`. Before submission, save the matching description,
-promotional text, review notes and relevant screenshots in App Store Connect.
-Do not reuse the earlier Independent-shifting evidence as proof of the new
-Zwift-compatible path.
+The listing below describes both shifting modes. On 8 November 2026 the
+promotional text, description, six medium-iPhone screenshots and six iPhone
+Duo screenshots were saved live in App Store Connect with build 20. The
+RealVelo/KICKR hardware check of the Zwift-compatible path was done by the
+developer before upload.
 
 ---
 
@@ -186,7 +184,7 @@ or 1179 × 2556 (iPhone 17 Pro, iPhone 18 Pro). The 1320 × 2868 set in
 `docs/screenshots/` is the optional large-display size. Both sets are kept:
 
 - **Medium display (required):** `docs/app-store/iphone-medium/`, 1206 × 2622,
-  captured on an iPhone 18 Pro simulator. Not uploaded yet.
+  captured on an iPhone 18 Pro simulator. Uploaded on 8 November 2026.
 - **Large display (optional):** `docs/screenshots/`, 1320 × 2868, captured on an
   iPhone 17 Pro Max simulator. The two landscape images there are 2868 × 1320
   documentation views, not part of the upload set.
@@ -225,7 +223,7 @@ battery in a side column, which is why they sit to the right of the content.
 Uploading them adds a "made for iPhone Duo" badge to the product page. Apple
 will require Duo screenshots from April 2027 for apps built with the iOS 27.1
 SDK or later. The inner (unfolded) screen, 2007 × 2853, has not been captured or
-checked. Not uploaded yet.
+checked. Uploaded on 8 November 2026.
 
 ### Product page header and search image (optional)
 
@@ -347,7 +345,7 @@ For each update, raise `MARKETING_VERSION` (1.0 → 1.1) and
 upload again. `CURRENT_PROJECT_VERSION` must increase on every single upload, even
 a re-upload of the same version.
 
-The current TestFlight build is 1.0 (19). Build 5 added the Demo Mode that shows
+The current TestFlight build is 1.0 (20). Build 5 added the Demo Mode that shows
 the wheel size and command bytes changing. Build 6 removed a wheel-size limit
 that was never real: a physical KICKR V5 accepts every value the command can
 express, so the app now states the range of riding-app wheel sizes it supports
@@ -443,7 +441,13 @@ keeping iOS/iPadOS 17 as the minimum. It adds all four iPad orientations without
 requiring full screen, caps ride controls at deliberate iPad sizes, and runs the
 UI suite on iPhone 17 Pro, iPad mini and iPad Pro 13-inch simulators. The
 physical iPad gate above passed before build 19 was uploaded. Its universal
-description and screenshots are now live in the editable App Store version.
+description and screenshots were saved live in the editable App Store version.
+
+Build 20, uploaded on 8 November 2026, adds the second shifting mode, "Shift
+with Zwift or a compatible app", in which a Zwift-protocol riding app sends the
+gear changes. It also fixes the layout on the folded iPhone Duo's outer screen.
+It replaces build 19 on App Store version 1.0 and is in the `Insiders`
+TestFlight group.
 
 Uploading without opening Xcode:
 

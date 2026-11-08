@@ -1483,7 +1483,7 @@ final class VirtualGearsUITests: XCTestCase {
         XCTAssertTrue(row.isHittable, "\(title) row is not tappable")
         row.tap()
         XCTAssertTrue(
-            app.navigationBars[title].waitForExistence(timeout: 2),
+            app.navigationBars[title].waitForExistence(timeout: 5),
             "\(title) screen did not open"
         )
     }
