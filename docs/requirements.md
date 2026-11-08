@@ -104,13 +104,12 @@ MyWhoosh ignored FTMS ride data in direct testing and read power and cadence
 from Cycling Power Service instead. Virtual Gears now publishes that service,
 and the complete iPhone-to-Windows path has been ridden end to end.
 
-The table records Shift with Virtual Gears only. **Shift with Zwift or a compatible app**
-needs a separate physical test; the RealVelo/KICKR V5 test is part of this PR's
-acceptance gate. Zwift is another protocol target, not yet a validated app.
-RealVelo now recognises virtual shifting after correcting its initial RideOn
-greeting handling. A phone trace confirms simulation/ratio commands and ratio
-replies, and the rider confirmed seeing shifting on 8 November 2026.
-Reconnecting RealVelo is still to be checked on hardware.
+The table records Shift with Virtual Gears only. **Shift with Zwift or a
+compatible app** has been ridden with RealVelo on Windows and a KICKR V5:
+RealVelo recognises virtual shifting, a phone trace confirms its ratio commands
+and Virtual Gears' replies, and the rider confirmed the shifting on the trainer.
+Zwift itself and other apps that use the same protocol are expected to work but
+have not been tested.
 
 The iPad interface is exercised on iPad mini and 13-inch iPad simulators. That
 proves the layouts and navigation, not Bluetooth. The first universal release

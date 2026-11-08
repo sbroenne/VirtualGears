@@ -14,8 +14,9 @@ there is no chain noise, no dropped chain, and no wear.
 
 !!! quote "Why this exists"
 
-    Zwift added virtual shifting in 2024, and Wahoo brought it to their newer
-    trainers. The KICKR V5 was left out, [permanently][wahoo]:
+    Zwift added virtual shifting in 2024, and Wahoo brought it to the KICKR
+    MOVE, KICKR V6 and KICKR CORE. The KICKR V5 and older were left out,
+    [permanently][wahoo]:
 
     > "We have reviewed the hardware and firmware capabilities of KICKR v5
     > (2020) and preceding KICKR versions. Unfortunately, these older models
@@ -23,9 +24,11 @@ there is no chain noise, no dropped chain, and no wear.
     > the Zwift protocol and will not be receiving a future update for this
     > functionality."
 
-    Virtual Gears gives a KICKR V5 gears anyway. Because it appears as a normal
-    FTMS trainer, it also brings virtual shifting to riding apps that do not
-    provide their own.
+    Virtual Gears adds virtual shifting to the KICKRs Wahoo left out. Because
+    it appears as a normal FTMS trainer, it also brings virtual shifting to
+    riding apps that do not provide their own. Wahoo's built-in shifting only
+    works in Zwift and Rouvy, so even owners of newer KICKRs can use Virtual
+    Gears in their other riding apps.
 
     The app was built and physically tested with a KICKR V5. Other direct-drive
     KICKR models are expected to work but have not yet been physically tested.
@@ -230,7 +233,8 @@ can come back to the same gear.
 
 **Universal virtual-shifting compatibility.** Shift with Zwift or a compatible app exposes
 the Zwift trainer protocol, not every protocol used by every riding app.
-The required RealVelo hardware test is separate from existing FTMS evidence.
+It has been ridden with RealVelo on a KICKR V5; Zwift itself and other apps
+are expected to work but have not been tested.
 
 **ERG mode.** A workout that sets a target power is refused in both modes, because holding a
 power target and holding a gear are two different ideas of what the trainer

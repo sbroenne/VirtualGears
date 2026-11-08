@@ -77,10 +77,10 @@ The Click stays disconnected here; its saved identity is retained for
 Shift with Virtual Gears. The mode and physical gear cannot be changed on the live
 Zwift-compatible ride screen.
 
-### Required RealVelo hardware gate for this PR
+### RealVelo hardware check for Shift with Zwift or a compatible app
 
 Existing RealVelo FTMS evidence is for Shift with Virtual Gears only.
-The new mode is not considered complete until this physical gate passes:
+The new mode was accepted after this physical check:
 
 1. Install this branch's signed development build on the connected iPhone 17 Pro.
 2. Cover Shift with Virtual Gears regressions with the core and simulator tests;
@@ -96,9 +96,8 @@ as Shift with Virtual Gears, which already has physical evidence. Pre-Start
 staging happens inside the app and is covered by core tests. These are not
 repeated on hardware.
 
-Record the app/device versions, observed commands and results here. At present
-this gate is **pending**, not physical compatibility evidence. A separate Zwift
-app test must be recorded before making a Zwift-app compatibility claim.
+The results are recorded below. A separate Zwift app test must be recorded
+before making a Zwift-app compatibility claim.
 
 On 7 November 2026, the branch build was installed on an iPhone 17 Pro running
 iOS 27.2. The rider reported that RealVelo connected and offered virtual
@@ -148,9 +147,14 @@ unforwarded; the KICKR retains its configured weight.
 
 On 8 November 2026, the rider confirmed, "i can see that it is shifting,"
 while testing RealVelo with the corrected build. This adds rider-observed
-shifting to the command/reply evidence, satisfying steps 1-5. Reconnect
-(step 6) remains pending. ERG pass-through was removed from this mode on the
-same day, so no ERG hardware check is required.
+shifting to the command/reply evidence, satisfying steps 1-5. ERG pass-through
+was removed from this mode on the same day, so no ERG hardware check is
+required.
+
+The rider later reported that the remaining hardware checks, including the
+reconnect in step 6, had been completed on the KICKR V5. No separate trace was
+captured for the reconnect; the evidence is the rider's report. The check is
+therefore passed for RealVelo on Windows only.
 
 Run the hardware-independent test suite:
 

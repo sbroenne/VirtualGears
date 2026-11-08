@@ -34,9 +34,10 @@ Click -> Riding app -> Virtual Gears -> KICKR
 Stop shifting before changing modes. The Bluetooth services are republished
 when the mode changes, so reconnect the trainer in your riding app.
 The Zwift option refers to the protocol, not an affiliation or certification.
-RealVelo is the first hardware-validation target for this change. Its earlier
-FTMS ride does not prove the new protocol path; physical validation remains a
-required gate for this PR.
+RealVelo on Windows has been ridden this way on a KICKR V5: it recognises the
+trainer's virtual shifting and its gear changes reach the KICKR. Zwift itself
+and other apps that use the same protocol are expected to work but have not
+been tested.
 
 Opening Virtual Gears connects this transparent trainer proxy. **Start Shifting**
 adds the gears; **Stop Shifting** removes the virtual gear and restores the

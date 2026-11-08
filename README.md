@@ -4,8 +4,8 @@
 
 # Virtual Gears
 
-**Virtual shifting for Wahoo KICKR trainers — even in riding apps that do not
-offer it.**
+**Wahoo left the KICKR V5 and older without virtual shifting. Virtual Gears
+adds it.**
 
 Virtual Gears puts an iPhone or iPad between your trainer and the app you ride
 with.
@@ -26,10 +26,14 @@ app recommends the quietest gear that works and you confirm it in a tap.
 
 ## Why it exists
 
-Wahoo brought native virtual shifting to newer trainers but has said the KICKR
-V5 will not receive it. Native shifting also depends on support inside the
-riding app. Virtual Gears fills both gaps: it gives a KICKR gears and makes them
-available to ordinary FTMS riding apps without changing their route data.
+Wahoo brought built-in virtual shifting to the KICKR MOVE, KICKR V6 and KICKR
+CORE, but says the KICKR V5 and older models will not receive it. Even on the
+newer trainers, built-in shifting only works in Zwift and Rouvy.
+
+Virtual Gears fills both gaps. It adds virtual shifting to the KICKRs Wahoo left
+out, and it brings gears to ordinary FTMS riding apps without changing their
+route data. If your KICKR already has built-in shifting, Zwift and Rouvy can use
+it directly; Virtual Gears can still add gears in your other riding apps.
 
 [Read Wahoo's compatibility statement](https://support.wahoofitness.com/hc/en-us/articles/16865097915666-Virtual-shifting-with-Wahoo-smart-trainers)
 
@@ -54,10 +58,12 @@ on iPad mini and 13-inch iPad simulators, including portrait, landscape and
 accessibility text.
 
 On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
-on Windows, have been ridden end to end with **Shift with Virtual Gears**. The
-RealVelo/KICKR test for **Shift with Zwift or a compatible app** is a required gate for this
-change; that path is not yet physically validated. Other FTMS riding apps are
-expected to work but have not been tested.
+on Windows, have been ridden end to end with **Shift with Virtual Gears**.
+RealVelo on Windows has also been ridden with **Shift with Zwift or a compatible
+app** on a KICKR V5: it recognises the trainer's virtual shifting and the gears
+reach the KICKR. Zwift itself and other apps that use its protocol are expected
+to work but have not been tested. Other FTMS riding apps are expected to work
+but have not been tested.
 
 [Detailed compatibility information](https://sbroenne.github.io/VirtualGears/requirements/#which-trainers-work)
 
