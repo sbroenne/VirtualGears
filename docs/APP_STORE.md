@@ -218,6 +218,18 @@ They show only the app itself, with no Wahoo or Zwift logos and no claim of
 affiliation. Regenerate them whenever those screenshots change. If the search
 image is removed, the App Store falls back to the screenshots.
 
+### App preview video
+
+An optional 29-second app preview for the 6.9-inch iPhone slot, **886 × 1920**,
+30 fps, H.264 with a silent stereo AAC track. It was made with HyperFrames
+(HeyGen's HTML-to-video tool) from iPhone 18 Pro Max simulator footage driven by
+a UI test: the mode choice, Demo Mode shifting, the ride screen, the
+Zwift-compatible ride screen and the gear choices, with short captions and a
+title card. Like the screenshots, it shows simulated app screens, not hardware
+evidence, and has no Wahoo or Zwift logos. It is not committed; the video and
+its HyperFrames project are kept outside the repository. It is separate from
+the App Review recording in `DEMO_VIDEO.md`, which must be physical footage.
+
 ### Privacy answers ("App Privacy" section)
 
 Answer **"No, we do not collect data from this app."** That is accurate: nothing is

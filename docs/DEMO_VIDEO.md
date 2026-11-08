@@ -58,8 +58,8 @@ Also:
   sequence uses Shift with Virtual Gears with the Click connected to Virtual Gears.
   For a Zwift-compatible demonstration, pair it with the riding app instead,
   retain Start/Stop, and show the ratio confirmed by the KICKR. Capture that
-  physical sequence after the RealVelo acceptance test; Demo Mode cannot prove
-  the app-controlled protocol path.
+  physical sequence on the trainer; Demo Mode cannot prove the app-controlled
+  protocol path.
 - Riding app open on the computer only if you want the optional act 4.
 
 Record the phone with **iOS screen recording** (Control Centre → the record
