@@ -1475,6 +1475,7 @@ struct ShiftingView: View {
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
                         .accessibilityLabel("Confirmed gear ratio")
+                        .accessibilityValue(ratio.formatted(.number.precision(.fractionLength(2))))
                         .accessibilityIdentifier("ride.appRatio")
                     Text("Ratio set by your riding app")
                         .font(.headline)

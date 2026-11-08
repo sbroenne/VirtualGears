@@ -19,6 +19,10 @@ public final class ProxyCoordinator {
     public private(set) var requestedAppRatio: Double?
     public private(set) var confirmedAppRatio: Double?
     private var appParkedRatio: Double?
+    /// The last confirmed app ratio when a Stop or failed Start could not put
+    /// the normal wheel size back. The KICKR may still hold it, so the riding
+    /// app is told that rather than the parked ratio.
+    private var unrestoredAppRatio: Double?
     private var appRatioSetting: AppRatioSetting?
     private var appShiftingSession = false
     private var appSimulation = ZwiftSimulation()
@@ -191,6 +195,7 @@ public final class ProxyCoordinator {
         if shiftingMode != configuration.shiftingMode {
             requestedAppRatio = nil
             confirmedAppRatio = nil
+            unrestoredAppRatio = nil
             appSimulation = ZwiftSimulation()
         }
         shiftingMode = configuration.shiftingMode
@@ -266,7 +271,7 @@ public final class ProxyCoordinator {
         let wheelSize = trainerWheelSizeMillimeters
             ?? defaults.double(forKey: interruptedShiftingKey)
         guard wheelSize > 0 else {
-            defaults.removeObject(forKey: interruptedShiftingKey)
+            clearInterruptedShiftingRecord()
             trainerWheelSizeMillimeters = wheelSize
             startProxyIfSafe()
             return
@@ -293,7 +298,7 @@ public final class ProxyCoordinator {
             let response = try await kickr.executeWahoo(command)
             guard response.confirmsSuccess(for: command) else { return }
             guard isStillWanted(token) else { return }
-            defaults.removeObject(forKey: interruptedShiftingKey)
+            clearInterruptedShiftingRecord()
             log("Reset the wheel size after interrupted shifting")
             startProxyIfSafe()
         } catch {
@@ -452,8 +457,18 @@ public final class ProxyCoordinator {
         }
         appParkedRatio = parked.ratio
         appShiftingSession = true
-        let neutral = trainerWheelSizeMillimeters
-            ?? Double(configuration.neutralCircumferenceMillimeters)
+        let reference = Double(configuration.neutralCircumferenceMillimeters)
+        var neutral = trainerWheelSizeMillimeters ?? reference
+        if !TrainerSafety.supportedRidingAppCircumferenceMillimeters.contains(neutral) {
+            log(
+                "Your riding app left a \(Int(neutral.rounded())) mm wheel size, "
+                    + "outside the supported range, so shifting starts from "
+                    + "\(Int(reference.rounded())) mm instead.",
+                .warning
+            )
+            neutral = reference
+            wheelSizeCameFromRidingApp = false
+        }
         trainerWheelSizeMillimeters = neutral
         kickr.resumeSavedConnection()
         screen.keepAwake = true
@@ -473,6 +488,7 @@ public final class ProxyCoordinator {
             guard startMayProceed(id), result.confirmsSuccess(for: command) else {
                 throw ProductBluetoothError.commandFailed("KICKR did not confirm the normal wheel size")
             }
+            unrestoredAppRatio = nil
         }
         guard startMayProceed(id) else { throw CancellationError() }
         makeTrainerProxyAvailable()
@@ -506,6 +522,7 @@ public final class ProxyCoordinator {
         appRatioSetting = setting
         hasAppliedVirtualGear = true
         confirmedAppRatio = setting.appliedRatio
+        unrestoredAppRatio = nil
         log("KICKR confirmed app ratio \(setting.appliedRatio)")
     }
 
@@ -597,7 +614,7 @@ public final class ProxyCoordinator {
                         "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: interruptedShiftingKey)
+                clearInterruptedShiftingRecord()
             } catch {
                 failures.append(
                     "Wheel size reset failed: \(error.localizedDescription)"
@@ -675,10 +692,19 @@ public final class ProxyCoordinator {
         waiters.forEach { $0.resume() }
     }
 
+    private func clearInterruptedShiftingRecord() {
+        defaults.removeObject(forKey: interruptedShiftingKey)
+        unrestoredAppRatio = nil
+    }
+
     private func clearShiftingData() {
         gearEngine = nil
         appRatioSetting = nil
         appShiftingSession = false
+        if defaults.object(forKey: interruptedShiftingKey) != nil,
+           let confirmedAppRatio {
+            unrestoredAppRatio = confirmedAppRatio
+        }
         confirmedAppRatio = nil
         heldDirection = nil
         displayedGear = nil
@@ -993,7 +1019,7 @@ public final class ProxyCoordinator {
                     log("Unsupported Zwift information query \(id)", .warning)
                     return []
                 }
-                guard let ratio = confirmedAppRatio ?? appParkedRatio else {
+                guard let ratio = confirmedAppRatio ?? unrestoredAppRatio ?? appParkedRatio else {
                     log("Cannot report a ratio until the parked gear is confirmed", .warning)
                     return []
                 }
@@ -1037,8 +1063,8 @@ public final class ProxyCoordinator {
                     requestedAppRatio = ratio
                     log("App ratio \(ratio) is waiting for Start Shifting")
                     // Do not echo an unapplied ratio as though the KICKR accepted it.
-                    if let appParkedRatio {
-                        return [.ratio(UInt32((appParkedRatio * 10_000).rounded()))]
+                    if let reported = unrestoredAppRatio ?? appParkedRatio {
+                        return [.ratio(UInt32((reported * 10_000).rounded()))]
                     }
                 }
                 return []
@@ -1384,7 +1410,7 @@ public final class ProxyCoordinator {
                         "KICKR did not confirm the wheel-size reset"
                     )
                 }
-                defaults.removeObject(forKey: interruptedShiftingKey)
+                clearInterruptedShiftingRecord()
             } catch {
                 wheelSizeReset = false
                 log(

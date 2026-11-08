@@ -2249,6 +2249,10 @@ struct ParkedGearView: View {
     }
 
     private func isWorkable(_ gear: ParkedGear) -> Bool {
+        if store.configuration.shiftingMode == .zwiftCompatible {
+            guard let range = store.configuration.workableParkedRatios else { return true }
+            return range.contains(gear.ratio)
+        }
         guard let drivetrain = store.configuration.drivetrain else { return true }
         return ParkedGearAdvice.isWorkable(gear, simulating: drivetrain)
     }

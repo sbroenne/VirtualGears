@@ -10,6 +10,7 @@ struct VirtualGearsApp: App {
     @State private var headwind: HeadwindCentralService
     @State private var coordinator: ProxyCoordinator
     @State private var isDemoMode = false
+    @State private var setupChange: Task<Void, Never>?
 
     init() {
         let defaults: UserDefaults
@@ -67,9 +68,23 @@ struct VirtualGearsApp: App {
             coordinator: coordinator,
             isDemoMode: $isDemoMode
         )
-        .onChange(of: configurationStore.configuration.setupComplete) {
-            if !configurationStore.configuration.setupComplete {
-                Task { await coordinator.shutdown() }
+        .onChange(of: configurationStore.configuration.setupComplete) { _, complete in
+            // Changing mode can make the parked gear invalid and back again.
+            // The shutdown disconnects the KICKR, so once setup is valid again
+            // it is reconnected, after any shutdown still in progress.
+            let previous = setupChange
+            setupChange = Task {
+                await previous?.value
+                guard complete else {
+                    await coordinator.shutdown()
+                    return
+                }
+                guard !isDemoMode, !coordinator.isShiftingPresented else { return }
+                kickr.autoConnectSavedDevice()
+                coordinator.makeTrainerProxyAvailable()
+                if configurationStore.configuration.connectsClick {
+                    click.autoConnectSavedDevice()
+                }
             }
         }
         .onChange(of: headwind.hasSavedDevice) { _, saved in

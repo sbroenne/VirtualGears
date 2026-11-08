@@ -317,6 +317,33 @@ final class ZwiftTrainerCoordinatorTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters"))
     }
 
+    func testFailedStopKeepsReportingTheRatioTheTrainerMayStillHold() async throws {
+        try await start()
+        _ = await ratio(30000)
+        let held = UInt32((coordinator.confirmedAppRatio! * 10000).rounded())
+        trainer.failNextWahooCommand = true
+        await coordinator.stopShifting()
+        XCTAssertNotNil(defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters"))
+        let query = await link.sendZwift(.query(520), from: appID)
+        XCTAssertEqual(query, [.ratio(held)])
+        let staged = await ratio(20000)
+        XCTAssertEqual(staged, [.ratio(held)])
+        try await start()
+        XCTAssertEqual(coordinator.confirmedAppRatio ?? 0, 2, accuracy: 0.001)
+        await coordinator.stopShifting()
+        let parked = await link.sendZwift(.query(520), from: appID)
+        XCTAssertEqual(parked, [.ratio(UInt32((configuration.parkedGear!.ratio * 10000).rounded()))])
+    }
+
+    func testOutOfRangeRidingAppWheelSizeIsNotUsedAsTheBaseline() async throws {
+        let result = await link.send(.setWheelCircumference(tenthsOfMillimeter: 30000), from: appID)
+        XCTAssertEqual(result?.result, .success)
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 3000)
+        try await start()
+        XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2105)
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2105)
+    }
+
     func testSimulationWorksBeforeStartAndERGIsRefused() async throws {
         let first = ZwiftSimulation(
             windHundredths: -100, inclineHundredths: -550,
