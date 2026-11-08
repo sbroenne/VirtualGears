@@ -208,8 +208,8 @@ range are limited and the actual confirmed ratio is reported back.
 
 ## Important limitations
 
-- **Shift with Virtual Gears does not support ERG workouts.** The Zwift option
-  forwards power targets of 0-2000 W to the KICKR's own ERG mode.
+- **ERG workouts are not supported in either mode.** ERG mode controls target
+  power, while Virtual Gears controls how hard a gear feels.
 - **Shift with Virtual Gears cannot report a gear to the riding app.** Ordinary
   FTMS has no gear-number message. In Shift with Zwift or a compatible app the riding app
   chooses the gears and Virtual Gears reports the applied ratio.

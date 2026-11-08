@@ -69,9 +69,10 @@ commands, restores the baseline and leaves the riding app's connection intact.
 Mode publication changes invalidate queued subscription generations.
 
 Zwift simulation fields are merged across partial updates and translated to
-FTMS units with checked numeric conversions. Power targets of 0-2000 W are
-passed through only in Zwift-compatible mode. That applies even when shifting
-is stopped: Start/Stop controls the gear overlay, not the riding app's workout.
+FTMS units with checked numeric conversions. ERG power targets are refused in
+both modes: FTMS Set Target Power returns "op code not supported", and a Zwift
+power target is ignored and logged (a command carrying only a power target is
+rejected).
 The Click stays disconnected here; its saved identity is retained for
 Shift with Virtual Gears. The mode and physical gear cannot be changed on the live
 Zwift-compatible ride screen.
@@ -87,8 +88,7 @@ The new mode is not considered complete until this physical gate passes:
 3. Choose Shift with Zwift or a compatible app on the start screen and confirm its parked-gear advice.
 4. In RealVelo, reconnect Virtual Gears as the trainer and pair the Click there.
 5. Confirm RealVelo offers virtual shifting and shifting is visible after Start.
-6. Ride an ERG workout segment and confirm the KICKR holds the target power.
-7. Disconnect and reconnect the trainer in RealVelo; confirm virtual shifting
+6. Disconnect and reconnect the trainer in RealVelo; confirm virtual shifting
    is offered again.
 
 Wheel-size writes, confirmation and Stop restoration use the same trainer path
@@ -148,8 +148,9 @@ unforwarded; the KICKR retains its configured weight.
 
 On 8 November 2026, the rider confirmed, "i can see that it is shifting,"
 while testing RealVelo with the corrected build. This adds rider-observed
-shifting to the command/reply evidence, satisfying steps 1-5. ERG and
-reconnect (steps 6-7) remain pending.
+shifting to the command/reply evidence, satisfying steps 1-5. Reconnect
+(step 6) remains pending. ERG pass-through was removed from this mode on the
+same day, so no ERG hardware check is required.
 
 Run the hardware-independent test suite:
 

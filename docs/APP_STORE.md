@@ -143,10 +143,9 @@ iPhone and iPad and when advertising itself as a trainer.
     are honoured: gears are rebuilt around that size. Otherwise the app uses your
     optional saved circumference or a 2105 mm default.
 
-    WORKOUTS
-    Shift with Virtual Gears refuses ERG power targets. Shift with Zwift or a compatible app passes
-    targets of 0-2000 W to the KICKR's own ERG mode. A gear change does not change
-    the workout's power target.
+    NOT AN ERG APP
+    Workouts that set target power are refused in both modes. Virtual Gears controls
+    how hard a gear feels, not your wattage.
 
     NO ACCOUNTS, INTERNET OR TRACKING
     The app has no networking code. Nothing about your ride leaves your device.
@@ -314,7 +313,7 @@ recording, and the reply to send with it.
 | Guideline 2.1, information needed | What happened to 1.0 (5). They wanted a screen recording plus six written answers. The answers are now in the Notes field; the recording is covered by `DEMO_VIDEO.md`. |
 | Trademark concern over "KICKR" or "Wahoo" | The app name and subtitle contain no third-party brand. The description names the required hardware factually and states plainly that there is no affiliation, which is permitted. |
 | Bluetooth background mode questioned | Answer as in the notes: the ride is a live session that must survive interruptions. |
-| Safety of controlling exercise equipment | Gears rescale wheel circumference within the supported range. Terrain comes from the riding app. Zwift-compatible mode may also forward power targets to the KICKR's ERG mode. Applied ratios are reported only after trainer confirmation; Start is required and Stop restores normal wheel size. |
+| Safety of controlling exercise equipment | Gears rescale wheel circumference within the supported range. Terrain comes from the riding app. ERG power targets are refused in both modes. Applied ratios are reported only after trainer confirmation; Start is required and Stop restores normal wheel size. |
 
 ## Later versions
 

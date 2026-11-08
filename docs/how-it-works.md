@@ -99,9 +99,9 @@ The usual Zwift ratio range is approximately 0.75-5.49. Parked-gear advice
 uses that range in this mode, rather than whichever independent gear ladder is
 saved. Stop and interruption recovery restore the normal wheel size.
 
-Terrain parameters are translated to FTMS for the KICKR. The Zwift option
-also forwards 0-2000 W power targets to the KICKR's ERG mode. ERG holds
-power regardless of gear; a ratio change is not a request to change target power.
+Terrain parameters are translated to FTMS for the KICKR. ERG power targets
+are refused in this mode too; use a riding app's own ERG connection without
+Virtual Gears for structured power workouts.
 
 ### Independent gear ladders
 

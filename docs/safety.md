@@ -2,8 +2,7 @@
 
 Virtual Gears applies gears by changing the trainer's idea of your wheel size.
 Terrain commands still come from your riding app. In Shift with Zwift or a compatible app,
-the app also supplies gear ratios and may send power targets to the KICKR's own
-ERG mode; Shift with Virtual Gears continues to refuse ERG.
+the app also supplies gear ratios. ERG power targets are refused in both modes.
 
 Both modes require **Start Shifting** before gears are applied. **Stop Shifting**
 restores normal wheel size and keeps the riding app connected. A mode or physical

@@ -879,16 +879,11 @@ public final class ProxyCoordinator {
         guard kickr.isReady else {
             return .init(result: .operationFailed, status: nil)
         }
-        guard shiftingMode == .zwiftCompatible || VirtualTrainerFTMSProfile.supports(request) else {
+        guard VirtualTrainerFTMSProfile.supports(request) else {
             log("Rejected unsupported ERG target-power command", .warning)
             return .init(result: .opcodeNotSupported, status: nil)
         }
         do {
-            if case let .setTargetPower(watts) = request,
-               !(0...2000).contains(watts) {
-                log("Rejected target power outside the advertised 0-2000 W range", .warning)
-                return .init(result: .invalidParameter, status: nil)
-            }
             if shiftingMode == .zwiftCompatible, lifecycle.isShifting,
                case let .setWheelCircumference(tenths) = request {
                 return try await setAppWheelSize(millimeters: Double(tenths) / 10)
@@ -1016,11 +1011,11 @@ public final class ProxyCoordinator {
                         .setIndoorBikeSimulationParameters(merged.ftmsParameters()))
                     appSimulation = merged
                 }
-                if let power = command.powerTarget {
-                    guard power <= 2000 else {
-                        throw ZwiftTrainerCodecError.invalidParameter("Power exceeds 2000 W")
+                if command.powerTarget != nil {
+                    log("Ignored ERG target power; Virtual Gears does not support ERG", .warning)
+                    guard command.simulation != nil || command.ratioX10000 != nil else {
+                        throw ZwiftTrainerCodecError.invalidParameter("ERG is not supported")
                     }
-                    try await executeZwiftFTMS(.setTargetPower(watts: Int16(power)))
                 }
                 if let encoded = command.ratioX10000 {
                     guard encoded > 0 else {
@@ -1351,7 +1346,7 @@ public final class ProxyCoordinator {
         case .reset: .reset
         case let .setTargetResistanceLevel(value):
             .targetResistanceLevelChanged(tenths: value)
-        case let .setTargetPower(watts): .targetPowerChanged(watts: watts)
+        case .setTargetPower: nil
         case .startOrResume: .startedOrResumed
         case let .stopOrPause(value): .stoppedOrPaused(value)
         case let .setIndoorBikeSimulationParameters(value):

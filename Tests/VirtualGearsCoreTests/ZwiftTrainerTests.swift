@@ -317,26 +317,25 @@ final class ZwiftTrainerCoordinatorTests: XCTestCase {
         XCTAssertNil(defaults.object(forKey: "VirtualGears.unfinishedRideBaselineMillimeters"))
     }
 
-    func testSimulationAndERGWorkBeforeStartAndThroughFTMS() async throws {
+    func testSimulationWorksBeforeStartAndERGIsRefused() async throws {
         let first = ZwiftSimulation(
             windHundredths: -100, inclineHundredths: -550,
             aerodynamicTenThousandths: 6000, rollingHundredThousandths: 500
         )
         _ = await link.sendZwift(.command(.init(simulation: first, powerTarget: 250)), from: appID)
-        XCTAssertTrue(trainer.ftmsRequests.contains(.setTargetPower(watts: 250)))
+        XCTAssertFalse(trainer.ftmsRequests.contains(.setTargetPower(watts: 250)))
         XCTAssertTrue(trainer.ftmsRequests.contains(.setIndoorBikeSimulationParameters(try first.ftmsParameters())))
         _ = await link.sendZwift(.command(.init(simulation: .init(inclineHundredths: 200))), from: appID)
         XCTAssertTrue(trainer.ftmsRequests.contains(.setIndoorBikeSimulationParameters(
             try first.merging(.init(inclineHundredths: 200)).ftmsParameters()
         )))
         let result = await link.send(.setTargetPower(watts: 300), from: appID)
-        XCTAssertEqual(result?.result, .success)
-        XCTAssertEqual(result?.status, .targetPowerChanged(watts: 300))
-        let invalid = await link.send(.setTargetPower(watts: -1), from: appID)
-        XCTAssertEqual(invalid?.result, .invalidParameter)
+        XCTAssertEqual(result?.result, .opcodeNotSupported)
         let count = trainer.ftmsRequests.count
-        _ = await link.sendZwift(.command(.init(powerTarget: 2001)), from: appID)
+        let ergOnly = await link.sendZwift(.command(.init(powerTarget: 200)), from: appID)
+        XCTAssertTrue(ergOnly.isEmpty)
         XCTAssertEqual(trainer.ftmsRequests.count, count)
+        XCTAssertFalse(trainer.ftmsRequests.contains { if case .setTargetPower = $0 { true } else { false } })
     }
 
     func testWheelSizeChangeRebasesAppRatioAndResetTarget() async throws {

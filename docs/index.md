@@ -232,11 +232,10 @@ can come back to the same gear.
 the Zwift trainer protocol, not every protocol used by every riding app.
 The required RealVelo hardware test is separate from existing FTMS evidence.
 
-**ERG in Shift with Virtual Gears.** A workout that sets a target power is refused, because holding a
+**ERG mode.** A workout that sets a target power is refused in both modes, because holding a
 power target and holding a gear are two different ideas of what the trainer
 should feel like. Virtual Gears still tells riding apps it is a trainer they can
 steer, so it appears in their trainer list rather than as a bare power sensor.
-Shift with Zwift or a compatible app forwards target power to the KICKR's own ERG mode.
 
 **Trainers other than a Wahoo KICKR.** The way Virtual Gears makes gears is not
 something every trainer can do, and the KICKR Snap and KICKR Bike cannot do it
