@@ -35,10 +35,10 @@ Their wording, and what it means here:
 The remaining items in their list — account registration, purchases,
 user-generated content — do not exist in this app. There is nothing to film.
 
-The existing recording remains valid evidence for the physically tested iPhone
-path. The core connect/advertise/shift/stop flow was also repeated on a physical
-iPad Air running iPadOS 26.6.1 before build 19; that evidence is recorded in
-`DEVELOPMENT.md`. Simulator footage is not a substitute for that Bluetooth check.
+This recording has not been made yet. The physical hardware checks recorded in
+`DEVELOPMENT.md` (iPhone, and the iPad Air on iPadOS 26.6.1 before build 19) are
+developer evidence, not footage Apple can watch. Simulator footage is not a
+substitute.
 
 ## Before you start
 
@@ -54,8 +54,8 @@ Also:
 - Trainer plugged in and awake. Turn the pedals once to wake it. You do not need
   to ride: the trainer confirms a gear change whether or not you are pedalling.
 - iPhone in Do Not Disturb, screen brightness up, battery over 50%.
-- If you have a Zwift Click, fit it and switch it on. The existing recording
-  sequence uses Shift with Virtual Gears with the Click connected to Virtual Gears.
+- If you have a Zwift Click, fit it and switch it on. The recording sequence
+  below uses Shift with Virtual Gears with the Click connected to Virtual Gears.
   For a Zwift-compatible demonstration, pair it with the riding app instead,
   retain Start/Stop, and show the ratio confirmed by the KICKR. Capture that
   physical sequence on the trainer; Demo Mode cannot prove the app-controlled
