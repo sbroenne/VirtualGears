@@ -67,89 +67,57 @@ iPhone and iPad and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Give your KICKR virtual gears. Shift independently on iPhone or iPad, or let a Zwift-protocol riding app control the gears. Keep your bike in one quiet gear.
+    Your KICKR has no gears. Now it does. Shift on your iPhone or iPad, or let Zwift and compatible apps run the gears, while your bike stays in one quiet gear.
 
 ### Description
 
-    Your trainer has no gears. Your riding app may not offer virtual shifting.
-    Virtual Gears fixes both.
+    Your KICKR has no gears. Now it does.
 
-    Virtual Gears sits between your trainer and riding app. It appears as a normal
-    Bluetooth FTMS trainer, so compatible riding apps need no special virtual-shifting
-    support. Your riding app still controls the route and hills; Virtual Gears adds
-    the gears.
+    Virtual Gears adds shifting to your Wahoo KICKR. Leave your bike in one gear,
+    keep riding in your favourite app, and shift with big on-screen buttons or a
+    Zwift Click. Hills still come from your riding app; the gears come from us.
 
-    Built and physically tested with Wahoo KICKR V5. Other direct-drive KICKR models
-    are expected to work but have not been physically tested. KICKR SNAP, KICKR BIKE
-    and trainers from other brands are not supported.
+    TWO WAYS TO RIDE
+    • Shift with Virtual Gears: your iPhone or iPad becomes the shifter. Tap the
+      buttons or press an original Zwift Click, and the current gear fills the
+      screen.
+    • Shift with Zwift or a compatible app: let Zwift, or any app that supports
+      Zwift-style virtual shifting, run the gears. Pair your Click with that app;
+      Virtual Gears passes the gears on to the KICKR and shows what it's doing.
 
-    START WITH THE BIKE
-    First-run setup asks what is physically on your bike: its chainrings and cassette,
-    Zwift Cog or other single sprocket. Virtual Gears recommends where to leave the
-    chain and starts with ready-made Standard 24 virtual gears. Named Shimano, SRAM
-    and Campagnolo groupsets and custom gearing remain available in Settings.
+    Pick a mode on the start screen. Stop Shifting at any time to go back to
+    normal trainer resistance without ending your ride.
 
-    SHIFT WITHOUT DISCONNECTING
-    Open the app and it finds your KICKR, connects, and makes the trainer available to
-    your riding app automatically. Tap Start Shifting to engage the gears. Tap Stop
-    Shifting to restore normal trainer gearing without disconnecting or stopping the
-    ride in your riding app.
+    SET UP IN A MINUTE
+    Tell Virtual Gears what is on your bike: chainrings and cassette, a Zwift Cog
+    or a single sprocket. It tells you which gear to leave the chain in and gives
+    you 24 ready-made gears. Prefer the feel of a real groupset? Pick Shimano, SRAM
+    or Campagnolo, or enter your own.
 
-    TWO WAYS TO SHIFT
-    Shift with Virtual Gears supplies and displays its own gears on your iPhone or iPad
-    through an ordinary FTMS connection. Use our on-screen buttons or an original
-    Zwift Click connected to Virtual Gears.
+    GEARS YOU CAN FEEL
+    The gear ladder shows small steps as short bars and big jumps as tall ones, so
+    you always know what the next shift will feel like. Hold a button to shift
+    several gears at once. A gear only appears once the trainer has confirmed it.
 
-    Shift with Zwift or a compatible app lets a riding app that supports the Zwift trainer
-    protocol send gear ratios to Virtual Gears. Pair your Click with the riding app
-    instead. The app chooses the gears; Virtual Gears shows the KICKR-confirmed ratio.
-    Choose either mode directly on the start screen. Both modes keep Start Shifting and Stop
-    Shifting. Stop before changing modes, then reconnect the trainer in your riding app.
+    WORKS WITH YOUR RIDING APP
+    Virtual Gears shows up as an ordinary Bluetooth smart trainer, so most apps
+    that work with smart trainers will work with Virtual Gears.
 
-    GEARS YOU CAN SEE
-    The gear ladder is drawn rather than shown as a bare number: short bars for small
-    steps and taller bars for changes your legs will notice. Use 24 wide-range virtual
-    gears or copy a real groupset. Cross-chained and duplicate combinations are left
-    out.
+    MORE
+    • Try Demo: explore the app without a trainer.
+    • Optional KICKR HEADWIND control, automatic or manual.
+    • VoiceOver, larger text, Reduce Motion and Differentiate Without Color.
+    • No account, no internet, no tracking. Nothing leaves your device.
 
-    BUILT FOR RIDING
-    Two large shift buttons are easy to hit without looking down, while the current
-    gear is the largest thing on screen. Hold a button to keep shifting. A gear appears
-    only after the trainer confirms it, and every gear stays inside a range tested on
-    a real KICKR V5.
+    GOOD TO KNOW
+    • Built and tested on a Wahoo KICKR V5. Other direct-drive KICKRs should work
+      but have not been tested. KICKR SNAP, KICKR BIKE and other brands are not
+      supported.
+    • Virtual Gears is for riding in gears, not ERG workouts. Workouts that set a
+      target power are refused.
 
-    VoiceOver reads the current gear and announces confirmed changes. The gear readout
-    supports adjustable VoiceOver gestures. The app respects larger text, Reduce
-    Motion and Differentiate Without Color.
-
-    TRY IT WITHOUT A TRAINER
-    Tap Try Demo for a clearly marked simulated ride without Bluetooth. Explore the
-    production gear picker, large ride controls, virtual and real-bike gearing, and
-    example equipment status. Demo choices never replace saved equipment.
-
-    OPTIONAL ZWIFT CLICK
-    In Shift with Virtual Gears, wake an original Zwift Click and Virtual Gears finds and remembers it automatically.
-    It shifts alongside the on-screen buttons and visibly presses the matching control,
-    but is never required.
-
-    OPTIONAL KICKR HEADWIND
-    Connect a Wahoo KICKR HEADWIND and leave control with its own sensor or choose a
-    manual speed from the ride screen. The fan is optional and never blocks a ride.
-
-    COMPATIBLE RIDING APPS
-    Virtual Gears works as an ordinary FTMS indoor trainer. Apps that set a wheel size
-    are honoured: gears are rebuilt around that size. Otherwise the app uses your
-    optional saved circumference or a 2105 mm default.
-
-    NOT AN ERG APP
-    Workouts that set target power are refused in both modes. Virtual Gears controls
-    how hard a gear feels, not your wattage.
-
-    NO ACCOUNTS, INTERNET OR TRACKING
-    The app has no networking code. Nothing about your ride leaves your device.
-
-    Virtual Gears is not affiliated with or endorsed by Wahoo, Zwift, Shimano, SRAM or
-    Campagnolo. Those names describe compatible hardware or simulated gearing only.
+    Virtual Gears is not affiliated with or endorsed by Wahoo, Zwift, Shimano, SRAM
+    or Campagnolo. These names only describe compatible hardware or gearing.
 
 ### Keywords (100 characters max, comma separated, no spaces)
 
