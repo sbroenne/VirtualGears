@@ -380,10 +380,10 @@ final class ClickCentralService: NSObject {
         for characteristic in [asyncCharacteristic, transmitCharacteristic] {
             guard characteristic.properties.contains(.notify)
                     || characteristic.properties.contains(.indicate) else {
-                    fail(
-                        "\(characteristic.uuid) cannot notify or indicate",
-                        rejectsSavedIdentity: true
-                    )
+                fail(
+                    "\(characteristic.uuid) cannot notify or indicate",
+                    rejectsSavedIdentity: true
+                )
                 return
             }
             peripheral?.setNotifyValue(true, for: characteristic)
@@ -540,6 +540,15 @@ final class ClickCentralService: NSObject {
         if !keepingPeripheral { peripheral = nil }
     }
 
+    private func acceptsCallbacks(from peripheral: CBPeripheral) -> Bool {
+        guard !isSuspendedForDemo,
+              self.peripheral?.identifier == peripheral.identifier else {
+            return false
+        }
+        if case .failed = state { return false }
+        return true
+    }
+
     private func persistIdentity(id: UUID, name: String) {
         selectedID = id
         selectedName = name
@@ -561,6 +570,7 @@ final class ClickCentralService: NSObject {
         _ message: String,
         rejectsSavedIdentity: Bool = false
     ) {
+        resetConnection(keepingPeripheral: true)
         let shouldForgetSavedIdentity =
             rejectsSavedIdentity
             && pendingIdentity == nil
@@ -571,9 +581,6 @@ final class ClickCentralService: NSObject {
             reconnectTask = nil
             desiredConnection = false
             clearSavedIdentity()
-            if let peripheral, peripheral.state == .connected {
-                central.cancelPeripheralConnection(peripheral)
-            }
         } else if pendingIdentity != nil {
             pendingIdentity = nil
             desiredConnection = false
@@ -583,8 +590,11 @@ final class ClickCentralService: NSObject {
         }
         state = .failed(message)
         log(message, level: .error)
-        if desiredConnection, let peripheral, peripheral.state == .connected {
-            central.cancelPeripheralConnection(peripheral)
+        if let peripheral {
+            peripheral.delegate = nil
+            if peripheral.state == .connected || peripheral.state == .connecting {
+                central.cancelPeripheralConnection(peripheral)
+            }
         }
     }
 
@@ -724,7 +734,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         _ peripheral: CBPeripheral,
         didDiscoverServices error: Error?
     ) {
-        guard !isSuspendedForDemo else { return }
+        guard acceptsCallbacks(from: peripheral) else { return }
         if let error {
             fail("Click service discovery failed: \(error.localizedDescription)")
             return
@@ -755,7 +765,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didDiscoverCharacteristicsFor service: CBService,
         error: Error?
     ) {
-        guard !isSuspendedForDemo else { return }
+        guard acceptsCallbacks(from: peripheral) else { return }
         servicesPending -= 1
         if let error {
             if service.uuid == batteryServiceUUID {
@@ -784,7 +794,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateNotificationStateFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        guard !isSuspendedForDemo else { return }
+        guard acceptsCallbacks(from: peripheral) else { return }
         if let error {
             if characteristic.uuid == batteryUUID {
                 log("Battery notification unavailable: "
@@ -805,7 +815,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didWriteValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        guard !isSuspendedForDemo else { return }
+        guard acceptsCallbacks(from: peripheral) else { return }
         guard characteristic.uuid == receiveUUID, let error else { return }
         handshakeTimeoutTask?.cancel()
         fail("Click handshake write failed: \(error.localizedDescription)")
@@ -816,7 +826,7 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
-        guard !isSuspendedForDemo else { return }
+        guard acceptsCallbacks(from: peripheral) else { return }
         if let error {
             log("\(characteristic.uuid) update failed: "
                 + error.localizedDescription, level: .error)

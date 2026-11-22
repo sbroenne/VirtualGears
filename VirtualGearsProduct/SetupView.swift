@@ -44,10 +44,12 @@ struct SetupView: View {
             if enabled { headwind.autoConnectSavedDevice() }
         }
         .onChange(of: click.state) { _, state in
-            guard !store.configuration.connectsClick,
-                  state == .ready,
+            guard state == .ready,
+                  click.identificationCandidateID == nil,
                   let id = click.selectedID,
-                  let name = click.selectedName else { return }
+                  let name = click.selectedName,
+                  store.configuration.clickUUID != id.uuidString
+                    || store.configuration.clickName != name else { return }
             store.configuration.rememberClick(named: name, id: id)
         }
         .onChange(of: click.hasSavedDevice) { _, saved in
@@ -711,12 +713,16 @@ private struct ShiftingSetupView: View {
                 click.autoConnectSavedDevice()
             }
 #if DEBUG
-            if ScreenshotFixture.current == .settingsClickSingleCandidate {
+            if ScreenshotFixture.current == .settingsClickSingleCandidate
+                || ScreenshotFixture.current == .settingsClickSwitchCandidate {
                 try? await Task.sleep(for: .seconds(1))
                 guard !Task.isCancelled else { return }
+                let switching = ScreenshotFixture.current == .settingsClickSwitchCandidate
                 click.stageDiscoveredCandidate(BluetoothCandidate(
-                    id: ScreenshotFixture.clickID,
-                    name: "Zwift Click"
+                    id: switching
+                        ? UUID(uuidString: "10000000-0000-0000-0000-000000000012")!
+                        : ScreenshotFixture.clickID,
+                    name: switching ? "Replacement Click" : "Zwift Click"
                 ))
             }
 #endif

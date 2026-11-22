@@ -48,10 +48,12 @@ struct VirtualGearsHomeView: View {
             await coordinator.updateConfiguration(store.configuration)
         }
         .onChange(of: click.state) { _, state in
-            guard !store.configuration.connectsClick,
-                  state == .ready,
+            guard state == .ready,
+                  click.identificationCandidateID == nil,
                   let id = click.selectedID,
-                  let name = click.selectedName else { return }
+                  let name = click.selectedName,
+                  store.configuration.clickUUID != id.uuidString
+                    || store.configuration.clickName != name else { return }
             store.configuration.rememberClick(named: name, id: id)
         }
         .onChange(of: click.hasSavedDevice) { _, saved in
