@@ -16,6 +16,7 @@ public final class ProxyCoordinator {
     public private(set) var gearSequence: [VirtualGear] = []
     public private(set) var shiftConfirmation = 0
     public private(set) var shiftingMode = ShiftingMode.independent
+    public private(set) var hasPendingWheelSizeReset = false
     public private(set) var requestedAppRatio: Double?
     public private(set) var confirmedAppRatio: Double?
     private var appParkedRatio: Double?
@@ -119,10 +120,21 @@ public final class ProxyCoordinator {
     /// orphan the record on a phone that is carrying one right now, and that
     /// record is the only thing that can put the trainer back.
     private let interruptedShiftingKey = "VirtualGears.unfinishedRideBaselineMillimeters"
+    private let interruptedTrainerIDKey = "VirtualGears.unfinishedRideTrainerID"
 
     public var state: ShiftingState { lifecycle.state }
     public var failure: ShiftingFailure? { lifecycle.failure }
     public var lastShiftFeedback: ShiftFeedbackKind { feedback.latest }
+    public var interruptedTrainerID: UUID? {
+        guard hasPendingWheelSizeReset,
+              let stored = defaults.string(forKey: interruptedTrainerIDKey)
+        else { return nil }
+        return UUID(uuidString: stored)
+    }
+
+    public func canSelectTrainer(_ id: UUID) -> Bool {
+        interruptedTrainerID.map { $0 == id } ?? true
+    }
 
     public var isShiftingPresented: Bool { lifecycle.isShiftingPresented }
 
@@ -163,6 +175,8 @@ public final class ProxyCoordinator {
         self.peripheral = peripheral
         self.screen = screen
         self.defaults = defaults
+        hasPendingWheelSizeReset =
+            defaults.object(forKey: interruptedShiftingKey) != nil
 
         peripheral.commandHandler = { [weak self] request, source in
             guard let self else {
@@ -268,6 +282,15 @@ public final class ProxyCoordinator {
         guard lifecycle.isNotShifting else { return }
         let token = lifecycle.wheelSizeResetToken
         guard defaults.object(forKey: interruptedShiftingKey) != nil else { return }
+        hasPendingWheelSizeReset = true
+        if let trainerID = defaults.string(forKey: interruptedTrainerIDKey),
+           kickr.selectedID?.uuidString != trainerID {
+            log(
+                "Waiting for the trainer that needs its wheel size restored",
+                .warning
+            )
+            return
+        }
         let wheelSize = trainerWheelSizeMillimeters
             ?? defaults.double(forKey: interruptedShiftingKey)
         guard wheelSize > 0 else {
@@ -319,6 +342,10 @@ public final class ProxyCoordinator {
     /// rejected by the same guard that protected the previous async entry point.
     public func startShifting(configuration: AppConfiguration) {
         guard lifecycle.canStart else { return }
+        guard !hasPendingWheelSizeReset else {
+            log("Restore the trainer's wheel size before starting a new ride", .warning)
+            return
+        }
         guard configureShifting(configuration) else { return }
         // Shifting sets its own wheel size and puts it back on Stop, so it does
         // the tidying up itself. Letting both run could leave the rider in a
@@ -424,6 +451,10 @@ public final class ProxyCoordinator {
                 )
             }
             guard startMayProceed(id) else { throw CancellationError() }
+            setInterruptedShiftingRecord(
+                wheelSize,
+                trainerID: kickr.selectedID
+            )
             let initialResponse = try await kickr.executeWahoo(initialCommand)
             guard startMayProceed(id) else { throw CancellationError() }
             guard initialResponse.confirmsSuccess(for: initialCommand) else {
@@ -431,12 +462,7 @@ public final class ProxyCoordinator {
                     "KICKR did not confirm the initial virtual gear"
                 )
             }
-            // Only now has a virtual gear actually reached the trainer, so only
-            // now does the trainer need putting right. Writing the record any
-            // earlier makes a stop during connection report a fault that never
-            // happened, and leaves a force-quit reset a trainer we never moved.
             hasAppliedVirtualGear = true
-            defaults.set(wheelSize, forKey: interruptedShiftingKey)
             guard startMayProceed(id) else { throw CancellationError() }
             makeTrainerProxyAvailable()
             try await waitUntilPeripheralReady(shiftingID: id)
@@ -479,7 +505,7 @@ public final class ProxyCoordinator {
         }
         // Persist the reset target before writing: a force-quit can happen while
         // the trainer is applying a command, before its response reaches us.
-        defaults.set(neutral, forKey: interruptedShiftingKey)
+        setInterruptedShiftingRecord(neutral, trainerID: kickr.selectedID)
         if let ratio = requestedAppRatio {
             try await applyAppRatio(ratio, shiftingID: id)
         } else {
@@ -514,7 +540,7 @@ public final class ProxyCoordinator {
                 .warning
             )
         }
-        defaults.set(neutral, forKey: interruptedShiftingKey)
+        setInterruptedShiftingRecord(neutral, trainerID: kickr.selectedID)
         let result = try await kickr.executeWahoo(setting.command)
         guard startMayProceed(id), result.confirmsSuccess(for: setting.command) else {
             throw ProductBluetoothError.commandFailed("KICKR did not confirm the riding app's ratio")
@@ -694,7 +720,22 @@ public final class ProxyCoordinator {
 
     private func clearInterruptedShiftingRecord() {
         defaults.removeObject(forKey: interruptedShiftingKey)
+        defaults.removeObject(forKey: interruptedTrainerIDKey)
+        hasPendingWheelSizeReset = false
         unrestoredAppRatio = nil
+    }
+
+    private func setInterruptedShiftingRecord(
+        _ millimeters: Double,
+        trainerID: UUID?
+    ) {
+        defaults.set(millimeters, forKey: interruptedShiftingKey)
+        if let trainerID {
+            defaults.set(trainerID.uuidString, forKey: interruptedTrainerIDKey)
+        } else {
+            defaults.removeObject(forKey: interruptedTrainerIDKey)
+        }
+        hasPendingWheelSizeReset = true
     }
 
     private func clearShiftingData() {
@@ -920,6 +961,15 @@ public final class ProxyCoordinator {
             guard lifecycle.isShifting else {
                 if case let .setWheelCircumference(tenths) = request {
                     let millimeters = Double(tenths) / 10
+                    guard TrainerSafety
+                        .supportedRidingAppCircumferenceMillimeters
+                        .contains(millimeters) else {
+                        log(
+                            "Rejected app wheel size outside the supported range",
+                            .warning
+                        )
+                        return .init(result: .invalidParameter, status: nil)
+                    }
                     let command = try WahooKickrCommand.setWheelCircumference(
                         millimeters: millimeters
                     )
@@ -984,7 +1034,7 @@ public final class ProxyCoordinator {
         }
         trainerWheelSizeMillimeters = millimeters
         wheelSizeCameFromRidingApp = true
-        defaults.set(millimeters, forKey: interruptedShiftingKey)
+        setInterruptedShiftingRecord(millimeters, trainerID: kickr.selectedID)
         appRatioSetting = setting
         confirmedAppRatio = setting?.appliedRatio
         if let setting {
@@ -1152,7 +1202,7 @@ public final class ProxyCoordinator {
         // The reset target just moved. Without this the record left for a
         // force-quit still names shifting's starting size, so recovery would
         // put the trainer somewhere a normal Stop never would.
-        defaults.set(millimeters, forKey: interruptedShiftingKey)
+        setInterruptedShiftingRecord(millimeters, trainerID: kickr.selectedID)
         gearEngine = rebased
         updateDisplayedGear()
         return .success(status: .wheelCircumferenceChanged(
@@ -1172,7 +1222,12 @@ public final class ProxyCoordinator {
     }
 
     private func handleKickrState(_ connectionState: ProductConnectionState) {
-        if connectionState == .ready { startProxyIfSafe() }
+        if connectionState == .ready {
+            if hasPendingWheelSizeReset, lifecycle.isNotShifting {
+                resetInterruptedWheelSizeIfNeeded()
+            }
+            startProxyIfSafe()
+        }
         guard lifecycle.canRecover else { return }
         if connectionState != .ready {
             beginRecovery(startImmediately: false)

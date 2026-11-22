@@ -14,7 +14,9 @@ never fight.
 Choose the mode directly on the start screen. The default is **Shift with
 Virtual Gears**: Virtual Gears chooses and displays the gears, and the riding app
 sees an ordinary FTMS trainer. Connect an original Click to Virtual Gears, or
-use the on-screen buttons. The diagram above illustrates this mode.
+use the on-screen buttons. The Click handshake is validated before its identity
+is saved; an old saved identity that fails validation is forgotten so discovery
+can resume. The diagram above illustrates this mode.
 
 In **Shift with Zwift or a compatible app**, the riding app chooses the gears and sends
 Virtual Gears a gear ratio over the Zwift trainer protocol. Connect your Click
@@ -37,7 +39,9 @@ The Zwift option refers to the protocol, not an affiliation or certification.
 RealVelo on Windows has been ridden this way on a KICKR V5: it recognises the
 trainer's virtual shifting and its gear changes reach the KICKR. Zwift itself
 and other apps that use the same protocol are expected to work but have not
-been tested.
+been tested. The physical iPad check is recorded in DEVELOPMENT.md as completed
+on an iPad Air with a KICKR V5 and original Zwift Click; no separate trace was
+captured.
 
 Opening Virtual Gears connects this transparent trainer proxy. **Start Shifting**
 adds the gears; **Stop Shifting** removes the virtual gear and restores the
@@ -141,5 +145,5 @@ Measured on a Wahoo KICKR V5, a gear change is confirmed in 59 to 238 ms,
 averaging 138 ms.
 
 The timing measurements above are from Shift with Virtual Gears. The
-Zwift-compatible path has automated codec and coordinator checks; its
-RealVelo/KICKR physical test is required separately.
+Zwift-compatible path has automated codec and coordinator checks and a
+rider-reported RealVelo/KICKR V5 hardware check, recorded in DEVELOPMENT.md.

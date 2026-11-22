@@ -258,6 +258,39 @@ final class VirtualGearsUITests: XCTestCase {
         )
     }
 
+    func testSwitchingClickSavesValidatedReplacement() {
+        openSettingsDestination("Zwift Click", fixture: "-shotSettingsClickSwitchCandidate")
+        app.buttons["Switch to another Zwift Click"].tap()
+        XCTAssertTrue(
+            app.staticTexts["Replacement Click"].waitForExistence(timeout: 12),
+            "The validated replacement was not saved"
+        )
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(
+            app.buttons["Zwift Click, Replacement Click, Connected"]
+                .waitForExistence(timeout: 5),
+            "Settings still shows the previous Click"
+        )
+    }
+
+    func testRejectedSavedClickIdentityClearsAndResumesDiscovery() {
+        launch("-shotSettingsClickRejected")
+
+        assertVisible("screen.settings")
+        let clickRow = app.buttons["Zwift Click, Not added"]
+        assertVisibleElement(clickRow)
+        clickRow.tap()
+        XCTAssertTrue(app.navigationBars["Zwift Click"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.buttons["Try Again"].waitForExistence(timeout: 5),
+            "Discovery did not resume after rejecting the saved identity"
+        )
+        XCTAssertFalse(
+            app.buttons["Switch to another Zwift Click"].exists,
+            "A rejected saved Click identity remained configured"
+        )
+    }
+
     func testRideShowsAllStatusIconsAndPrimaryControls() {
         launch("-shotRide")
 

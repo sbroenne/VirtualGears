@@ -52,10 +52,11 @@ direct-drive KICKR models are expected to work but have not yet been physically
 tested. The KICKR SNAP, KICKR BIKE and trainers from other brands are not
 supported.
 
-The Bluetooth path has been physically tested on iPhone and iPad with a KICKR
-V5 and original Zwift Click. The interface and ready/ride flows are also covered
-on iPad mini and 13-inch iPad simulators, including portrait, landscape and
-accessibility text.
+The Bluetooth path has been physically tested on iPhone with a KICKR V5 and
+original Zwift Click. DEVELOPMENT.md records the same hardware check as completed
+on an iPad Air; no separate trace was captured for that rider-reported check.
+The interface and ready/ride flows are also covered on iPad mini and 13-inch
+iPad simulators, including portrait, landscape and accessibility text.
 
 On the riding-app side, FulGaz on macOS and Windows, plus RealVelo and MyWhoosh
 on Windows, have been ridden end to end with **Shift with Virtual Gears**.

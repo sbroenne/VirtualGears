@@ -11,11 +11,11 @@ Work top to bottom.
     `Insiders` TestFlight group and is attached to App Store version 1.0. The
     version has not been submitted for App Review.
 
-The listing below describes both shifting modes. On 8 November 2026 the
-promotional text, description, six medium-iPhone screenshots and six iPhone
-Duo screenshots were saved live in App Store Connect with build 20. The
-RealVelo/KICKR hardware check of the Zwift-compatible path was done by the
-developer before upload.
+The listing below is the repository's copy source for both shifting modes. The
+last recorded App Store Connect update was on 8 November 2026 for build 20; live
+metadata must be checked and synchronized separately before the next submission.
+The RealVelo/KICKR hardware check of the Zwift-compatible path was reported
+complete before upload. Zwift itself has not been tested with this mode.
 
 ---
 
@@ -67,7 +67,7 @@ iPhone and iPad and when advertising itself as a trainer.
 
 ### Promotional text (170 characters max, editable any time without review)
 
-    Wahoo left the KICKR V5 and older without virtual shifting. Virtual Gears adds it: shift on your iPhone or iPad, or let Zwift and compatible apps run the gears.
+    Add virtual shifting to KICKR V5 and older. Shift on your iPhone or iPad, or use a compatible app. Tested with RealVelo; Zwift itself is untested.
 
 ### Description
 
@@ -84,9 +84,10 @@ iPhone and iPad and when advertising itself as a trainer.
     • Shift with Virtual Gears: your iPhone or iPad becomes the shifter. Tap the
       buttons or press an original Zwift Click, and the current gear fills the
       screen.
-    • Shift with Zwift or a compatible app: let Zwift, or any app that supports
-      Zwift-style virtual shifting, run the gears. Pair your Click with that app;
-      Virtual Gears passes the gears on to the KICKR and shows what it's doing.
+    • Shift with Zwift or a compatible app: let a compatible riding app control
+      the gears. This mode has been tested with RealVelo on Windows; Zwift itself
+      is untested. Pair your Click with that app; Virtual Gears applies the gears
+      to the KICKR and shows what it is doing.
 
     Pick a mode on the start screen. Stop Shifting at any time to go back to
     normal trainer resistance without ending your ride.

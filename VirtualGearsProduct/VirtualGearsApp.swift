@@ -140,6 +140,8 @@ enum ScreenshotFixture: String {
     case settingsStalled = "-shotSettingsStalled"
     case settingsClickLowBattery = "-shotSettingsClickLowBattery"
     case settingsClickSingleCandidate = "-shotSettingsClickSingleCandidate"
+    case settingsClickSwitchCandidate = "-shotSettingsClickSwitchCandidate"
+    case settingsClickRejected = "-shotSettingsClickRejected"
     case settingsClickDuplicates = "-shotSettingsClickDuplicates"
     case settingsClickIdentifying = "-shotSettingsClickIdentifying"
     case settingsUnsafeGears = "-shotSettingsUnsafeGears"
@@ -208,7 +210,9 @@ private struct ScreenshotFixtureView: View {
                  .settingsUnsupported, .settingsTimedOut,
                  .settingsBluetoothIssue, .settingsStalled,
                  .settingsClickLowBattery, .settingsClickDuplicates,
-                 .settingsClickSingleCandidate, .settingsClickIdentifying,
+                 .settingsClickSingleCandidate, .settingsClickSwitchCandidate,
+                 .settingsClickRejected,
+                 .settingsClickIdentifying,
                  .settingsUnsafeGears,
                  .settingsAccessibility, .zwiftSettings:
                 NavigationStack {
@@ -246,6 +250,9 @@ private struct ScreenshotFixtureView: View {
             stage()
             try? await Task.sleep(for: .milliseconds(500))
             stage()
+            if scenario == .settingsClickRejected {
+                click.stageSavedIdentityRejection()
+            }
         }
     }
 
@@ -359,7 +366,8 @@ private struct ScreenshotFixtureView: View {
             name: configuration.clickName,
             batteryLevel: scenario == .settingsClickLowBattery ? 15 : 82,
             candidates: clickCandidates,
-            state: scenario == .settingsClickSingleCandidate ? .scanning : .ready,
+            state: scenario == .settingsClickSingleCandidate
+                || scenario == .settingsClickSwitchCandidate ? .scanning : .ready,
             identifying: scenario == .settingsClickIdentifying
                 ? ScreenshotFixture.clickID : nil
         )

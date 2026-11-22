@@ -27,7 +27,15 @@ jobs:
 
       - name: Require 90% core line coverage
         run: |
-          binary="$(find .build -type f -name VirtualGearsPackageTests -print -quit)"
+          binary="$(
+            find .build -type f \
+              \( -name VirtualGearsPackageTests -o -name VirtualGearsCoreTests \) \
+              -print -quit
+          )"
+          test -n "$binary" || {
+            echo "Could not find the Swift test executable for coverage." >&2
+            exit 1
+          }
           report="$(
             xcrun llvm-cov report "$binary" \
               -instr-profile=.build/debug/codecov/default.profdata \

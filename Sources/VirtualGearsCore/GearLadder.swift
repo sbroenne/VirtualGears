@@ -83,7 +83,10 @@ public struct CustomGearLadder: Codable, Equatable, Sendable {
     public static var ratioHundredthsRange: ClosedRange<Int> {
         let scale = TrainerSafety.supportedScaleRange
         let lower = Int((scale.lowerBound * 100).rounded(.up))
-        let upper = Int((scale.upperBound * 100).rounded(.down))
+        let upper = max(
+            Int((scale.upperBound * 100).rounded(.down)),
+            GearLadderCatalog.standardRange.ratiosHundredths.max() ?? 0
+        )
         return lower...upper
     }
 }
@@ -132,6 +135,7 @@ public enum GearLadderCatalog {
     /// same fractional position `standardRange` starts at, so a custom ladder
     /// feels centred the same way rather than starting at one end.
     public static func custom(_ params: CustomGearLadder) -> GearLadder {
+        if params == .default { return standardRange }
         let count = max(2, params.gearCount)
         let easiest = min(
             params.easiestRatioHundredths, params.hardestRatioHundredths

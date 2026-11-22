@@ -58,8 +58,12 @@ PLIST
 
 # Prefer a real certificate so the permission sticks. Ad-hoc still works if
 # there is no certificate on this machine; it just asks every time.
-IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null \
-	| grep "Apple Development" | head -1 | sed 's/.*"\(.*\)"/\1/')"
+IDENTITIES="$(security find-identity -v -p codesigning 2>/dev/null)" || {
+	echo "Could not inspect code-signing identities." >&2
+	exit 1
+}
+IDENTITY="$(printf '%s\n' "$IDENTITIES" \
+	| awk -F '"' '/Apple Development/ { print $2; exit }')"
 if [ -n "$IDENTITY" ]; then
 	codesign --force --sign "$IDENTITY" \
 		--identifier "com.sbroenne.VirtualGearsTools.$BUNDLE" "$APP" >/dev/null 2>&1

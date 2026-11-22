@@ -6,6 +6,45 @@ import XCTest
 /// the app keeping quiet. The bug they exist to prevent: opening the app put a
 /// Headwind straight back to full speed, with no ride anywhere in sight.
 final class HeadwindControlPolicyTests: XCTestCase {
+    func testConflictingModeReportsAreIgnoredOnlyWhileTheAppOwnsControl() {
+        XCTAssertTrue(
+            HeadwindControlPolicy.shouldIgnoreConflictingMode(
+                hasStoredControlPreference: true,
+                wantsManualControl: true,
+                reportedMode: .heartRate,
+                isDrivingTheFan: true,
+                isCommandPending: false
+            )
+        )
+        XCTAssertTrue(
+            HeadwindControlPolicy.shouldIgnoreConflictingMode(
+                hasStoredControlPreference: true,
+                wantsManualControl: true,
+                reportedMode: .heartRate,
+                isDrivingTheFan: false,
+                isCommandPending: true
+            )
+        )
+        XCTAssertFalse(
+            HeadwindControlPolicy.shouldIgnoreConflictingMode(
+                hasStoredControlPreference: true,
+                wantsManualControl: true,
+                reportedMode: .heartRate,
+                isDrivingTheFan: false,
+                isCommandPending: false
+            )
+        )
+        XCTAssertFalse(
+            HeadwindControlPolicy.shouldIgnoreConflictingMode(
+                hasStoredControlPreference: true,
+                wantsManualControl: true,
+                reportedMode: .manual,
+                isDrivingTheFan: true,
+                isCommandPending: false
+            )
+        )
+    }
+
     func testConnectingWithASavedManualSpeedSendsNothing() {
         let situation = HeadwindSituation(
             weAreDrivingTheFan: false,
