@@ -42,6 +42,20 @@ public struct HeadwindSituation: Equatable, Sendable {
 /// there is a reason, and treat starting a fan as needing a better reason than
 /// stopping one.
 public enum HeadwindControlPolicy {
+    public static func shouldIgnoreConflictingMode(
+        hasStoredControlPreference: Bool,
+        wantsManualControl: Bool,
+        reportedMode: HeadwindMode,
+        isDrivingTheFan: Bool,
+        isCommandPending: Bool
+    ) -> Bool {
+        guard hasStoredControlPreference,
+              (reportedMode == .manual) != wantsManualControl else {
+            return false
+        }
+        return isDrivingTheFan || isCommandPending
+    }
+
     /// The commands to send for a situation, in order. An empty result means
     /// the right thing to do is nothing, which is the common case.
     public static func commands(for situation: HeadwindSituation) -> [HeadwindCommand] {

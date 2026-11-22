@@ -328,6 +328,9 @@ final class ZwiftTrainerCoordinatorTests: XCTestCase {
         XCTAssertEqual(query, [.ratio(held)])
         let staged = await ratio(20000)
         XCTAssertEqual(staged, [.ratio(held)])
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        try await settle { !self.coordinator.hasPendingWheelSizeReset }
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
         try await start()
         XCTAssertEqual(coordinator.confirmedAppRatio ?? 0, 2, accuracy: 0.001)
         await coordinator.stopShifting()
@@ -335,10 +338,10 @@ final class ZwiftTrainerCoordinatorTests: XCTestCase {
         XCTAssertEqual(parked, [.ratio(UInt32((configuration.parkedGear!.ratio * 10000).rounded()))])
     }
 
-    func testOutOfRangeRidingAppWheelSizeIsNotUsedAsTheBaseline() async throws {
+    func testOutOfRangeRidingAppWheelSizeIsRejectedBeforeShifting() async throws {
         let result = await link.send(.setWheelCircumference(tenthsOfMillimeter: 30000), from: appID)
-        XCTAssertEqual(result?.result, .success)
-        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 3000)
+        XCTAssertEqual(result?.result, .invalidParameter)
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2_105)
         try await start()
         XCTAssertEqual(coordinator.wheelSizeGearsAreBuiltAround, 2105)
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, 2105)

@@ -140,6 +140,7 @@ enum ScreenshotFixture: String {
     case settingsStalled = "-shotSettingsStalled"
     case settingsClickLowBattery = "-shotSettingsClickLowBattery"
     case settingsClickSingleCandidate = "-shotSettingsClickSingleCandidate"
+    case settingsClickRejected = "-shotSettingsClickRejected"
     case settingsClickDuplicates = "-shotSettingsClickDuplicates"
     case settingsClickIdentifying = "-shotSettingsClickIdentifying"
     case settingsUnsafeGears = "-shotSettingsUnsafeGears"
@@ -208,7 +209,8 @@ private struct ScreenshotFixtureView: View {
                  .settingsUnsupported, .settingsTimedOut,
                  .settingsBluetoothIssue, .settingsStalled,
                  .settingsClickLowBattery, .settingsClickDuplicates,
-                 .settingsClickSingleCandidate, .settingsClickIdentifying,
+                 .settingsClickSingleCandidate, .settingsClickRejected,
+                 .settingsClickIdentifying,
                  .settingsUnsafeGears,
                  .settingsAccessibility, .zwiftSettings:
                 NavigationStack {
@@ -246,6 +248,9 @@ private struct ScreenshotFixtureView: View {
             stage()
             try? await Task.sleep(for: .milliseconds(500))
             stage()
+            if scenario == .settingsClickRejected {
+                click.stageSavedIdentityRejection()
+            }
         }
     }
 

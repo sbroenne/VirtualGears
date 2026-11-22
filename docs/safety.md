@@ -6,17 +6,23 @@ the app also supplies gear ratios. ERG power targets are refused in both modes.
 
 Both modes require **Start Shifting** before gears are applied. **Stop Shifting**
 restores normal wheel size and keeps the riding app connected. A mode or physical
-gear change requires stopping first.
+gear change requires stopping first. An interrupted ride keeps its recovery
+target associated with the selected trainer. Virtual Gears restores that target
+before starting again or advertising a normal trainer; if the trainer is
+unavailable, the recovery record remains until that same trainer reconnects.
 
 App-requested ratios are limited to the existing supported scale range if they
 would exceed it. The actual KICKR-confirmed ratio is returned, and the limiting
-event is logged. Failed writes do not produce a successful ratio reply. The
-normal wheel size is persisted before app-controlled gear writes so recovery
-can restore it after an interruption.
+event is logged. Failed writes do not produce a successful ratio reply. Wheel
+sizes outside the supported 1800–2400 mm range are rejected without changing
+the trainer's previous value. The normal wheel size is persisted before the
+first gear write in either mode, so recovery can restore it even if the trainer
+applies a command but its confirmation is lost.
 
 The physical measurements below establish the underlying Wahoo wheel-size
-command behavior. They do not replace the required RealVelo test of the new
-Zwift-compatible path.
+command behavior. The RealVelo/KICKR V5 check of the Zwift-compatible path is
+recorded as completed in DEVELOPMENT.md; it was a rider-reported check, with no
+separate hardware trace captured.
 
 Demo Mode is separate from this hardware path. It uses local simulated gear
 state, does not use Bluetooth, does not run the interrupted-ride baseline reset
@@ -92,9 +98,9 @@ actually ride.
 All three are now accepted, and the window is declared rather than emergent, so
 the next one cannot be discovered by a rider.
 
-A request outside the window is still refused rather than clamped, and the
-trainer keeps the wheel size it already had. The rider is not told when this
-happens; it appears only in the app's own log.
+A request outside the window is refused rather than clamped, and the trainer
+keeps the wheel size it already had. Virtual Gears records the refusal in its
+log; whether the riding app displays the rejected command depends on that app.
 
 Wheel size is sent in tenths of a millimetre, so what the trainer receives is
 exactly what the safety check judged.

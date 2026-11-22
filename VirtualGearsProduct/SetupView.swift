@@ -14,6 +14,7 @@ struct SetupView: View {
     var onFinish: (() -> Void)?
     var autoConnectsOnAppear = true
     var shiftingIsActive = false
+    var trainerSelectionLocked = false
 
     var body: some View {
         Form {
@@ -25,7 +26,7 @@ struct SetupView: View {
                 gearsSection
             }
             parkedGearSection
-                .disabled(shiftingIsActive && store.configuration.shiftingMode == .zwiftCompatible)
+                .disabled(shiftingIsActive)
         }
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
@@ -41,6 +42,18 @@ struct SetupView: View {
         }
         .onChange(of: store.configuration.usesHeadwind) { _, enabled in
             if enabled { headwind.autoConnectSavedDevice() }
+        }
+        .onChange(of: click.state) { _, state in
+            guard !store.configuration.connectsClick,
+                  state == .ready,
+                  let id = click.selectedID,
+                  let name = click.selectedName else { return }
+            store.configuration.rememberClick(named: name, id: id)
+        }
+        .onChange(of: click.hasSavedDevice) { _, saved in
+            if !saved, store.configuration.usesClick {
+                store.configuration.forgetClick()
+            }
         }
         .toolbar {
             // A sheet is dismissed from its own navigation bar, which is where
@@ -134,7 +147,11 @@ struct SetupView: View {
     private var equipmentSection: some View {
         Section {
             NavigationLink {
-                TrainerSetupView(store: store, kickr: kickr)
+                TrainerSetupView(
+                    store: store,
+                    kickr: kickr,
+                    selectionLocked: shiftingIsActive || trainerSelectionLocked
+                )
             } label: {
                 SetupRow(
                     title: "Trainer",
@@ -148,6 +165,7 @@ struct SetupView: View {
                     isRequired: true
                 )
             }
+            .disabled(shiftingIsActive || trainerSelectionLocked)
 
             if !store.configuration.hasValidKickr || !kickr.isReady {
                 Label(
@@ -318,7 +336,11 @@ struct SetupView: View {
         } header: {
             Text("On the bike")
         } footer: {
-            Text(store.configuration.parkedGearAdviceText)
+            Text(
+                shiftingIsActive
+                    ? "Stop shifting before changing the gear the bike is parked in."
+                    : store.configuration.parkedGearAdviceText
+            )
         }
     }
 
@@ -536,9 +558,18 @@ private struct WheelCircumferenceShortcut: Identifiable, Equatable {
 private struct TrainerSetupView: View {
     @Bindable var store: ConfigurationStore
     @Bindable var kickr: KickrCentralService
+    var selectionLocked = false
 
     var body: some View {
         Form {
+            if selectionLocked {
+                Section {
+                    Label(
+                        "Keep this trainer connected until its normal wheel size has been restored.",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                }
+            }
             if store.configuration.hasValidKickr {
                 Section {
                     EquipmentSummary(
@@ -581,6 +612,7 @@ private struct TrainerSetupView: View {
                 )
                 kickr.selectAndConnect(candidate.id)
             }
+            .disabled(selectionLocked)
         }
         .navigationTitle("Trainer")
         .navigationBarTitleDisplayMode(.inline)
@@ -668,10 +700,6 @@ private struct ShiftingSetupView: View {
                     : "Keep pressing either button on the Click you want.",
                 cancelIdentification: cancelClickIdentification
             ) { candidate in
-                store.configuration.rememberClick(
-                    named: candidate.name,
-                    id: candidate.id
-                )
                 click.selectAndConnect(candidate.id)
             }
 
@@ -1889,6 +1917,8 @@ private struct DeviceDiscoverySection: View {
         .onChange(of: hasSavedDevice) { _, saved in
             if saved {
                 discovery.reset()
+            } else if !isScanning {
+                beginSearch()
             }
         }
         .onDisappear {

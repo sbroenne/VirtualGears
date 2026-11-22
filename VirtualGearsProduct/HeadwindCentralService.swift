@@ -346,8 +346,14 @@ final class HeadwindCentralService: NSObject {
             switch message {
             case let .state(newMode, speed):
                 let isInitial = !hasReceivedInitialState
-                if !isInitial, hasStoredControlPreference,
-                   (newMode == .manual) != requestedManual {
+                if !isInitial,
+                   HeadwindControlPolicy.shouldIgnoreConflictingMode(
+                       hasStoredControlPreference: hasStoredControlPreference,
+                       wantsManualControl: requestedManual,
+                       reportedMode: newMode,
+                       isDrivingTheFan: isDrivingTheFan,
+                       isCommandPending: isCommandPending
+                   ) {
                     // A Headwind reports its state about once a second, so a
                     // disagreement that lasts logs forever and buries every
                     // other line in the log a bug report depends on. Say it
@@ -360,6 +366,11 @@ final class HeadwindCentralService: NSObject {
                         )
                     }
                     return
+                }
+                if !isInitial, hasStoredControlPreference,
+                   (newMode == .manual) != requestedManual {
+                    requestedManual = newMode == .manual
+                    persistControlPreference()
                 }
                 isIgnoringConflictingHeadwindState = false
                 apply(mode: newMode, speed: speed)

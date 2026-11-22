@@ -112,9 +112,12 @@ Zwift itself and other apps that use the same protocol are expected to work but
 have not been tested.
 
 The iPad interface is exercised on iPad mini and 13-inch iPad simulators. That
-proves the layouts and navigation, not Bluetooth. The first universal release
-remains blocked until a physical iPad has connected to the KICKR, advertised the
-trainer proxy, shifted, stopped and restored the normal wheel size.
+proves the layouts and navigation, not Bluetooth. DEVELOPMENT.md records the
+physical iPad check as completed on an iPad Air with a KICKR V5 and original
+Zwift Click: connection, trainer advertising, shifting, Stop restoration and an
+uninterrupted riding-app connection all worked. No separate trace was captured,
+so this result is the rider's reported check rather than independently recorded
+hardware evidence.
 
 ## Your first ride
 
@@ -162,7 +165,9 @@ back to Shift with Virtual Gears retains that saved device.
 Wake the Click by pressing a button before opening Virtual Gears. The app finds,
 connects and remembers it automatically in **Shift with Virtual Gears**. It shifts the same gears as the
 on-screen buttons, and pressing it visibly presses the matching on-screen button.
-The gear number still changes only after the trainer confirms the shift.
+Virtual Gears validates the original Click handshake before saving an identity;
+an old saved identity that fails validation is forgotten so discovery can
+resume. The gear number still changes only after the trainer confirms the shift.
 Nothing ever waits for the Click, so one that runs out of battery mid-ride
 costs you nothing but the buttons on the handlebar.
 

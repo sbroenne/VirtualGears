@@ -78,6 +78,17 @@ final class GearLadderCatalogTests: XCTestCase {
         XCTAssertEqual(drivetrain.gears.count, 24)
     }
 
+    func testDefaultCustomLadderMatchesTheStandardLadderAndFitsItsControls() {
+        let custom = GearLadderCatalog.custom(.default)
+        XCTAssertEqual(custom.ratiosHundredths, GearLadderCatalog.standardRange.ratiosHundredths)
+        XCTAssertEqual(custom.startingIndex, GearLadderCatalog.standardRange.startingIndex)
+        XCTAssertTrue(
+            CustomGearLadder.ratioHundredthsRange.contains(
+                CustomGearLadder.default.hardestRatioHundredths
+            )
+        )
+    }
+
     func testCustomLadderIDIsReservedAndNeverMatchesABuiltInLadder() {
         XCTAssertFalse(
             GearLadderCatalog.ladders.contains {

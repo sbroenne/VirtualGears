@@ -94,6 +94,7 @@ final class ClickCentralService: NSObject {
     private var reconnectAttempt = 0
     private var reconnectTask: Task<Void, Never>?
     private var handshakeTimeoutTask: Task<Void, Never>?
+    private var pendingIdentity: (id: UUID, name: String)?
     private var repeatTask: Task<Void, Never>?
     private var isSuspendedForDemo = false
     private var resumesAfterDemoDisconnect = false
@@ -118,6 +119,7 @@ final class ClickCentralService: NSObject {
 
     func startScanning() {
         guard !isSuspendedForDemo else { return }
+        guard !isScanning else { return }
 #if DEBUG
         if usesStagedScan {
             scanGeneration += 1
@@ -173,15 +175,24 @@ final class ClickCentralService: NSObject {
     }
 
     func selectAndConnect(_ id: UUID) {
+#if DEBUG
+        if usesStagedScan,
+           let candidate = candidates.first(where: { $0.id == id }) {
+            persistIdentity(id: id, name: candidate.name)
+            desiredConnection = false
+            state = .ready
+            return
+        }
+#endif
         guard let peripheral = discovered[id] else {
             fail("Selected Click is no longer available")
             return
         }
-        persistIdentity(
-            id: id,
-            name: candidates.first(where: { $0.id == id })?.name
-                ?? peripheral.name ?? "Zwift Click"
-        )
+        let name = candidates.first(where: { $0.id == id })?.name
+            ?? peripheral.name ?? "Zwift Click"
+        selectedID = id
+        selectedName = name
+        pendingIdentity = (id, name)
         desiredConnection = true
         reconnectAttempt = 0
         connect(peripheral)
@@ -285,6 +296,10 @@ final class ClickCentralService: NSObject {
 
     func forgetSelection() {
         disconnect()
+        clearSavedIdentity()
+    }
+
+    private func clearSavedIdentity() {
         selectedID = nil
         selectedName = nil
         defaults.removeObject(forKey: identityKey)
@@ -308,8 +323,10 @@ final class ClickCentralService: NSObject {
         guard let restored = central.retrievePeripherals(
             withIdentifiers: [id]
         ).first else {
-            state = .failed("Your Click is not answering")
-            scheduleReconnect()
+            fail(
+                "Your Click is not answering",
+                rejectsSavedIdentity: true
+            )
             return
         }
         connect(restored)
@@ -343,7 +360,10 @@ final class ClickCentralService: NSObject {
         guard let asyncCharacteristic,
               let receiveCharacteristic,
               let transmitCharacteristic else {
-            fail("Click is missing one or more required controls")
+            fail(
+                "Click is missing one or more required controls",
+                rejectsSavedIdentity: true
+            )
             return
         }
         if receiveCharacteristic.properties.contains(.writeWithoutResponse) {
@@ -351,13 +371,19 @@ final class ClickCentralService: NSObject {
         } else if receiveCharacteristic.properties.contains(.write) {
             writeType = .withResponse
         } else {
-            fail("Click RideOn control is not writable")
+            fail(
+                "Click RideOn control is not writable",
+                rejectsSavedIdentity: true
+            )
             return
         }
         for characteristic in [asyncCharacteristic, transmitCharacteristic] {
             guard characteristic.properties.contains(.notify)
                     || characteristic.properties.contains(.indicate) else {
-                fail("\(characteristic.uuid) cannot notify or indicate")
+                    fail(
+                        "\(characteristic.uuid) cannot notify or indicate",
+                        rejectsSavedIdentity: true
+                    )
                 return
             }
             peripheral?.setNotifyValue(true, for: characteristic)
@@ -531,7 +557,30 @@ final class ClickCentralService: NSObject {
         selectedName = saved.name
     }
 
-    private func fail(_ message: String) {
+    private func fail(
+        _ message: String,
+        rejectsSavedIdentity: Bool = false
+    ) {
+        let shouldForgetSavedIdentity =
+            rejectsSavedIdentity
+            && pendingIdentity == nil
+            && identificationCandidateID == nil
+            && selectedID != nil
+        if shouldForgetSavedIdentity {
+            reconnectTask?.cancel()
+            reconnectTask = nil
+            desiredConnection = false
+            clearSavedIdentity()
+            if let peripheral, peripheral.state == .connected {
+                central.cancelPeripheralConnection(peripheral)
+            }
+        } else if pendingIdentity != nil {
+            pendingIdentity = nil
+            desiredConnection = false
+            selectedID = nil
+            selectedName = nil
+            loadIdentity()
+        }
         state = .failed(message)
         log(message, level: .error)
         if desiredConnection, let peripheral, peripheral.state == .connected {
@@ -549,6 +598,13 @@ final class ClickCentralService: NSObject {
 
 #if DEBUG
 extension ClickCentralService {
+    func stageSavedIdentityRejection() {
+        fail(
+            "Original Zwift Click service was not found",
+            rejectsSavedIdentity: true
+        )
+    }
+
     func stageScreenshot(
         name: String,
         batteryLevel: Int,
@@ -675,7 +731,10 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
         }
         guard let services = peripheral.services,
               services.contains(where: { $0.uuid == serviceUUID }) else {
-            fail("Original Zwift Click service was not found")
+            fail(
+                "Original Zwift Click service was not found",
+                rejectsSavedIdentity: true
+            )
             return
         }
         servicesPending = services.count
@@ -775,10 +834,21 @@ extension ClickCentralService: @preconcurrency CBPeripheralDelegate {
             batteryLevel = Int(value)
         } else if characteristic.uuid == transmitUUID {
             guard data.starts(with: ZwiftClickProtocol.rideOn) else {
-                fail("Click returned an unexpected handshake reply")
+                fail(
+                    "Click returned an unexpected handshake reply",
+                    rejectsSavedIdentity: true
+                )
                 return
             }
             handshakeTimeoutTask?.cancel()
+            if let pendingIdentity,
+               pendingIdentity.id == peripheral.identifier {
+                persistIdentity(
+                    id: pendingIdentity.id,
+                    name: pendingIdentity.name
+                )
+                self.pendingIdentity = nil
+            }
             state = .ready
         } else if characteristic.uuid == asyncUUID, isReady {
             processAsync(data)

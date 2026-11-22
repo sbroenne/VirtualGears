@@ -32,6 +32,7 @@ final class FakeTrainer: TrainerLink {
     /// Set to make the next Wahoo command fail, as a trainer that has gone to
     /// sleep or refused a value would.
     var failNextWahooCommand = false
+    var loseNextWahooAcknowledgement = false
     /// How long the trainer takes to confirm a gear. Real ones are not instant,
     /// and the hold sweep is paced by exactly this.
     var wahooConfirmationDelay: Duration = .zero
@@ -89,6 +90,15 @@ final class FakeTrainer: TrainerLink {
             return .wheelCircumference(result: 0, encodedTenthsOfMillimeter: encoded)
         }
         wheelSizeHistory.append(Double(encoded) / 10)
+        if loseNextWahooAcknowledgement {
+            loseNextWahooAcknowledgement = false
+            isReady = false
+            state = .disconnected
+            stateHandler?(.disconnected)
+            throw ProductBluetoothError.unavailable(
+                "Trainer disconnected before confirming the command"
+            )
+        }
         return .wheelCircumference(result: 1, encodedTenthsOfMillimeter: encoded)
     }
 

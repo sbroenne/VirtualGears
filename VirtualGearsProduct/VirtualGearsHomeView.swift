@@ -47,6 +47,18 @@ struct VirtualGearsHomeView: View {
             guard !isDemoMode, !coordinator.isShiftingPresented else { return }
             await coordinator.updateConfiguration(store.configuration)
         }
+        .onChange(of: click.state) { _, state in
+            guard !store.configuration.connectsClick,
+                  state == .ready,
+                  let id = click.selectedID,
+                  let name = click.selectedName else { return }
+            store.configuration.rememberClick(named: name, id: id)
+        }
+        .onChange(of: click.hasSavedDevice) { _, saved in
+            if !saved, store.configuration.usesClick {
+                store.configuration.forgetClick()
+            }
+        }
     }
 
     private func enterDemoMode() {
@@ -129,7 +141,6 @@ struct VirtualGearsHomeView: View {
             click.stopScanning(reconnectSavedDevice: false)
             return
         }
-        store.configuration.rememberClick(named: candidate.name, id: candidate.id)
         click.selectAndConnect(candidate.id)
     }
 
@@ -223,7 +234,8 @@ struct StartupView: View {
                         kickr: kickr,
                         click: click,
                         headwind: headwind,
-                        onFinish: { showsSettings = false }
+                        onFinish: { showsSettings = false },
+                        trainerSelectionLocked: coordinator.hasPendingWheelSizeReset
                     )
                 }
             }
@@ -280,7 +292,7 @@ struct StartupView: View {
         guard trainerScanSettled,
               !store.configuration.hasValidKickr,
               kickr.selectedID == nil, !mustChoose else { return }
-        let seen = kickr.candidates.map { DiscoveredTrainer(id: $0.id) }
+        let seen = eligibleTrainerCandidates.map { DiscoveredTrainer(id: $0.id) }
         guard !seen.isEmpty else { return }
         switch TrainerPicker.choice(from: seen) {
         case let .connect(id): adopt(id)
@@ -294,6 +306,7 @@ struct StartupView: View {
     /// Without this a new rider watches their trainer connect and then waits
     /// forever, because nothing ever agreed which trainer it was.
     private func adopt(_ id: UUID) {
+        guard coordinator.canSelectTrainer(id) else { return }
         let name = kickr.candidates.first { $0.id == id }?.name
             ?? store.configuration.kickrName
         store.configuration.rememberKickr(named: name, id: id)
@@ -313,6 +326,13 @@ struct StartupView: View {
             .font(.subheadline)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
+            if coordinator.hasPendingWheelSizeReset, !kickr.isReady {
+                Text("Reconnect the trainer used for the interrupted ride so its "
+                    + "normal wheel size can be restored.")
+                    .font(.subheadline)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
             connectionList(includeRidingApp: false)
         }
         .frame(maxWidth: .infinity)
@@ -320,7 +340,8 @@ struct StartupView: View {
     }
 
     private var searchingTitle: String {
-        store.configuration.hasValidKickr
+        if coordinator.hasPendingWheelSizeReset { return "Restoring trainer" }
+        return store.configuration.hasValidKickr
             ? "Getting Virtual Gears ready"
             : "Looking for your trainer"
     }
@@ -330,12 +351,15 @@ struct StartupView: View {
             Text("Which one is yours?")
                 .font(.title3.weight(.semibold))
             Text(
-                "Virtual Gears found more than one trainer. Pick yours and "
-                    + "Virtual Gears will remember it."
+                coordinator.hasPendingWheelSizeReset
+                    ? "Reconnect the trainer used for the interrupted ride so "
+                        + "Virtual Gears can restore its normal wheel size."
+                    : "Virtual Gears found more than one trainer. Pick yours "
+                        + "and Virtual Gears will remember it."
             )
             .font(.subheadline)
             .foregroundStyle(.secondary)
-            ForEach(kickr.candidates) { candidate in
+            ForEach(eligibleTrainerCandidates) { candidate in
                 Button {
                     mustChoose = false
                     adopt(candidate.id)
@@ -348,6 +372,10 @@ struct StartupView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var eligibleTrainerCandidates: [BluetoothCandidate] {
+        kickr.candidates.filter { coordinator.canSelectTrainer($0.id) }
     }
 
     private var demoEntry: some View {
@@ -519,9 +547,16 @@ struct StartupView: View {
         let heading = failure.happenedWhileStopping
             ? "Virtual shifting stopped"
             : "Shifting could not start"
-        let detail = failure.happenedWhileStopping
-            ? "Your trainer stopped responding before Virtual Gears finished."
-            : plainEnglish(message)
+        let detail: String
+        if failure.trainerNeedsWheelSizeReset {
+            detail = "Your trainer may still have a virtual wheel size. Keep it "
+                + "connected and restore its normal wheel size before riding "
+                + "with another app."
+        } else if failure.happenedWhileStopping {
+            detail = "Your trainer stopped responding before Virtual Gears finished."
+        } else {
+            detail = plainEnglish(message)
+        }
         return VStack(alignment: .leading, spacing: 10) {
             Label(heading, systemImage: "exclamationmark.triangle.fill")
                 .font(.headline)
@@ -568,7 +603,9 @@ struct StartupView: View {
     /// the thing tapping it does.
     private var retryButton: some View {
         Button {
-            if needsParkedGear {
+            if coordinator.hasPendingWheelSizeReset {
+                coordinator.resetInterruptedWheelSizeIfNeeded()
+            } else if needsParkedGear {
                 if store.configuration.setupWizardCompleted {
                     showsSettings = true
                 } else {
@@ -590,7 +627,10 @@ struct StartupView: View {
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(!canStart && !needsParkedGear)
+        .disabled(
+            !canStart && !needsParkedGear
+                && !coordinator.hasPendingWheelSizeReset
+        )
         .accessibilityHint(canStart ? "Starts virtual shifting" : blockedHint)
     }
 
@@ -611,13 +651,15 @@ struct StartupView: View {
     /// that is sitting there connected has no way to discover that the missing
     /// thing is which gear the bike is parked in.
     private var waitingTitle: String {
-        needsParkedGear
-            ? "Set the gear you are in"
-            : "Waiting for trainer"
+        if coordinator.hasPendingWheelSizeReset { return "Restore trainer" }
+        return needsParkedGear ? "Set the gear you are in" : "Waiting for trainer"
     }
 
     private var blockedHint: String {
-        needsParkedGear
+        if coordinator.hasPendingWheelSizeReset {
+            return "Reconnect the trainer so its normal wheel size can be restored"
+        }
+        return needsParkedGear
             ? (store.configuration.setupWizardCompleted
                 ? "Opens Settings so you can set which gear the bike is parked in"
                 : "Opens the setup guide so you can set which gear the bike "
@@ -632,6 +674,7 @@ struct StartupView: View {
         store.configuration.canFinishSetup
             && kickr.isReady
             && kickr.selectedID?.uuidString == store.configuration.kickrUUID
+            && !coordinator.hasPendingWheelSizeReset
     }
 
     private var failureMessage: String? {
@@ -1229,7 +1272,13 @@ struct ShiftingView: View {
             // the rider has no way to spot, and nothing tries again. The choice
             // goes back to the gears they are actually riding.
             if !applied, let original {
-                store.configuration = original
+                var restored = store.configuration
+                restored.usesVirtualGears = original.usesVirtualGears
+                restored.gearLadderID = original.gearLadderID
+                restored.customLadder = original.customLadder
+                restored.chainringID = original.chainringID
+                restored.cassetteID = original.cassetteID
+                store.configuration = restored
             }
             isChangingGears = false
         }

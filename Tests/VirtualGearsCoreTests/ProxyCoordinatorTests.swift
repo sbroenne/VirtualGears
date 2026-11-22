@@ -131,6 +131,110 @@ final class ProxyCoordinatorTests: XCTestCase {
         )
     }
 
+    func testLostInitialGearAcknowledgementLeavesARecoverableRecord() async throws {
+        let trainerID = try XCTUnwrap(trainer.selectedID)
+        trainer.loseNextWahooAcknowledgement = true
+        coordinator.startShifting(configuration: makeConfiguration())
+
+        try await settle {
+            self.coordinator.lifecycle.isFailed
+                && self.coordinator.hasPendingWheelSizeReset
+        }
+        XCTAssertNotEqual(trainer.currentWheelSizeMillimeters, neutral)
+        XCTAssertEqual(
+            defaults.double(
+                forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+            ),
+            neutral
+        )
+        XCTAssertEqual(
+            defaults.string(forKey: "VirtualGears.unfinishedRideTrainerID"),
+            trainerID.uuidString
+        )
+
+        let reconnectedTrainer = FakeTrainer()
+        reconnectedTrainer.selectedID = trainerID
+        coordinator = ProxyCoordinator(
+            kickr: reconnectedTrainer,
+            click: FakeShifter(),
+            peripheral: FakeRidingAppLink(),
+            screen: FakeScreen(),
+            defaults: defaults
+        )
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        try await settle { !self.coordinator.hasPendingWheelSizeReset }
+        XCTAssertEqual(reconnectedTrainer.currentWheelSizeMillimeters, neutral)
+    }
+
+    func testStartWaitsForInterruptedWheelSizeRecovery() async throws {
+        trainer.isReady = false
+        trainer.state = .disconnected
+        defaults.set(
+            2_300.0,
+            forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+        )
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        await Task.yield()
+
+        coordinator.startShifting(configuration: makeConfiguration())
+
+        XCTAssertEqual(coordinator.state, .idle)
+        XCTAssertEqual(trainer.wahooCommandCount, 0)
+        XCTAssertEqual(
+            defaults.double(
+                forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+            ),
+            2_300
+        )
+        coordinator.suspendInterruptedWheelSizeRecovery()
+    }
+
+    func testTrainerReadyRetriesAnInterruptedReset() async throws {
+        trainer.isReady = false
+        trainer.state = .disconnected
+        defaults.set(
+            neutral,
+            forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+        )
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        await Task.yield()
+        coordinator.suspendInterruptedWheelSizeRecovery()
+
+        trainer.isReady = true
+        trainer.state = .ready
+        trainer.stateHandler?(.ready)
+
+        try await settle { !self.coordinator.hasPendingWheelSizeReset }
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, neutral)
+    }
+
+    func testInterruptedResetNeverWritesToAReplacementTrainer() async throws {
+        let trainerID = try XCTUnwrap(trainer.selectedID)
+        defaults.set(
+            neutral,
+            forKey: "VirtualGears.unfinishedRideBaselineMillimeters"
+        )
+        defaults.set(
+            trainerID.uuidString,
+            forKey: "VirtualGears.unfinishedRideTrainerID"
+        )
+        let replacementID = UUID()
+        trainer.selectedID = replacementID
+
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        try await Task.sleep(for: .milliseconds(50))
+
+        XCTAssertEqual(trainer.wahooCommandCount, 0)
+        XCTAssertTrue(coordinator.hasPendingWheelSizeReset)
+        XCTAssertFalse(coordinator.canSelectTrainer(replacementID))
+        XCTAssertTrue(coordinator.canSelectTrainer(trainerID))
+
+        trainer.selectedID = trainerID
+        coordinator.resetInterruptedWheelSizeIfNeeded()
+        try await settle { !self.coordinator.hasPendingWheelSizeReset }
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, neutral)
+    }
+
     func testConfiguredNormalWheelSizeIsUsedWhenTheRidingAppSendsNone()
         async throws
     {
@@ -211,6 +315,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         // the ride begins on 2105 and the riding app moves it mid-ride, which
         // is the case where the record can go stale.
         makeCoordinator()
+        let interruptedTrainerID = try XCTUnwrap(trainer.selectedID)
         let survivingDefaults = defaults!
         try await startShifting(virtualGears: false)
         _ = await ridingApp.send(
@@ -221,6 +326,7 @@ final class ProxyCoordinatorTests: XCTestCase {
         }
 
         trainer = FakeTrainer()
+        trainer.selectedID = interruptedTrainerID
         coordinator = ProxyCoordinator(
             kickr: trainer,
             click: FakeShifter(),
@@ -241,13 +347,8 @@ final class ProxyCoordinatorTests: XCTestCase {
         XCTAssertEqual(trainer.currentWheelSizeMillimeters, afterNormalStop)
     }
 
-    /// A riding app is free to park any wheel size it likes between rides, and
-    /// 700x25c (2105 mm) is an ordinary one. Gears built around anything above
-    /// ~2098 mm used to reach outside the range proven safe on the trainer, so
-    /// this size was carried into the next ride only by falling back to the
-    /// neutral 2105 mm. The proven range now reaches 5000 mm, which leaves room
-    /// to build the gears around the wheel the rider actually asked for, so it
-    /// is kept.
+    /// An out-of-range request is declined before it can change trainer speed
+    /// or silently become a different baseline on the next ride.
     func testAParkedOrdinaryWheelSizeIsKeptForTheNextRide() async throws {
         try await startShifting()
         await coordinator.stopShifting()
@@ -278,12 +379,11 @@ final class ProxyCoordinatorTests: XCTestCase {
         try await startShifting()
         await coordinator.stopShifting()
 
-        _ = await ridingApp.send(
+        let result = await ridingApp.send(
             .setWheelCircumference(tenthsOfMillimeter: 30_000)
         )
-        try await settle {
-            self.trainer.currentWheelSizeMillimeters == 3_000
-        }
+        XCTAssertEqual(result?.result, .invalidParameter)
+        XCTAssertEqual(trainer.currentWheelSizeMillimeters, neutral)
 
         try await startShifting()
 
