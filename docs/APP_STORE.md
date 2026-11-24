@@ -6,13 +6,15 @@ Work top to bottom.
 !!! warning "Universal build uploaded; not submitted for review"
 
     The universal iPhone/iPad target, iPad screenshots and shared-device wording
-    are complete. Build 20, which adds the two shifting modes and the iPhone Duo
-    layout, was uploaded on 8 November 2026. It is available to the internal
-    `Insiders` TestFlight group and is attached to App Store version 1.0. The
-    version has not been submitted for App Review.
+    are complete. Version 1.0.1 build 22, which adds KICKR timeout diagnostics
+    and a physical terrain stress probe, was uploaded on 24 November 2026 and
+    entered App Store Connect processing. The prior build 20 is available to the
+    internal `Insiders` TestFlight group. The new build's group assignment still
+    needs to be confirmed after processing. The version has not been submitted
+    for App Review.
 
 The listing below is the repository's copy source for both shifting modes. The
-last recorded App Store Connect update was on 8 November 2026 for build 20; live
+last recorded App Store Connect update was on 24 November 2026 for 1.0.1 (22); live
 metadata must be checked and synchronized separately before the next submission.
 The RealVelo/KICKR hardware check of the Zwift-compatible path was reported
 complete before upload. Zwift itself has not been tested with this mode.
@@ -266,6 +268,11 @@ device family `iPhone, iPad`. It is `Ready to Submit` in TestFlight, belongs to
 the internal `Insiders` group, and is attached to App Store version 1.0. The
 universal promotional text, description, review notes and six iPad screenshots
 were saved live. The version remains unsubmitted for review.
+
+Build 22 was archived and uploaded on 24 November 2026 as version 1.0.1.
+It is a diagnostic build for investigating intermittent RealVelo/KICKR command
+timeouts. The upload completed and entered processing. Group availability must
+be confirmed after processing.
 
 In Xcode:
 
