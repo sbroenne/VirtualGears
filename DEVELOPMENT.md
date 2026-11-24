@@ -817,9 +817,14 @@ the connection and the queue — when the trainer confirmed the write and sent
 riding data within the last three seconds. The riding app replaces hill updates
 about once a second, so losing one is harmless. A second timeout in a row, a
 missing write confirmation, stalled riding data, or a timeout on any other
-command still reconnects exactly as before. A reply that turns up for a skipped
-update before the next write is confirmed is logged as late and never credited
-to the next command (`LateReplyTracker`).
+command still reconnects exactly as before. FTMS replies carry no command ID,
+so a skipped update's reply looks just like the answer to a virtual shift sent
+after it. Because the trainer answers in order, the oldest skipped command
+claims the next matching reply (`LateReplyTracker`); it is logged as late and
+never credited to a later command, even one whose write is already confirmed.
+If a skipped update's reply was lost instead, the next matching command waits
+out its own timeout and the rules above decide, so recovery stays as cautious
+as before.
 
 Each timeout now logs one `Timeout detail` line with: write confirmed, reply
 received, commands queued behind, time since the last riding data and last

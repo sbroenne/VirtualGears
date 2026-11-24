@@ -612,14 +612,16 @@ final class KickrCentralService: NSObject {
             }
             if let age = lateReplies.consumeLateReply(
                 opcode: response.requestOpcode,
-                currentWriteConfirmed: mayAnswerActive,
                 now: now
             ) {
                 log(
                     "Late reply to FTMS opcode 0x"
                         + String(format: "%02X", response.requestOpcode)
                         + String(format: " arrived %.1f s after it was skipped", age)
-                        + " (\(response.result))",
+                        + " (\(response.result))"
+                        + (mayAnswerActive
+                            ? "; not credited to \(active?.name ?? "the current command")"
+                            : ""),
                     level: .warning
                 )
                 return

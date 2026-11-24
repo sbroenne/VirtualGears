@@ -276,36 +276,32 @@ final class ConnectionPolicyTests: XCTestCase {
 
     // MARK: - Late replies
 
-    /// A reply before the next command's write is even confirmed cannot be
-    /// that command's answer, so it must not confirm it - a shift would be
-    /// credited with a reply the trainer sent for something else.
-    func testReplyBeforeTheNextWriteIsConfirmedIsLate() {
+    /// FTMS replies carry no command ID, so a late reply to a skipped hill
+    /// update must not confirm a virtual shift (same opcode 0x11) sent after
+    /// it — not even once the shift's write is confirmed.
+    func testLateReplyIsNeverCreditedToTheNextCommandWithTheSameOpcode() {
         var tracker = LateReplyTracker()
         tracker.abandon(opcode: 0x11, at: 100)
-        XCTAssertEqual(tracker.consumeLateReply(
-            opcode: 0x11, currentWriteConfirmed: false, now: 101.5
-        ), 1.5)
+        XCTAssertEqual(tracker.consumeLateReply(opcode: 0x11, now: 101.5), 1.5)
         XCTAssertTrue(tracker.isEmpty)
+        XCTAssertNil(tracker.consumeLateReply(opcode: 0x11, now: 101.6))
     }
 
-    func testReplyThatMayAnswerTheCurrentCommandIsLeftForIt() {
+    func testRepliesAreMatchedToSkippedCommandsOldestFirst() {
         var tracker = LateReplyTracker()
         tracker.abandon(opcode: 0x11, at: 100)
-        XCTAssertNil(tracker.consumeLateReply(
-            opcode: 0x11, currentWriteConfirmed: true, now: 101
-        ))
-        XCTAssertNil(tracker.consumeLateReply(
-            opcode: 0x07, currentWriteConfirmed: false, now: 101
-        ))
-        XCTAssertFalse(tracker.isEmpty)
+        tracker.abandon(opcode: 0x11, at: 106)
+        XCTAssertNil(tracker.consumeLateReply(opcode: 0x07, now: 107))
+        XCTAssertEqual(tracker.consumeLateReply(opcode: 0x11, now: 107), 7)
+        XCTAssertEqual(tracker.consumeLateReply(opcode: 0x11, now: 108), 2)
+        XCTAssertTrue(tracker.isEmpty)
     }
 
     func testAbandonedCommandsAreForgottenEventually() {
         var tracker = LateReplyTracker()
         tracker.abandon(opcode: 0x11, at: 100)
         XCTAssertNil(tracker.consumeLateReply(
-            opcode: 0x11, currentWriteConfirmed: false,
-            now: 100 + LateReplyTracker.expirySeconds + 1
+            opcode: 0x11, now: 100 + LateReplyTracker.expirySeconds + 1
         ))
         XCTAssertTrue(tracker.isEmpty)
     }

@@ -285,21 +285,20 @@ public struct LateReplyTracker: Equatable, Sendable {
 
     /// Whether a reply to `opcode` should be treated as late.
     ///
-    /// A reply that arrives before the current command's write has even been
-    /// confirmed cannot be the current command's answer, so it is consumed as
-    /// the oldest matching abandoned one. Once the write is confirmed the two
-    /// cannot be told apart, so the reply is left for the current command.
+    /// FTMS replies carry only the opcode and a result, so a late reply to a
+    /// skipped hill update looks exactly like the answer to a virtual shift
+    /// sent after it. The trainer answers control-point writes in the order it
+    /// received them, so the oldest matching abandoned command always claims
+    /// the next matching reply — even once the current command's write is
+    /// confirmed. If that abandoned reply was in fact lost, the current command
+    /// times out and the normal timeout policy decides, rather than a command
+    /// being confirmed by a reply meant for another.
     ///
     /// - Returns: how long ago the matching command was abandoned, or `nil`
     ///   if the reply is not late.
-    public mutating func consumeLateReply(
-        opcode: UInt8,
-        currentWriteConfirmed: Bool,
-        now: Double
-    ) -> Double? {
+    public mutating func consumeLateReply(opcode: UInt8, now: Double) -> Double? {
         abandoned.removeAll { now - $0.at > Self.expirySeconds }
-        guard !currentWriteConfirmed,
-              let index = abandoned.firstIndex(where: { $0.opcode == opcode })
+        guard let index = abandoned.firstIndex(where: { $0.opcode == opcode })
         else { return nil }
         let entry = abandoned.remove(at: index)
         return now - entry.at
