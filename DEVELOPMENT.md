@@ -800,6 +800,53 @@ The rider stopped and restarted their ride during the capture and no stop, pause
 or second start reached the trainer. A riding app's own ride controls are not
 reliably visible from down here, so nothing may depend on seeing them.
 
+## When the trainer does not answer a command
+
+Every trainer command waits up to five seconds for two things: Bluetooth's
+confirmation that the write arrived, and the trainer's own reply. Until now a
+command missing either was treated as a dead link: the app hung up on the
+trainer, cancelled everything queued behind it (virtual shifts included), and
+reconnected, which leaves the rider without resistance changes for several
+seconds. A report of repeated reconnects during a RealVelo ride showed every
+timeout on a hill update (FTMS `0x11`), but the old log could not say which
+half was missing, so **no cause has been established**.
+
+**Expected behaviour, not yet validated on hardware.** `CommandTimeoutPolicy`
+now skips a single timed-out hill update — failing only that update and keeping
+the connection and the queue — when the trainer confirmed the write and sent
+riding data within the last three seconds. The riding app replaces hill updates
+about once a second, so losing one is harmless. A second timeout in a row, a
+missing write confirmation, stalled riding data, or a timeout on any other
+command still reconnects exactly as before. A reply that turns up for a skipped
+update before the next write is confirmed is logged as late and never credited
+to the next command (`LateReplyTracker`).
+
+Each timeout now logs one `Timeout detail` line with: write confirmed, reply
+received, commands queued behind, time since the last riding data and last
+control reply, skips in a row, and the decision. It is followed by the trainer's
+signal strength, and the log also records every hang-up and its reason, each
+reconnect attempt, and how long it took to get trainer control back.
+
+Collect a ride's log with the iPhone unlocked and connected by USB (over Wi-Fi
+fails). Run it yourself; it asks for your Mac password:
+
+```
+sudo /usr/bin/log collect --device --last 2h \
+  --predicate 'subsystem == "com.sbroenne.VirtualGears"' \
+  --output ~/Desktop/virtualgears.logarchive
+log show ~/Desktop/virtualgears.logarchive \
+  --predicate 'subsystem == "com.sbroenne.VirtualGears"' > virtualgears.txt
+```
+
+Keep ride logs out of the repository. Read the `Timeout detail` lines this way:
+
+| Log shows | Points to |
+|---|---|
+| write not confirmed, riding data also stopped | the Bluetooth link stalled |
+| write confirmed, no reply, riding data still flowing | the trainer skipped or delayed its reply |
+| a `Late reply` line a little after the timeout | the trainer is slow; five seconds may be too tight |
+| `Ignored unmatched FTMS indication` around the timeout | replies and commands are being paired wrongly |
+
 ## Does a riding app's reset wipe the wheel size?
 
 Measured on a real KICKR V5 on 2026-08-14, because the answer decides whether

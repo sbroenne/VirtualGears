@@ -211,4 +211,102 @@ final class ConnectionPolicyTests: XCTestCase {
         )
         XCTAssertEqual(read, SavedDeviceIdentity(id: id, name: nil))
     }
+
+    // MARK: - Command timeouts
+
+    /// The RealVelo case: one hill update unanswered while the trainer is still
+    /// plainly talking. Skipping it beats ten seconds of reconnecting.
+    func testSkipsOneMissedHillUpdateOnALiveLink() {
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: true, writeConfirmed: true,
+            consecutiveSkips: 0, secondsSinceTrainerData: 0.4
+        ), .skipCommand)
+    }
+
+    func testReconnectsWhenTheLinkLooksUnhealthy() {
+        // A second miss in a row.
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: true, writeConfirmed: true,
+            consecutiveSkips: 1, secondsSinceTrainerData: 0.4
+        ), .reconnect)
+        // The trainer never acknowledged the write.
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: true, writeConfirmed: false,
+            consecutiveSkips: 0, secondsSinceTrainerData: 0.4
+        ), .reconnect)
+        // Riding data has stopped too.
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: true, writeConfirmed: true,
+            consecutiveSkips: 0, secondsSinceTrainerData: 3.5
+        ), .reconnect)
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: true, writeConfirmed: true,
+            consecutiveSkips: 0, secondsSinceTrainerData: nil
+        ), .reconnect)
+    }
+
+    /// Shifts, wheel sizes and control requests are not superseded a second
+    /// later, so losing one silently is not acceptable.
+    func testOtherCommandsStillReconnect() {
+        XCTAssertEqual(CommandTimeoutPolicy.decide(
+            isHillUpdate: false, writeConfirmed: true,
+            consecutiveSkips: 0, secondsSinceTrainerData: 0.4
+        ), .reconnect)
+    }
+
+    func testTimeoutReportSaysWhatWasMissing() {
+        let report = CommandTimeoutReport(
+            commandName: "FTMS opcode 0x11",
+            writeConfirmed: true,
+            replyReceived: false,
+            commandsQueuedBehind: 2,
+            secondsSinceTrainerData: 0.3,
+            secondsSinceControlReply: nil,
+            consecutiveSkips: 0,
+            decision: .skipCommand
+        )
+        XCTAssertEqual(
+            report.summary,
+            "Timeout detail for FTMS opcode 0x11: write confirmed yes, "
+                + "reply received no, 2 queued behind, "
+                + "last trainer data 0.3 s ago, last control reply never, "
+                + "0 skipped in a row; skipping it and staying connected"
+        )
+    }
+
+    // MARK: - Late replies
+
+    /// A reply before the next command's write is even confirmed cannot be
+    /// that command's answer, so it must not confirm it - a shift would be
+    /// credited with a reply the trainer sent for something else.
+    func testReplyBeforeTheNextWriteIsConfirmedIsLate() {
+        var tracker = LateReplyTracker()
+        tracker.abandon(opcode: 0x11, at: 100)
+        XCTAssertEqual(tracker.consumeLateReply(
+            opcode: 0x11, currentWriteConfirmed: false, now: 101.5
+        ), 1.5)
+        XCTAssertTrue(tracker.isEmpty)
+    }
+
+    func testReplyThatMayAnswerTheCurrentCommandIsLeftForIt() {
+        var tracker = LateReplyTracker()
+        tracker.abandon(opcode: 0x11, at: 100)
+        XCTAssertNil(tracker.consumeLateReply(
+            opcode: 0x11, currentWriteConfirmed: true, now: 101
+        ))
+        XCTAssertNil(tracker.consumeLateReply(
+            opcode: 0x07, currentWriteConfirmed: false, now: 101
+        ))
+        XCTAssertFalse(tracker.isEmpty)
+    }
+
+    func testAbandonedCommandsAreForgottenEventually() {
+        var tracker = LateReplyTracker()
+        tracker.abandon(opcode: 0x11, at: 100)
+        XCTAssertNil(tracker.consumeLateReply(
+            opcode: 0x11, currentWriteConfirmed: false,
+            now: 100 + LateReplyTracker.expirySeconds + 1
+        ))
+        XCTAssertTrue(tracker.isEmpty)
+    }
 }
