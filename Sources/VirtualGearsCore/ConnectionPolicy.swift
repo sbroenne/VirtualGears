@@ -192,17 +192,21 @@ public enum CommandTimeoutPolicy {
     ///     flight could be mistaken for the next command's.
     ///   - consecutiveSkips: hill updates already skipped since the last
     ///     command that completed.
+    ///   - hasOutstandingSkippedReply: whether a previously skipped command
+    ///     could still produce a reply.
     ///   - secondsSinceTrainerData: time since the trainer last sent riding
     ///     data, or `nil` if it has sent none on this connection.
     public static func decide(
         isHillUpdate: Bool,
         writeConfirmed: Bool,
         consecutiveSkips: Int,
+        hasOutstandingSkippedReply: Bool,
         secondsSinceTrainerData: Double?
     ) -> Decision {
         guard isHillUpdate,
               writeConfirmed,
               consecutiveSkips < maximumConsecutiveSkips,
+              !hasOutstandingSkippedReply,
               let age = secondsSinceTrainerData,
               age <= liveDataWindowSeconds else {
             return .reconnect
@@ -224,6 +228,7 @@ public struct CommandTimeoutReport: Equatable, Sendable {
     public var secondsSinceTrainerData: Double?
     public var secondsSinceControlReply: Double?
     public var consecutiveSkips: Int
+    public var hasOutstandingSkippedReply: Bool
     public var decision: CommandTimeoutPolicy.Decision
 
     public init(
@@ -234,6 +239,7 @@ public struct CommandTimeoutReport: Equatable, Sendable {
         secondsSinceTrainerData: Double?,
         secondsSinceControlReply: Double?,
         consecutiveSkips: Int,
+        hasOutstandingSkippedReply: Bool,
         decision: CommandTimeoutPolicy.Decision
     ) {
         self.commandName = commandName
@@ -243,6 +249,7 @@ public struct CommandTimeoutReport: Equatable, Sendable {
         self.secondsSinceTrainerData = secondsSinceTrainerData
         self.secondsSinceControlReply = secondsSinceControlReply
         self.consecutiveSkips = consecutiveSkips
+        self.hasOutstandingSkippedReply = hasOutstandingSkippedReply
         self.decision = decision
     }
 
@@ -261,52 +268,53 @@ public struct CommandTimeoutReport: Equatable, Sendable {
             + "\(commandsQueuedBehind) queued behind, "
             + "last trainer data \(age(secondsSinceTrainerData)), "
             + "last control reply \(age(secondsSinceControlReply)), "
-            + "\(consecutiveSkips) skipped in a row; \(action)"
+            + "\(consecutiveSkips) skipped in a row, "
+            + "earlier skipped reply outstanding \(hasOutstandingSkippedReply ? "yes" : "no"); "
+            + action
     }
 }
 
-/// Remembers FTMS commands that were given up on, so a reply that turns up
-/// afterwards is recognised as late rather than credited to the next command.
+/// Tracks an unanswered FTMS command until its reply arrives or the link resets.
 public struct LateReplyTracker: Equatable, Sendable {
-    /// How long an abandoned command's reply is still worth waiting for.
-    public static let expirySeconds: Double = 30
+    public enum Reply: Equatable, Sendable {
+        case unrelated
+        case late(age: Double)
+        case ambiguous(age: Double)
+    }
 
-    private var abandoned: [(opcode: UInt8, at: Double)] = []
+    private var abandoned: (opcode: UInt8, at: Double)?
 
     public init() {}
 
-    public var isEmpty: Bool { abandoned.isEmpty }
+    public var hasOutstandingReply: Bool { abandoned != nil }
 
     public mutating func abandon(opcode: UInt8, at time: Double) {
-        abandoned.append((opcode, time))
+        precondition(abandoned == nil)
+        abandoned = (opcode, time)
     }
 
-    public mutating func clear() { abandoned.removeAll() }
+    public mutating func clear() { abandoned = nil }
 
-    /// Whether a reply to `opcode` should be treated as late.
-    ///
-    /// FTMS replies carry only the opcode and a result, so a late reply to a
-    /// skipped hill update looks exactly like the answer to a virtual shift
-    /// sent after it. The trainer answers control-point writes in the order it
-    /// received them, so the oldest matching abandoned command always claims
-    /// the next matching reply — even once the current command's write is
-    /// confirmed. If that abandoned reply was in fact lost, the current command
-    /// times out and the normal timeout policy decides, rather than a command
-    /// being confirmed by a reply meant for another.
-    ///
-    /// - Returns: how long ago the matching command was abandoned, or `nil`
-    ///   if the reply is not late.
-    public mutating func consumeLateReply(opcode: UInt8, now: Double) -> Double? {
-        abandoned.removeAll { now - $0.at > Self.expirySeconds }
-        guard let index = abandoned.firstIndex(where: { $0.opcode == opcode })
-        else { return nil }
-        let entry = abandoned.remove(at: index)
-        return now - entry.at
+    /// An indication does not identify which same-opcode write it answers.
+    /// Keep the uncertainty until disconnect rather than assuming it expires.
+    public mutating func classify(
+        opcode: UInt8,
+        activeOpcode: UInt8?,
+        now: Double
+    ) -> Reply {
+        guard let abandoned, abandoned.opcode == opcode else { return .unrelated }
+        let age = now - abandoned.at
+        if activeOpcode == opcode { return .ambiguous(age: age) }
+        self.abandoned = nil
+        return .late(age: age)
     }
 
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.abandoned.elementsEqual(rhs.abandoned) {
-            $0.opcode == $1.opcode && $0.at == $1.at
+        switch (lhs.abandoned, rhs.abandoned) {
+        case (nil, nil): true
+        case let (left?, right?):
+            left.opcode == right.opcode && left.at == right.at
+        default: false
         }
     }
 }

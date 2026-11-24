@@ -813,24 +813,26 @@ half was missing, so **no cause has been established**.
 
 **Expected behaviour, not yet validated on hardware.** `CommandTimeoutPolicy`
 now skips a single timed-out hill update — failing only that update and keeping
-the connection and the queue — when the trainer confirmed the write and sent
-riding data within the last three seconds. The riding app replaces hill updates
-about once a second, so losing one is harmless. A second timeout in a row, a
-missing write confirmation, stalled riding data, or a timeout on any other
-command still reconnects exactly as before. FTMS replies carry no command ID,
-so a skipped update's reply looks just like the answer to a virtual shift sent
-after it. Because the trainer answers in order, the oldest skipped command
-claims the next matching reply (`LateReplyTracker`); it is logged as late and
-never credited to a later command, even one whose write is already confirmed.
-If a skipped update's reply was lost instead, the next matching command waits
-out its own timeout and the rules above decide, so recovery stays as cautious
-as before.
+the connection and the queue — when Bluetooth confirmed the write and the trainer
+sent riding data within the last three seconds. Later terrain updates may
+replace a missed update, but this mitigation has not yet been tested on the
+trainer. A second unanswered update, a missing write confirmation, stalled
+riding data, or a timeout on any other command still triggers a reconnect.
+
+FTMS replies contain an opcode but no command ID. If an update is skipped and
+its reply arrives while no later update with the same opcode is active, it is
+logged as late. If another same-opcode update is already active, the app cannot
+tell which one the reply belongs to, so it reconnects without claiming either
+update succeeded. This uncertainty remains until the reply arrives or the
+connection resets; it does not expire after a fixed time. Normal virtual shifts
+use a separate Wahoo wheel-size command, not the FTMS terrain opcode.
 
 Each timeout now logs one `Timeout detail` line with: write confirmed, reply
 received, commands queued behind, time since the last riding data and last
-control reply, skips in a row, and the decision. It is followed by the trainer's
-signal strength, and the log also records every hang-up and its reason, each
-reconnect attempt, and how long it took to get trainer control back.
+control reply, skips in a row, whether an earlier reply is outstanding, and the
+decision. It is followed by the trainer's signal strength, and the log also
+records every hang-up and its reason, each reconnect attempt, and how long it
+took to get trainer control back.
 
 Collect a ride's log with the iPhone unlocked and connected by USB (over Wi-Fi
 fails). Run it yourself; it asks for your Mac password:
@@ -850,6 +852,7 @@ Keep ride logs out of the repository. Read the `Timeout detail` lines this way:
 | write not confirmed, riding data also stopped | the Bluetooth link stalled |
 | write confirmed, no reply, riding data still flowing | the trainer skipped or delayed its reply |
 | a `Late reply` line a little after the timeout | the trainer is slow; five seconds may be too tight |
+| an `Ambiguous FTMS reply` line | a reply arrived after another command with the same opcode was sent; its owner cannot be determined |
 | `Ignored unmatched FTMS indication` around the timeout | replies and commands are being paired wrongly |
 
 ## Does a riding app's reset wipe the wheel size?

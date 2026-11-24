@@ -119,6 +119,7 @@ final class KickrCentralService: NSObject {
     private var writeConfirmed = false
     private var indicationConfirmed = false
     private var disconnectOnCommandFailure = false
+    private var recoveryDisconnectPending = false
     private var activeResult: KickrCommandResult?
     private var lastTrainerDataAt: TimeInterval?
     private var lastControlReplyAt: TimeInterval?
@@ -482,7 +483,7 @@ final class KickrCentralService: NSObject {
         disconnectAfterCompletion: Bool = false,
         continuation: CheckedContinuation<KickrCommandResult, Error>? = nil
     ) {
-        guard !isSuspendedForDemo,
+        guard !isSuspendedForDemo, !recoveryDisconnectPending,
               peripheral?.state == .connected,
               characteristics[kind.characteristic] != nil else {
             commandFailed("\(name): trainer control is unavailable")
@@ -562,6 +563,7 @@ final class KickrCentralService: NSObject {
             isHillUpdate: isHillUpdate,
             writeConfirmed: writeConfirmed,
             consecutiveSkips: consecutiveSkippedTimeouts,
+            hasOutstandingSkippedReply: lateReplies.hasOutstandingReply,
             secondsSinceTrainerData: sinceData
         )
         log(CommandTimeoutReport(
@@ -572,6 +574,7 @@ final class KickrCentralService: NSObject {
             secondsSinceTrainerData: sinceData,
             secondsSinceControlReply: lastControlReplyAt.map { time - $0 },
             consecutiveSkips: consecutiveSkippedTimeouts,
+            hasOutstandingSkippedReply: lateReplies.hasOutstandingReply,
             decision: decision
         ).summary, level: .error)
         // Signal strength at the moment of trouble; logged when it arrives.
@@ -602,29 +605,41 @@ final class KickrCentralService: NSObject {
     }
 
     private func handleFTMSResponse(_ data: Data) {
+        guard !recoveryDisconnectPending else { return }
         do {
             let response = try FitnessMachineControlPointResponse.decode(data)
             lastControlReplyAt = now
-            var mayAnswerActive = false
+            var activeOpcode: UInt8?
             if let active, case let .ftms(request) = active.kind {
-                mayAnswerActive = writeConfirmed
-                    && request.opcode == response.requestOpcode
+                activeOpcode = request.opcode
             }
-            if let age = lateReplies.consumeLateReply(
+            switch lateReplies.classify(
                 opcode: response.requestOpcode,
+                activeOpcode: activeOpcode,
                 now: now
             ) {
+            case .late(let age):
+                if response.result == .controlNotPermitted {
+                    hasFTMSControl = false
+                }
                 log(
                     "Late reply to FTMS opcode 0x"
                         + String(format: "%02X", response.requestOpcode)
                         + String(format: " arrived %.1f s after it was skipped", age)
-                        + " (\(response.result))"
-                        + (mayAnswerActive
-                            ? "; not credited to \(active?.name ?? "the current command")"
-                            : ""),
+                        + " (\(response.result))",
                     level: .warning
                 )
                 return
+            case .ambiguous(let age):
+                let message = "Ambiguous FTMS reply to opcode 0x"
+                    + String(format: "%02X", response.requestOpcode)
+                    + String(format: " after a command was skipped %.1f s ago", age)
+                    + " (\(response.result), current write confirmed \(writeConfirmed))"
+                    + "; reconnecting without crediting it to the current command"
+                failActive(message, forceDisconnect: true)
+                return
+            case .unrelated:
+                break
             }
             emit(.controlResponse(response))
             guard let active,
@@ -722,6 +737,9 @@ final class KickrCentralService: NSObject {
         let shouldDisconnect = forceDisconnect
             || disconnectOnCommandFailure
             || active?.disconnectAfterCompletion == true
+        if shouldDisconnect, peripheral != nil {
+            recoveryDisconnectPending = true
+        }
         disconnectOnCommandFailure = false
         let failed = active
         active = nil
@@ -770,6 +788,7 @@ final class KickrCentralService: NSObject {
         subscribed.removeAll()
         initialCommandsQueued = false
         disconnectOnCommandFailure = false
+        recoveryDisconnectPending = false
         hasFTMSControl = false
         consecutiveSkippedTimeouts = 0
         lateReplies.clear()
