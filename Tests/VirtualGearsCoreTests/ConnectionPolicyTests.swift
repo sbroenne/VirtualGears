@@ -211,4 +211,24 @@ final class ConnectionPolicyTests: XCTestCase {
         )
         XCTAssertEqual(read, SavedDeviceIdentity(id: id, name: nil))
     }
+
+    // MARK: - Command timeouts
+
+    func testTimeoutReportSaysWhatWasMissing() {
+        let report = CommandTimeoutReport(
+            commandName: "FTMS opcode 0x11",
+            writeConfirmed: true,
+            replyReceived: false,
+            commandsQueuedBehind: 2,
+            secondsSinceTrainerData: 0.3,
+            secondsSinceControlReply: nil
+        )
+        XCTAssertEqual(
+            report.summary,
+            "Timeout detail for FTMS opcode 0x11: write confirmed yes, "
+                + "reply received no, 2 queued behind, "
+                + "last trainer data 0.3 s ago, last control reply never, "
+                + "reconnecting"
+        )
+    }
 }

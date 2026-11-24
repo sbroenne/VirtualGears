@@ -120,6 +120,13 @@ final class KickrCentralService: NSObject {
     private var indicationConfirmed = false
     private var disconnectOnCommandFailure = false
     private var activeResult: KickrCommandResult?
+    private var lastTrainerDataAt: TimeInterval?
+    private var lastControlReplyAt: TimeInterval?
+    /// When the app last lost the trainer, so the log can say how long the
+    /// rider went without trainer control.
+    private var recoveryStartedAt: TimeInterval?
+
+    private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -310,6 +317,7 @@ final class KickrCentralService: NSObject {
         resettingCircumferenceMillimeters: Double? = nil
     ) {
         desiredConnection = false
+        recoveryStartedAt = nil
         reconnectTask?.cancel()
         central.stopScan()
         guard let peripheral else {
@@ -403,6 +411,7 @@ final class KickrCentralService: NSObject {
         let delay = ReconnectPolicy.delaySeconds(afterAttempts: reconnectAttempt)
         reconnectAttempt += 1
         state = .reconnecting(attempt: reconnectAttempt)
+        log("Reconnect attempt \(reconnectAttempt) in \(delay) s")
         reconnectTask = Task { [weak self] in
             do {
                 try await Task.sleep(nanoseconds: delay * 1_000_000_000)
@@ -520,10 +529,7 @@ final class KickrCentralService: NSObject {
                     return
                 }
                 guard let self, self.active?.id == command.id else { return }
-                self.failActive(
-                    "\(command.name) timed out after 5 seconds",
-                    forceDisconnect: true
-                )
+                self.handleTimeout(of: command)
             }
         } catch {
             active = nil
@@ -535,9 +541,29 @@ final class KickrCentralService: NSObject {
         }
     }
 
+    private func handleTimeout(of command: Command) {
+        let time = now
+        let sinceData = lastTrainerDataAt.map { time - $0 }
+        log(CommandTimeoutReport(
+            commandName: command.name,
+            writeConfirmed: writeConfirmed,
+            replyReceived: indicationConfirmed,
+            commandsQueuedBehind: queue.count,
+            secondsSinceTrainerData: sinceData,
+            secondsSinceControlReply: lastControlReplyAt.map { time - $0 }
+        ).summary, level: .error)
+        // Signal strength at the moment of trouble; logged when it arrives.
+        peripheral?.readRSSI()
+        failActive(
+            "\(command.name) timed out after 5 seconds",
+            forceDisconnect: true
+        )
+    }
+
     private func handleFTMSResponse(_ data: Data) {
         do {
             let response = try FitnessMachineControlPointResponse.decode(data)
+            lastControlReplyAt = now
             emit(.controlResponse(response))
             guard let active,
                   case let .ftms(request) = active.kind,
@@ -609,6 +635,13 @@ final class KickrCentralService: NSObject {
         activeResult = nil
         if initialCommandsQueued, queue.isEmpty {
             state = .ready
+            if let started = recoveryStartedAt {
+                recoveryStartedAt = nil
+                log(String(
+                    format: "Trainer control restored %.1f s after the connection was lost",
+                    now - started
+                ))
+            }
         }
         if command.disconnectAfterCompletion, let peripheral {
             disconnectOnCommandFailure = false
@@ -639,6 +672,10 @@ final class KickrCentralService: NSObject {
         }
         commandFailed(message)
         if shouldDisconnect, let peripheral {
+            if desiredConnection {
+                log("Hanging up on the trainer to recover: \(message)",
+                    level: .warning)
+            }
             central.cancelPeripheralConnection(peripheral)
         }
     }
@@ -671,6 +708,8 @@ final class KickrCentralService: NSObject {
         initialCommandsQueued = false
         disconnectOnCommandFailure = false
         hasFTMSControl = false
+        lastTrainerDataAt = nil
+        lastControlReplyAt = nil
         capabilities = .init()
         latestBikeData = nil
         latestStatus = nil
@@ -834,7 +873,14 @@ extension KickrCentralService: @preconcurrency CBCentralManagerDelegate {
         guard self.peripheral?.identifier == peripheral.identifier else { return }
         resetConnection()
         state = central.isScanning ? .scanning : .disconnected
-        if let error { log(error.localizedDescription, level: .warning) }
+        log(
+            "Trainer disconnected: "
+                + (error?.localizedDescription ?? "ended by Virtual Gears"),
+            level: .warning
+        )
+        if desiredConnection, recoveryStartedAt == nil {
+            recoveryStartedAt = ProcessInfo.processInfo.systemUptime
+        }
         if finishDemoSuspensionIfNeeded() { return }
         if desiredConnection { scheduleReconnect() }
     }
@@ -924,6 +970,19 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
 
     func peripheral(
         _ peripheral: CBPeripheral,
+        didReadRSSI RSSI: NSNumber,
+        error: Error?
+    ) {
+        if let error {
+            log("Could not read signal strength: \(error.localizedDescription)",
+                level: .warning)
+        } else {
+            log("Trainer signal strength: \(RSSI.intValue) dBm")
+        }
+    }
+
+    func peripheral(
+        _ peripheral: CBPeripheral,
         didUpdateValueFor characteristic: CBCharacteristic,
         error: Error?
     ) {
@@ -938,6 +997,7 @@ extension KickrCentralService: @preconcurrency CBPeripheralDelegate {
             return
         }
         if characteristic.uuid == bikeDataUUID {
+            lastTrainerDataAt = now
             relay(.rawBikeData(data))
         }
         do {

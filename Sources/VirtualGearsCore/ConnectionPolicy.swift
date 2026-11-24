@@ -155,3 +155,47 @@ public struct SavedDeviceIdentity: Equatable, Sendable {
         return SavedDeviceIdentity(id: id, name: value["name"] as? String)
     }
 }
+
+/// What the app knew about the link when a trainer command timed out.
+///
+/// The old log said only that a command timed out, which cannot tell a dead
+/// Bluetooth link from a trainer that quietly dropped one reply. These fields
+/// are the ones that separate those cases.
+public struct CommandTimeoutReport: Equatable, Sendable {
+    public var commandName: String
+    public var writeConfirmed: Bool
+    public var replyReceived: Bool
+    public var commandsQueuedBehind: Int
+    public var secondsSinceTrainerData: Double?
+    public var secondsSinceControlReply: Double?
+
+    public init(
+        commandName: String,
+        writeConfirmed: Bool,
+        replyReceived: Bool,
+        commandsQueuedBehind: Int,
+        secondsSinceTrainerData: Double?,
+        secondsSinceControlReply: Double?
+    ) {
+        self.commandName = commandName
+        self.writeConfirmed = writeConfirmed
+        self.replyReceived = replyReceived
+        self.commandsQueuedBehind = commandsQueuedBehind
+        self.secondsSinceTrainerData = secondsSinceTrainerData
+        self.secondsSinceControlReply = secondsSinceControlReply
+    }
+
+    public var summary: String {
+        func age(_ value: Double?) -> String {
+            guard let value else { return "never" }
+            return String(format: "%.1f s ago", value)
+        }
+        return "Timeout detail for \(commandName): "
+            + "write confirmed \(writeConfirmed ? "yes" : "no"), "
+            + "reply received \(replyReceived ? "yes" : "no"), "
+            + "\(commandsQueuedBehind) queued behind, "
+            + "last trainer data \(age(secondsSinceTrainerData)), "
+            + "last control reply \(age(secondsSinceControlReply)), "
+            + "reconnecting"
+    }
+}

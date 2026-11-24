@@ -55,6 +55,9 @@ enum ProbeMode {
     /// Ask the trainer what it claims to support, and find out whether it
     /// accepts the *standard* wheel-size command as well as Wahoo's own.
     case features
+    /// Repeat RealVelo-like terrain updates and occasional gear changes to
+    /// reveal missing or delayed FTMS replies under a sustained mixed load.
+    case terrainStress(updates: Int)
     /// Print everything the trainer offers, service by service, so what a real
     /// trainer looks like can be held up against what Virtual Gears publishes.
     case tree
@@ -81,6 +84,10 @@ let mode: ProbeMode = {
         return .resetTest
     case "features":
         return .features
+    case "terrain-stress":
+        return .terrainStress(
+            updates: arguments.dropFirst().first.flatMap(Int.init) ?? 120
+        )
     case "tree":
         return .tree
     default:
@@ -92,6 +99,8 @@ enum ProbeError: Error {
     case notReady
     case timedOut
     case noGearsLeft
+    case rejected(FTMSControlPointResult)
+    case commandNotConfirmed
 }
 
 @MainActor
@@ -196,6 +205,8 @@ final class KickrProbe: NSObject {
                 try await runResetTest()
             case .features:
                 try await surveyFeatures()
+            case let .terrainStress(updates):
+                try await runTerrainStress(updates: updates)
             case .tree:
                 break
             }
@@ -499,6 +510,7 @@ final class KickrProbe: NSObject {
                 .map { "\($0)" } ?? "not recognised"
             say("Trainer announced: [\(hex)] — \(decoded)")
         }
+
         do {
             let command = try WahooKickrCommand.setWheelCircumference(
                 millimeters: neutral
@@ -516,6 +528,86 @@ final class KickrProbe: NSObject {
             say("A command after Stop failed outright: \(error)")
             return false
         }
+    }
+
+    private func runTerrainStress(updates requested: Int) async throws {
+        let updates = max(1, requested)
+        var ftmsTimes: [TimeInterval] = []
+        var wahooTimes: [TimeInterval] = []
+        var engine = try ConfirmedGearEngine(
+            drivetrain: try Drivetrain.virtualLadder(),
+            wheelSizeMillimeters: neutral
+        )
+
+        say("\n== Can repeated terrain updates coexist with shifting? ==")
+        say("Sending \(updates) FTMS terrain updates, about one per second.")
+        for index in 0..<updates {
+            let grade = Int16((index % 21 - 10) * 50)
+            let request = FitnessMachineControlPointRequest
+                .setIndoorBikeSimulationParameters(.init(
+                    windSpeedThousandthsMetersPerSecond: 0,
+                    gradeHundredthsPercent: grade,
+                    rollingResistanceCoefficientTenThousandths: 40,
+                    windResistanceCoefficientHundredthsKilogramsPerMeter: 51
+                ))
+            let began = Date()
+            let raw = try await sendFTMS(request)
+            let elapsed = Date().timeIntervalSince(began)
+            let response = try FitnessMachineControlPointResponse.decode(raw)
+            guard response.requestOpcode == request.opcode,
+                  response.result == .success else {
+                throw ProbeError.rejected(response.result)
+            }
+            ftmsTimes.append(elapsed)
+
+            if index % 15 == 14 {
+                let direction = index % 30 == 29 ? -1 : 1
+                guard let change = engine.requestShift(by: direction) else {
+                    throw ProbeError.noGearsLeft
+                }
+                let shiftBegan = Date()
+                let shiftRaw = try await sendWahoo(change.command)
+                let shiftElapsed = Date().timeIntervalSince(shiftBegan)
+                let shiftResponse = try WahooKickrResponse.decode(shiftRaw)
+                guard shiftResponse.confirmsSuccess(for: change.command) else {
+                    throw ProbeError.commandNotConfirmed
+                }
+                _ = engine.acknowledge(shiftResponse)
+                wahooTimes.append(shiftElapsed)
+                say(
+                    "\(index + 1) terrain updates: FTMS "
+                        + "\(milliseconds(elapsed)), shift "
+                        + "\(milliseconds(shiftElapsed))"
+                )
+            }
+            let remaining = 1 - elapsed
+            if remaining > 0 {
+                try? await Task.sleep(for: .seconds(remaining))
+            }
+        }
+
+        let zero = FitnessMachineControlPointRequest
+            .setIndoorBikeSimulationParameters(.init(
+                windSpeedThousandthsMetersPerSecond: 0,
+                gradeHundredthsPercent: 0,
+                rollingResistanceCoefficientTenThousandths: 40,
+                windResistanceCoefficientHundredthsKilogramsPerMeter: 51
+            ))
+        _ = try await sendFTMS(zero)
+        await restoreNeutral()
+        say(
+            "\nFTMS replies: \(ftmsTimes.count)/\(updates), "
+                + "fastest \(milliseconds(ftmsTimes.min() ?? 0)), "
+                + "average \(milliseconds(ftmsTimes.reduce(0, +) / Double(ftmsTimes.count))), "
+                + "slowest \(milliseconds(ftmsTimes.max() ?? 0))."
+        )
+        if !wahooTimes.isEmpty {
+            say(
+                "Gear replies: \(wahooTimes.count), "
+                    + "slowest \(milliseconds(wahooTimes.max() ?? 0))."
+            )
+        }
+        say("No timeout or dropped reply was observed.")
     }
 
     private func restoreNeutral() async {
