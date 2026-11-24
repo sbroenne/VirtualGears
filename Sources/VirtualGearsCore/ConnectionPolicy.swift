@@ -156,65 +156,6 @@ public struct SavedDeviceIdentity: Equatable, Sendable {
     }
 }
 
-/// What to do when the trainer has not finished answering a command in time.
-///
-/// Every timeout used to hang up on the trainer and reconnect, which costs the
-/// rider roughly ten seconds of no resistance changes and cancels everything
-/// queued behind the stuck command — including virtual shifts. A RealVelo ride
-/// on a KICKR V5 hit this eight times, every time on a hill update.
-///
-/// Hill updates (FTMS simulation parameters) are replaced by the riding app
-/// about once a second, so losing one is harmless. When the link is plainly
-/// still alive — the trainer confirmed the write and is still sending riding
-/// data — skipping that one update is far kinder than a reconnect. Anything
-/// that looks like a real link problem still reconnects exactly as before.
-public enum CommandTimeoutPolicy {
-    /// How recent the trainer's last riding data must be for the link to count
-    /// as alive. The KICKR sends it several times a second while connected.
-    public static let liveDataWindowSeconds: Double = 3
-
-    /// How many timed-out hill updates in a row may be skipped before the app
-    /// stops trusting the link and reconnects.
-    public static let maximumConsecutiveSkips = 1
-
-    public enum Decision: Equatable, Sendable {
-        /// Fail only this command and carry on with the next one.
-        case skipCommand
-        /// Hang up and let the reconnect policy bring the trainer back.
-        case reconnect
-    }
-
-    /// - Parameters:
-    ///   - isHillUpdate: whether the command is an FTMS simulation-parameters
-    ///     write, which the riding app supersedes continuously.
-    ///   - writeConfirmed: whether the trainer acknowledged receiving the
-    ///     write. Without that, the link itself is suspect, and a write still in
-    ///     flight could be mistaken for the next command's.
-    ///   - consecutiveSkips: hill updates already skipped since the last
-    ///     command that completed.
-    ///   - hasOutstandingSkippedReply: whether a previously skipped command
-    ///     could still produce a reply.
-    ///   - secondsSinceTrainerData: time since the trainer last sent riding
-    ///     data, or `nil` if it has sent none on this connection.
-    public static func decide(
-        isHillUpdate: Bool,
-        writeConfirmed: Bool,
-        consecutiveSkips: Int,
-        hasOutstandingSkippedReply: Bool,
-        secondsSinceTrainerData: Double?
-    ) -> Decision {
-        guard isHillUpdate,
-              writeConfirmed,
-              consecutiveSkips < maximumConsecutiveSkips,
-              !hasOutstandingSkippedReply,
-              let age = secondsSinceTrainerData,
-              age <= liveDataWindowSeconds else {
-            return .reconnect
-        }
-        return .skipCommand
-    }
-}
-
 /// What the app knew about the link when a trainer command timed out.
 ///
 /// The old log said only that a command timed out, which cannot tell a dead
@@ -227,9 +168,6 @@ public struct CommandTimeoutReport: Equatable, Sendable {
     public var commandsQueuedBehind: Int
     public var secondsSinceTrainerData: Double?
     public var secondsSinceControlReply: Double?
-    public var consecutiveSkips: Int
-    public var hasOutstandingSkippedReply: Bool
-    public var decision: CommandTimeoutPolicy.Decision
 
     public init(
         commandName: String,
@@ -237,10 +175,7 @@ public struct CommandTimeoutReport: Equatable, Sendable {
         replyReceived: Bool,
         commandsQueuedBehind: Int,
         secondsSinceTrainerData: Double?,
-        secondsSinceControlReply: Double?,
-        consecutiveSkips: Int,
-        hasOutstandingSkippedReply: Bool,
-        decision: CommandTimeoutPolicy.Decision
+        secondsSinceControlReply: Double?
     ) {
         self.commandName = commandName
         self.writeConfirmed = writeConfirmed
@@ -248,9 +183,6 @@ public struct CommandTimeoutReport: Equatable, Sendable {
         self.commandsQueuedBehind = commandsQueuedBehind
         self.secondsSinceTrainerData = secondsSinceTrainerData
         self.secondsSinceControlReply = secondsSinceControlReply
-        self.consecutiveSkips = consecutiveSkips
-        self.hasOutstandingSkippedReply = hasOutstandingSkippedReply
-        self.decision = decision
     }
 
     public var summary: String {
@@ -258,63 +190,12 @@ public struct CommandTimeoutReport: Equatable, Sendable {
             guard let value else { return "never" }
             return String(format: "%.1f s ago", value)
         }
-        let action = switch decision {
-        case .skipCommand: "skipping it and staying connected"
-        case .reconnect: "reconnecting"
-        }
         return "Timeout detail for \(commandName): "
             + "write confirmed \(writeConfirmed ? "yes" : "no"), "
             + "reply received \(replyReceived ? "yes" : "no"), "
             + "\(commandsQueuedBehind) queued behind, "
             + "last trainer data \(age(secondsSinceTrainerData)), "
             + "last control reply \(age(secondsSinceControlReply)), "
-            + "\(consecutiveSkips) skipped in a row, "
-            + "earlier skipped reply outstanding \(hasOutstandingSkippedReply ? "yes" : "no"); "
-            + action
-    }
-}
-
-/// Tracks an unanswered FTMS command until its reply arrives or the link resets.
-public struct LateReplyTracker: Equatable, Sendable {
-    public enum Reply: Equatable, Sendable {
-        case unrelated
-        case late(age: Double)
-        case ambiguous(age: Double)
-    }
-
-    private var abandoned: (opcode: UInt8, at: Double)?
-
-    public init() {}
-
-    public var hasOutstandingReply: Bool { abandoned != nil }
-
-    public mutating func abandon(opcode: UInt8, at time: Double) {
-        precondition(abandoned == nil)
-        abandoned = (opcode, time)
-    }
-
-    public mutating func clear() { abandoned = nil }
-
-    /// An indication does not identify which same-opcode write it answers.
-    /// Keep the uncertainty until disconnect rather than assuming it expires.
-    public mutating func classify(
-        opcode: UInt8,
-        activeOpcode: UInt8?,
-        now: Double
-    ) -> Reply {
-        guard let abandoned, abandoned.opcode == opcode else { return .unrelated }
-        let age = now - abandoned.at
-        if activeOpcode == opcode { return .ambiguous(age: age) }
-        self.abandoned = nil
-        return .late(age: age)
-    }
-
-    public static func == (lhs: Self, rhs: Self) -> Bool {
-        switch (lhs.abandoned, rhs.abandoned) {
-        case (nil, nil): true
-        case let (left?, right?):
-            left.opcode == right.opcode && left.at == right.at
-        default: false
-        }
+            + "reconnecting"
     }
 }

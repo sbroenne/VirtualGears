@@ -119,12 +119,9 @@ final class KickrCentralService: NSObject {
     private var writeConfirmed = false
     private var indicationConfirmed = false
     private var disconnectOnCommandFailure = false
-    private var recoveryDisconnectPending = false
     private var activeResult: KickrCommandResult?
     private var lastTrainerDataAt: TimeInterval?
     private var lastControlReplyAt: TimeInterval?
-    private var consecutiveSkippedTimeouts = 0
-    private var lateReplies = LateReplyTracker()
     /// When the app last lost the trainer, so the log can say how long the
     /// rider went without trainer control.
     private var recoveryStartedAt: TimeInterval?
@@ -483,7 +480,7 @@ final class KickrCentralService: NSObject {
         disconnectAfterCompletion: Bool = false,
         continuation: CheckedContinuation<KickrCommandResult, Error>? = nil
     ) {
-        guard !isSuspendedForDemo, !recoveryDisconnectPending,
+        guard !isSuspendedForDemo,
               peripheral?.state == .connected,
               characteristics[kind.characteristic] != nil else {
             commandFailed("\(name): trainer control is unavailable")
@@ -545,102 +542,28 @@ final class KickrCentralService: NSObject {
     }
 
     private func handleTimeout(of command: Command) {
-        let isHillUpdate: Bool
-        var opcode: UInt8?
-        if case let .ftms(request) = command.kind {
-            opcode = request.opcode
-            if case .setIndoorBikeSimulationParameters = request {
-                isHillUpdate = true
-            } else {
-                isHillUpdate = false
-            }
-        } else {
-            isHillUpdate = false
-        }
         let time = now
         let sinceData = lastTrainerDataAt.map { time - $0 }
-        let decision = CommandTimeoutPolicy.decide(
-            isHillUpdate: isHillUpdate,
-            writeConfirmed: writeConfirmed,
-            consecutiveSkips: consecutiveSkippedTimeouts,
-            hasOutstandingSkippedReply: lateReplies.hasOutstandingReply,
-            secondsSinceTrainerData: sinceData
-        )
         log(CommandTimeoutReport(
             commandName: command.name,
             writeConfirmed: writeConfirmed,
             replyReceived: indicationConfirmed,
             commandsQueuedBehind: queue.count,
             secondsSinceTrainerData: sinceData,
-            secondsSinceControlReply: lastControlReplyAt.map { time - $0 },
-            consecutiveSkips: consecutiveSkippedTimeouts,
-            hasOutstandingSkippedReply: lateReplies.hasOutstandingReply,
-            decision: decision
+            secondsSinceControlReply: lastControlReplyAt.map { time - $0 }
         ).summary, level: .error)
         // Signal strength at the moment of trouble; logged when it arrives.
         peripheral?.readRSSI()
-        let message = "\(command.name) timed out after 5 seconds"
-        switch decision {
-        case .skipCommand:
-            consecutiveSkippedTimeouts += 1
-            if let opcode { lateReplies.abandon(opcode: opcode, at: time) }
-            skipActive(message)
-        case .reconnect:
-            failActive(message, forceDisconnect: true)
-        }
-    }
-
-    /// Gives up on the active command alone, leaving the connection and every
-    /// queued command — a virtual shift, say — untouched.
-    private func skipActive(_ message: String) {
-        timeoutTask?.cancel()
-        let skipped = active
-        active = nil
-        activeResult = nil
-        skipped?.continuation?.resume(
-            throwing: ProductBluetoothError.commandFailed(message)
+        failActive(
+            "\(command.name) timed out after 5 seconds",
+            forceDisconnect: true
         )
-        commandFailed(message)
-        processNext()
     }
 
     private func handleFTMSResponse(_ data: Data) {
-        guard !recoveryDisconnectPending else { return }
         do {
             let response = try FitnessMachineControlPointResponse.decode(data)
             lastControlReplyAt = now
-            var activeOpcode: UInt8?
-            if let active, case let .ftms(request) = active.kind {
-                activeOpcode = request.opcode
-            }
-            switch lateReplies.classify(
-                opcode: response.requestOpcode,
-                activeOpcode: activeOpcode,
-                now: now
-            ) {
-            case .late(let age):
-                if response.result == .controlNotPermitted {
-                    hasFTMSControl = false
-                }
-                log(
-                    "Late reply to FTMS opcode 0x"
-                        + String(format: "%02X", response.requestOpcode)
-                        + String(format: " arrived %.1f s after it was skipped", age)
-                        + " (\(response.result))",
-                    level: .warning
-                )
-                return
-            case .ambiguous(let age):
-                let message = "Ambiguous FTMS reply to opcode 0x"
-                    + String(format: "%02X", response.requestOpcode)
-                    + String(format: " after a command was skipped %.1f s ago", age)
-                    + " (\(response.result), current write confirmed \(writeConfirmed))"
-                    + "; reconnecting without crediting it to the current command"
-                failActive(message, forceDisconnect: true)
-                return
-            case .unrelated:
-                break
-            }
             emit(.controlResponse(response))
             guard let active,
                   case let .ftms(request) = active.kind,
@@ -703,7 +626,6 @@ final class KickrCentralService: NSObject {
         }
         timeoutTask?.cancel()
         active = nil
-        consecutiveSkippedTimeouts = 0
         if let result = activeResult {
             command.continuation?.resume(returning: result)
         } else {
@@ -737,9 +659,6 @@ final class KickrCentralService: NSObject {
         let shouldDisconnect = forceDisconnect
             || disconnectOnCommandFailure
             || active?.disconnectAfterCompletion == true
-        if shouldDisconnect, peripheral != nil {
-            recoveryDisconnectPending = true
-        }
         disconnectOnCommandFailure = false
         let failed = active
         active = nil
@@ -788,10 +707,7 @@ final class KickrCentralService: NSObject {
         subscribed.removeAll()
         initialCommandsQueued = false
         disconnectOnCommandFailure = false
-        recoveryDisconnectPending = false
         hasFTMSControl = false
-        consecutiveSkippedTimeouts = 0
-        lateReplies.clear()
         lastTrainerDataAt = nil
         lastControlReplyAt = nil
         capabilities = .init()

@@ -214,58 +214,6 @@ final class ConnectionPolicyTests: XCTestCase {
 
     // MARK: - Command timeouts
 
-    /// The RealVelo case: one hill update unanswered while the trainer is still
-    /// plainly talking. Skipping it beats ten seconds of reconnecting.
-    func testSkipsOneMissedHillUpdateOnALiveLink() {
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: true,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: 0.4
-        ), .skipCommand)
-    }
-
-    func testReconnectsWhenTheLinkLooksUnhealthy() {
-        // A second miss in a row.
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: true,
-            consecutiveSkips: 1, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: 0.4
-        ), .reconnect)
-        // An intervening command succeeded, but the old reply is still missing.
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: true,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: true,
-            secondsSinceTrainerData: 0.4
-        ), .reconnect)
-        // The trainer never acknowledged the write.
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: false,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: 0.4
-        ), .reconnect)
-        // Riding data has stopped too.
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: true,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: 3.5
-        ), .reconnect)
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: true, writeConfirmed: true,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: nil
-        ), .reconnect)
-    }
-
-    /// Shifts, wheel sizes and control requests are not superseded a second
-    /// later, so losing one silently is not acceptable.
-    func testOtherCommandsStillReconnect() {
-        XCTAssertEqual(CommandTimeoutPolicy.decide(
-            isHillUpdate: false, writeConfirmed: true,
-            consecutiveSkips: 0, hasOutstandingSkippedReply: false,
-            secondsSinceTrainerData: 0.4
-        ), .reconnect)
-    }
-
     func testTimeoutReportSaysWhatWasMissing() {
         let report = CommandTimeoutReport(
             commandName: "FTMS opcode 0x11",
@@ -273,60 +221,14 @@ final class ConnectionPolicyTests: XCTestCase {
             replyReceived: false,
             commandsQueuedBehind: 2,
             secondsSinceTrainerData: 0.3,
-            secondsSinceControlReply: nil,
-            consecutiveSkips: 0,
-            hasOutstandingSkippedReply: false,
-            decision: .skipCommand
+            secondsSinceControlReply: nil
         )
         XCTAssertEqual(
             report.summary,
             "Timeout detail for FTMS opcode 0x11: write confirmed yes, "
                 + "reply received no, 2 queued behind, "
                 + "last trainer data 0.3 s ago, last control reply never, "
-                + "0 skipped in a row, earlier skipped reply outstanding no; "
-                + "skipping it and staying connected"
-        )
-    }
-
-    // MARK: - Late replies
-
-    func testSameOpcodeReplyIsAmbiguousEvenAfterALongDelay() {
-        var tracker = LateReplyTracker()
-        tracker.abandon(opcode: 0x11, at: 100)
-        XCTAssertEqual(
-            tracker.classify(opcode: 0x11, activeOpcode: 0x11, now: 140),
-            .ambiguous(age: 40)
-        )
-        XCTAssertTrue(tracker.hasOutstandingReply)
-        tracker.clear()
-        XCTAssertFalse(tracker.hasOutstandingReply)
-    }
-
-    func testReplyCanBeIdentifiedAsLateWhenNoSameOpcodeCommandIsActive() {
-        var tracker = LateReplyTracker()
-        tracker.abandon(opcode: 0x11, at: 100)
-        XCTAssertEqual(
-            tracker.classify(opcode: 0x07, activeOpcode: 0x07, now: 101),
-            .unrelated
-        )
-        XCTAssertTrue(tracker.hasOutstandingReply)
-        XCTAssertEqual(
-            tracker.classify(opcode: 0x11, activeOpcode: 0x07, now: 140),
-            .late(age: 40)
-        )
-        XCTAssertFalse(tracker.hasOutstandingReply)
-    }
-
-    func testReplyWithNoActiveCommandClearsOutstandingReply() {
-        var tracker = LateReplyTracker()
-        tracker.abandon(opcode: 0x11, at: 100)
-        XCTAssertEqual(
-            tracker.classify(opcode: 0x11, activeOpcode: nil, now: 102),
-            .late(age: 2)
-        )
-        XCTAssertEqual(
-            tracker.classify(opcode: 0x11, activeOpcode: 0x11, now: 103),
-            .unrelated
+                + "reconnecting"
         )
     }
 }
