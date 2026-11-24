@@ -561,6 +561,17 @@ Close the iPhone app first and wake the trainer by turning the pedals. A KICKR
 accepts only one controlling connection, and the iPhone advertises itself as a
 fitness machine too, so the tool picks the trainer by name.
 
+To reproduce the RealVelo command pattern without the riding app, send a
+sustained stream of FTMS terrain updates with occasional Wahoo gear changes:
+
+```bash
+./Tools/KickrProbe/run.sh terrain-stress 120
+```
+
+The number is the count of updates. The default is 120. This is a physical
+trainer stress check, not proof of the iPhone proxy's behaviour; it tests
+whether the KICKR itself drops or delays the same command pattern.
+
 ### What a Wahoo KICKR 2A93 measured
 
 Idle, with no riding app connected and nobody pedalling, eight consecutive gear
